@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Domain\Tenant;
+namespace Beffroi\Core\Tests\Domain\Tenant;
 
-use Heidi\Core\Domain\Tenant\Issuer;
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 final class IssuerTest extends TestCase
 {
     /**
-     * OIDC Discovery §3: the issuer is a URL using the https scheme.
+     * OIDC Discovery §3
      */
     #[Test]
     public function itAcceptsAnHttpsIssuer(): void
@@ -23,7 +23,7 @@ final class IssuerTest extends TestCase
     }
 
     /**
-     * OIDC Discovery §3: the issuer may have a path.
+     * OIDC Discovery §3
      */
     #[Test]
     public function itAcceptsAnHttpsIssuerWithAPath(): void
@@ -36,7 +36,7 @@ final class IssuerTest extends TestCase
     }
 
     /**
-     * RFC 6761 §6.3: names under "localhost" resolve to loopback; plain HTTP is accepted there and only there.
+     * RFC 6761 §6.3
      */
     #[Test]
     #[DataProvider('provideLoopbackIssuers')]
@@ -55,6 +55,13 @@ final class IssuerTest extends TestCase
         yield 'subdomain of localhost' => ['http://op.localhost'];
         yield 'IPv4 loopback' => ['http://127.0.0.1'];
         yield 'IPv6 loopback' => ['http://[::1]:8080'];
+    }
+
+    #[Test]
+    public function aLoopbackAddressWithALineFeedBehindItIsNoLoopbackHost(): void
+    {
+        // When / Then
+        static::assertFalse(Issuer::isLoopbackHost("127.0.0.1\n"));
     }
 
     #[Test]
@@ -128,5 +135,27 @@ final class IssuerTest extends TestCase
     {
         // When / Then
         static::assertFalse(new Issuer('https://id.acme.example')->equals(new Issuer('https://id.acme.example/acme')));
+    }
+
+    /**
+     * RFC 6454 §3.2
+     */
+    #[Test]
+    #[DataProvider('provideOrigins')]
+    public function theOriginIsTheIssuerWithoutItsPath(string $issuer, string $origin): void
+    {
+        // When / Then
+        static::assertSame($origin, new Issuer($issuer)->origin());
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideOrigins(): iterable
+    {
+        yield 'a host alone' => ['https://id.acme.example', 'https://id.acme.example'];
+        yield 'a host and a path' => ['https://acme.example/id', 'https://acme.example'];
+        yield 'a host, a port and a path' => ['https://acme.example:8443/tenants/acme', 'https://acme.example:8443'];
+        yield 'a loopback host with a port' => ['http://127.0.0.1:8080', 'http://127.0.0.1:8080'];
     }
 }

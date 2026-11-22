@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Application\Authentication;
+namespace Beffroi\Core\Tests\Application\Authentication;
 
-use Heidi\Core\Application\Authentication\DecoyHash;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Application\Authentication\DecoyHash;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -18,11 +19,11 @@ final class DecoyHashTest extends TestCase
     protected function setUp(): void
     {
         $this->hasher = new FakePasswordHasher();
-        $this->decoy = new DecoyHash($this->hasher);
+        $this->decoy = new DecoyHash($this->hasher, new SymfonyUuidGenerator());
     }
 
     /**
-     * Decision 0006: what is paid is a verification, the cost of a wrong password.
+     * Decision 0006
      */
     #[Test]
     public function itPaysOneVerificationAgainstAHashOfTheHasher(): void
@@ -35,9 +36,6 @@ final class DecoyHashTest extends TestCase
         static::assertStringStartsWith('fake:', $this->hasher->verifiedAgainst[0]);
     }
 
-    /**
-     * The decoy is drawn from a value nobody knows: no password matches it.
-     */
     #[Test]
     public function theDecoyIsNotTheHashOfThePassword(): void
     {
@@ -48,9 +46,6 @@ final class DecoyHashTest extends TestCase
         static::assertNotSame($this->hasher->hash('whatever')->encoded, $this->hasher->verifiedAgainst[0]);
     }
 
-    /**
-     * A costly hash is computed once per process, then verified against as many times as needed.
-     */
     #[Test]
     public function theSameDecoyServesEveryVerification(): void
     {

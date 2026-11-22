@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Client;
+namespace Beffroi\Oidc\Tests\Domain\Client;
 
-use Heidi\Oidc\Domain\Client\ClientUri;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 final class ClientUriTest extends TestCase
 {
     /**
-     * RFC 6749 §3.1.2, Back-Channel Logout 1.0 §2.2: an absolute URI, which may carry a query component.
+     * RFC 6749 §3.1.2, Back-Channel Logout 1.0 §2.2
      */
     #[Test]
     #[DataProvider('provideAcceptedUris')]
@@ -32,11 +32,13 @@ final class ClientUriTest extends TestCase
         yield 'scheme in capitals (RFC 3986 §3.1, kept as registered)' => ['HTTPS://demo.localhost/login/check'];
         yield 'loopback host in capitals' => ['http://LOCALHOST:8000/login/check'];
         yield 'https with a query' => ['https://rp.example/cb?app=1'];
-        yield 'https with a port' => ['https://localhost:8443/test/a/heidi/callback'];
+        yield 'https with a port' => ['https://localhost:8443/test/a/beffroi/callback'];
         yield 'http on localhost' => ['http://localhost:8000/login/check'];
         yield 'http under localhost' => ['http://rp.localhost/login/check'];
         yield 'http on IPv4 loopback' => ['http://127.0.0.1:8000/cb'];
         yield 'http on IPv6 loopback' => ['http://[::1]:8000/cb'];
+        yield 'the A-label of a name outside ASCII (RFC 5890 §2.3.2.1)' => ['https://xn--bcher-kva.example/cb'];
+        yield 'an IPv6 literal' => ['https://[2001:db8::1]:8443/cb'];
     }
 
     #[Test]
@@ -68,6 +70,37 @@ final class ClientUriTest extends TestCase
         yield 'custom scheme of a native app (RFC 8252 §7.1, out of scope)' => ['com.example.app:/oauth2redirect', 'absolute URI'];
     }
 
+    /**
+     * RFC 7591 §2, RFC 3986 §3.2.2
+     */
+    #[Test]
+    #[DataProvider('provideUrisWhoseHostIsNoHost')]
+    public function itRejectsAUriWhoseHostIsNoNameNorAddress(string $uri): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs(\sprintf(
+            'The URI "%s" registered for a client must name a host of letters, digits, hyphens and dots, or an IP address (RFC 3986 §3.2.2).',
+            $uri,
+        ));
+
+        // When
+        new ClientUri($uri);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideUrisWhoseHostIsNoHost(): iterable
+    {
+        yield 'a host that carries a directive' => ['https://rp.example;sandbox/frontchannel-logout'];
+        yield 'a host that carries a second policy' => ['https://rp.example,sandbox/cb'];
+        yield 'a host that carries a quote' => ["https://rp.example'/cb"];
+        yield 'a host that carries a percent-encoded octet' => ['https://rp.example%3Bsandbox/cb'];
+        yield 'a name outside ASCII' => ['https://bücher.example/logo.png'];
+        yield 'a loopback name that carries a directive' => ['http://localhost;sandbox/cb'];
+    }
+
     #[Test]
     public function itEqualsAUriOfTheSameBytes(): void
     {
@@ -80,8 +113,7 @@ final class ClientUriTest extends TestCase
     }
 
     /**
-     * RFC 3986 §2.1: every value is percent-encoded, and the registered query is kept before them
-     * (RFC 6749 §4.1.2 for a response, Front-Channel Logout 1.0 §2 for a logout).
+     * RFC 3986 §2.1, RFC 6749 §4.1.2, Front-Channel Logout 1.0 §2
      */
     #[Test]
     #[DataProvider('provideUrisAndParameters')]
@@ -104,8 +136,7 @@ final class ClientUriTest extends TestCase
     }
 
     /**
-     * RFC 6454 §3.2: the scheme, the host and the port, which a Content-Security-Policy source
-     * expression names; never the path nor the query (Form Post Response Mode §2).
+     * RFC 6454 §3.2
      */
     #[Test]
     #[DataProvider('provideOrigins')]

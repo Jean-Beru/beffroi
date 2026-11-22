@@ -2,25 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Domain\Credential;
+namespace Beffroi\Core\Tests\Domain\Credential;
 
 use function array_slice;
-use Heidi\Core\Domain\Credential\TotpProvisioning;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Core\Domain\Credential\TotpProvisioning;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Tests\Fixture\Totps;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * What a TOTP enrolment issues: the secret, the URI and the ten backup codes, nothing stored.
- */
 final class TotpProvisioningTest extends TestCase
 {
     #[Test]
     public function itCarriesTheSecretTheUriAndTheBackupCodes(): void
     {
         // When
-        $provisioning = new TotpProvisioning(Totps::secret(), 'otpauth://totp/Acme%3Aalice?issuer=Acme&secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', Totps::BACKUP_CODES);
+        $provisioning = new TotpProvisioning(
+            Totps::secret(),
+            'otpauth://totp/Acme%3Aalice?issuer=Acme&secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+            Totps::BACKUP_CODES,
+        );
 
         // Then
         static::assertSame(Totps::SEED, $provisioning->secret->bytes);

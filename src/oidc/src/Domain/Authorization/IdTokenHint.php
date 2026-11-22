@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Authorization;
+namespace Beffroi\Oidc\Domain\Authorization;
 
-use Heidi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\Subject;
 use function in_array;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * What a verified id_token_hint says (OIDC Core §3.1.2.1, RP-Initiated Logout §2): "sub", "aud" and "sid".
+ * OIDC Core §3.1.2.1, RP-Initiated Logout §2
  */
 final readonly class IdTokenHint
 {

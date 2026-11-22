@@ -2,15 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Bridge\KeyManagement;
+namespace Beffroi\Core\Bridge\KeyManagement;
 
-use Heidi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Domain\Tenant\Tenant;
 use function strtr;
 
-/**
- * The identifier of the KMS key of a tenant, from the pattern the configuration gives: "{tenant}" stands
- * for the slug. One pattern, resolved the same way by every sealer.
- */
 final readonly class KmsKeyId
 {
     public const string TENANT_PLACEHOLDER = '{tenant}';
@@ -22,8 +18,13 @@ final readonly class KmsKeyId
 
     public function of(Tenant $tenant): string
     {
+        return $this->forSlug($tenant->slug);
+    }
+
+    public function forSlug(string $slug): string
+    {
         return strtr($this->pattern, [
-            self::TENANT_PLACEHOLDER => $tenant->slug,
+            self::TENANT_PLACEHOLDER => $slug,
         ]);
     }
 }

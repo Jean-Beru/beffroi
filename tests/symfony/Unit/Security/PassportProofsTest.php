@@ -2,33 +2,34 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Security;
+namespace App\Tests\Symfony\Unit\Security;
 
 use function array_map;
-use Heidi\Bundle\Security\PasskeyCredentials;
-use Heidi\Bundle\Security\PasskeyLogin;
-use Heidi\Bundle\Security\PassportProofs;
-use Heidi\Bundle\Security\PasswordLogin;
-use Heidi\Bundle\Security\ProvingLoginInterface;
-use Heidi\Bundle\Security\TotpCredentials;
-use Heidi\Bundle\Security\TotpLogin;
-use Heidi\Core\Domain\Credential\TotpCredential;
-use Heidi\Core\Domain\Credential\VerifiedPasskeyAssertion;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Core\Domain\Session\PendingLogin;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use App\Security\PasskeyCredentials;
+use App\Security\PasskeyLogin;
+use App\Security\PassportProofs;
+use App\Security\PasswordLogin;
+use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use App\Security\ProvingLoginInterface;
+use App\Security\TotpCredentials;
+use App\Security\TotpLogin;
+use App\Security\VerifiedPassword;
+use Beffroi\Core\Domain\Credential\TotpCredential;
+use Beffroi\Core\Domain\Credential\VerifiedPasskeyAssertion;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Domain\Session\PendingLogin;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use LogicException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\CredentialsInterface;
-use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\PasswordCredentials;
 use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
 use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPassport;
 
 /**
- * Decision 0010 and architecture §5.4: what the logins of the firewall prove is read from the logins
- * that are tagged, both for the session that is opened and for what the discovery announces.
+ * Decision 0010, Architecture §5.4
  */
 final class PassportProofsTest extends TestCase
 {
@@ -36,14 +37,18 @@ final class PassportProofsTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->proofs = self::proofsOf([new PasswordLogin(), new PasskeyLogin(), new TotpLogin()]);
+        $this->proofs = self::proofsOf([
+            new PasswordLogin(),
+            new PasskeyLogin(new InMemoryCredentialRepository(), new RecordingEventDispatcher()),
+            new TotpLogin(),
+        ]);
     }
 
     #[Test]
     public function aPasswordProvesAPassword(): void
     {
         // Given
-        $passport = self::passport(new PasswordCredentials('secret'));
+        $passport = self::passport(new VerifiedPassword('secret'));
 
         // When
         $methods = $this->proofs->methods($passport);
@@ -53,7 +58,7 @@ final class PassportProofsTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §6.1: the flags of the assertion, not what the passkey could prove.
+     * WebAuthn Level 3 §6.1
      */
     #[Test]
     public function aPasskeyProvesWhatTheFlagsOfItsAssertionSay(): void
@@ -70,7 +75,7 @@ final class PassportProofsTest extends TestCase
     }
 
     /**
-     * Architecture §5.4: the session is opened only at the second step, so the badge carries both.
+     * Architecture §5.4
      */
     #[Test]
     public function aCodeProvesWhatTheFirstStepProvedAndTheCode(): void
@@ -94,29 +99,49 @@ final class PassportProofsTest extends TestCase
 
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessageIsOrContains('the passport carries the badge of no login of the bundle');
+        $this->expectExceptionMessageIsOrContains('the passport carries the badge of no login of the provider');
 
         // When
         $this->proofs->methods($passport);
     }
 
     /**
-     * Decision 0010: "acr_values_supported" is derived from this list.
+     * Decision 0010
      */
     #[Test]
     public function whatIsAnnouncedIsEveryMethodOfTheTaggedLoginsEachOnce(): void
     {
         // When
-        $methods = $this->proofs->provableMethods();
+        $methods = $this->proofs->provableMethods(Fixtures::tenant());
 
         // Then
         static::assertSame(['pwd', 'hwk', 'swk', 'user', 'mfa', 'otp'], self::values($methods));
     }
 
-    /**
-     * The point of reading the tagged logins: a firewall that offers the form login only announces a
-     * password and nothing a passkey would prove.
-     */
+    #[Test]
+    public function aTenantAnnouncesNothingItsFloorForbids(): void
+    {
+        // When
+        $methods = $this->proofs->provableMethods(Fixtures::hardenedTenant());
+
+        // Then
+        static::assertSame(['hwk', 'swk', 'user', 'mfa'], self::values($methods));
+    }
+
+    #[Test]
+    public function aFloorNoWiredLoginProvesLeavesTheProviderWithNothingToAnnounce(): void
+    {
+        // Given
+        $proofs = self::proofsOf([new PasswordLogin(), new TotpLogin()]);
+
+        // Then
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessageIs('No login of the firewall of the interaction pages proves what the tenant "acme" requires of every login, "phishing_resistant".');
+
+        // When
+        $proofs->provableMethods(Fixtures::hardenedTenant());
+    }
+
     #[Test]
     public function aFirewallThatOffersOneLoginAnnouncesThatOneOnly(): void
     {
@@ -124,7 +149,7 @@ final class PassportProofsTest extends TestCase
         $proofs = self::proofsOf([new PasswordLogin()]);
 
         // When
-        $methods = $proofs->provableMethods();
+        $methods = $proofs->provableMethods(Fixtures::tenant());
 
         // Then
         static::assertSame(['pwd'], self::values($methods));
@@ -141,7 +166,7 @@ final class PassportProofsTest extends TestCase
         $this->expectExceptionMessageIs('The firewall of the interaction pages offers at least one login.');
 
         // When
-        $proofs->provableMethods();
+        $proofs->provableMethods(Fixtures::tenant());
     }
 
     /**

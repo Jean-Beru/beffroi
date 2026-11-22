@@ -2,22 +2,29 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Command;
+namespace App\Tests\Symfony\Functional\Command;
 
+use function array_map;
 use function explode;
-use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Event\SigningKeyRotated;
-use Heidi\Core\Domain\Event\SigningKeyStaged;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Key\KeyStatus;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\PasswordHasherInterface;
-use Heidi\Core\Port\SigningKeyProviderInterface;
-use Heidi\Core\Port\SigningKeyRepositoryInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
-use Heidi\Core\Tests\Fixture\Algorithms;
+use App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Event\PersonCreated;
+use Beffroi\Core\Domain\Event\TenantKeyRotated;
+use Beffroi\Core\Domain\Event\TenantKeyStaged;
+use Beffroi\Core\Domain\Identity\Profile;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Identity\UserSource;
+use Beffroi\Core\Domain\Journal\JournalEntry;
+use Beffroi\Core\Domain\Key\KeyStatus;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\PasswordHasherInterface;
+use Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord;
+use Beffroi\Core\Port\SigningKeyProviderInterface;
+use Beffroi\Core\Port\TenantKeyRepositoryInterface;
+use Beffroi\Core\Port\UserRepositoryInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -30,17 +37,12 @@ use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Uid\UuidV4;
 
 /**
- * Architecture §5.5: a fresh application is provisioned from the console only, the tenant first, then a
- * key and a user; nothing else writes before the first login.
+ * Architecture §5.5
  */
 final class ProvisioningTest extends ConsoleTestCase
 {
     private const string PASSWORD = 'correct horse battery staple';
 
-    /**
-     * The acceptance criterion of the commands, step 1: after a migration, the tenant of the
-     * configuration becomes a row.
-     */
     #[Test]
     public function theTenantOfTheConfigurationIsSynchronisedAsARow(): void
     {
@@ -48,22 +50,22 @@ final class ProvisioningTest extends ConsoleTestCase
         self::dropTenant();
 
         // When
-        $tester = self::console('heidi:tenant:synchronize');
+        $tester = self::console('beffroi:tenant:synchronize');
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         static::assertStringContainsString('https://op.test', $tester->getDisplay());
         static::assertStringContainsString('The tenant "default" is synchronised', $tester->getDisplay());
+        static::assertStringContainsString('Logo', $tester->getDisplay());
+        static::assertStringContainsString('Colours', $tester->getDisplay());
+        static::assertStringContainsString('Changeable', $tester->getDisplay());
     }
 
-    /**
-     * Step 4: the JWK Set publishes the key the console generated.
-     */
     #[Test]
     public function theJwkSetPublishesTheKeyOfTheConsole(): void
     {
         // Given
-        $kid = self::displayed(self::console('heidi:keys:generate'), 'Key identifier');
+        $kid = self::displayed(self::console('beffroi:keys:generate'), 'Key identifier');
 
         // When
         $this->browser->request('GET', '/jwks');
@@ -78,30 +80,28 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertArrayNotHasKey('d', $jwks['keys'][0]);
     }
 
-    /**
-     * Step 3: the password typed twice on the terminal is never echoed.
-     */
     #[Test]
     public function thePasswordTypedOnTheTerminalIsNeverEchoed(): void
     {
         // Given
-        self::console('heidi:user:create', [
+        self::console('beffroi:user:create', [
             'username' => 'alice',
         ]);
 
         // When
-        $tester = self::console('heidi:user:set-password', [
-            'username' => 'alice',
-        ], [self::PASSWORD, self::PASSWORD]);
+        $tester = self::console(
+            'beffroi:user:set-password',
+            [
+                'username' => 'alice',
+            ],
+            [self::PASSWORD, self::PASSWORD],
+        );
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         static::assertStringNotContainsString('correct horse', $tester->getDisplay());
     }
 
-    /**
-     * Step 5: the user signs in on the form with the password of the console.
-     */
     #[Test]
     public function theUserOfTheConsoleSignsInOnTheForm(): void
     {
@@ -111,8 +111,7 @@ final class ProvisioningTest extends ConsoleTestCase
         $interaction = self::redirectedInteraction($this->browser->getResponse());
         $form = $this->browser->request('GET', '/login', [
             'interaction' => $interaction,
-        ])->selectButton('Sign in')
-            ->form();
+        ])->selectButton('Sign in')->form();
         $form['_username'] = 'alice';
         $form['_password'] = self::PASSWORD;
 
@@ -128,8 +127,7 @@ final class ProvisioningTest extends ConsoleTestCase
     }
 
     /**
-     * Step 5: the flow of OIDC Core §3.1 runs on what the console wrote; the ID token is signed with the
-     * key of the console and its "sub" is the subject the console printed.
+     * OIDC Core §3.1
      */
     #[Test]
     public function theIdTokenIsSignedWithTheKeyOfTheConsoleForTheSubjectItPrinted(): void
@@ -166,7 +164,7 @@ final class ProvisioningTest extends ConsoleTestCase
         $tenant = self::tenant();
 
         // When
-        $tester = self::console('heidi:tenant:synchronize');
+        $tester = self::console('beffroi:tenant:synchronize');
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
@@ -190,8 +188,8 @@ final class ProvisioningTest extends ConsoleTestCase
         // Then
         static::assertSame(Command::FAILURE, $tester->getStatusCode());
         static::assertStringContainsString('has no row yet', $tester->getDisplay());
-        static::assertStringContainsString('heidi:tenant:synchronize', $tester->getDisplay());
-        static::assertSame(0, self::entityManager()->getConnection()->fetchOne('SELECT COUNT(*) FROM heidi_user'));
+        static::assertStringContainsString('beffroi:tenant:synchronize', $tester->getDisplay());
+        static::assertSame(0, self::entityManager()->getConnection()->fetchOne('SELECT COUNT(*) FROM beffroi_user'));
         static::assertDirectoryDoesNotExist(self::keyStorage());
     }
 
@@ -200,39 +198,57 @@ final class ProvisioningTest extends ConsoleTestCase
      */
     public static function provideCommandsThatNeedTheTenant(): iterable
     {
-        yield 'heidi:keys:generate' => ['heidi:keys:generate', []];
-        yield 'heidi:keys:rotate' => ['heidi:keys:rotate', []];
-        yield 'heidi:keys:activate' => ['heidi:keys:activate', [
-            'kid' => 'nope',
-        ]];
-        yield 'heidi:keys:retire' => ['heidi:keys:retire', [
-            '--due' => true,
-        ]];
-        yield 'heidi:keys:list' => ['heidi:keys:list', []];
-        yield 'heidi:user:create' => ['heidi:user:create', [
-            'username' => 'alice',
-        ]];
-        yield 'heidi:user:profile' => ['heidi:user:profile', [
-            'username' => 'alice',
-            '--name' => 'Alice Liddell',
-        ]];
-        yield 'heidi:user:show' => ['heidi:user:show', [
-            'username' => 'alice',
-        ]];
-        yield 'heidi:user:set-password' => ['heidi:user:set-password', [
-            'username' => 'alice',
-            '--password-stdin' => true,
-        ]];
+        yield 'beffroi:keys:generate' => ['beffroi:keys:generate', []];
+        yield 'beffroi:keys:rotate' => ['beffroi:keys:rotate', []];
+        yield 'beffroi:keys:activate' => [
+            'beffroi:keys:activate',
+            [
+                'kid' => 'nope',
+            ],
+        ];
+        yield 'beffroi:keys:retire' => [
+            'beffroi:keys:retire',
+            [
+                '--due' => true,
+            ],
+        ];
+        yield 'beffroi:keys:list' => ['beffroi:keys:list', []];
+        yield 'beffroi:user:create' => [
+            'beffroi:user:create',
+            [
+                'username' => 'alice',
+            ],
+        ];
+        yield 'beffroi:user:profile' => [
+            'beffroi:user:profile',
+            [
+                'username' => 'alice',
+                '--name' => 'Alice Liddell',
+            ],
+        ];
+        yield 'beffroi:user:show' => [
+            'beffroi:user:show',
+            [
+                'username' => 'alice',
+            ],
+        ];
+        yield 'beffroi:user:set-password' => [
+            'beffroi:user:set-password',
+            [
+                'username' => 'alice',
+                '--password-stdin' => true,
+            ],
+        ];
     }
 
     /**
-     * Architecture §3.3: a generated key is active and said so.
+     * Architecture §3.3
      */
     #[Test]
     public function aGeneratedKeyIsActive(): void
     {
         // When
-        $tester = self::console('heidi:keys:generate');
+        $tester = self::console('beffroi:keys:generate');
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
@@ -240,51 +256,71 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertSame('RS256', self::displayed($tester, 'Algorithm'));
         static::assertSame('active', self::displayed($tester, 'Status'));
         static::assertStringNotContainsString('is now retiring', $tester->getDisplay());
-        $key = self::service('test.heidi.keys', SigningKeyRepositoryInterface::class)->find(self::tenant(), $kid) ?? static::fail('The key is not stored.');
+        $key = self::service('test.beffroi.keys', TenantKeyRepositoryInterface::class)->find(self::tenant(), $kid) ?? static::fail('The key is not stored.');
         static::assertTrue($key->isActive());
-        static::assertSame($kid, self::service('test.heidi.key_provider', SigningKeyProviderInterface::class)->activeKey(self::tenant(), Algorithms::rs256())->key->kid);
+        static::assertSame(
+            $kid,
+            self::service('test.beffroi.key_provider', SigningKeyProviderInterface::class)->activeKey(self::tenant(), Algorithms::rs256())->key->kid,
+        );
+    }
+
+    #[Test]
+    public function aGeneratedEncryptionKeyIsActiveAndPublishedForEncryption(): void
+    {
+        // When
+        $tester = self::console('beffroi:keys:generate', [
+            '--algorithm' => 'ECDH-ES+A256KW',
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        $key = self::service('test.beffroi.keys', TenantKeyRepositoryInterface::class)
+            ->find(self::tenant(), self::displayed($tester, 'Key identifier')) ?? static::fail('The key is not stored.');
+        static::assertSame('ECDH-ES+A256KW', self::displayed($tester, 'Algorithm'));
+        static::assertSame('enc', self::displayed($tester, 'Use'));
+        static::assertTrue($key->isActive());
+        static::assertSame('enc', $key->publicJwk['use']);
     }
 
     /**
-     * Architecture §3.3: the private key is sealed before it is written, never in clear.
+     * Architecture §3.3
      */
     #[Test]
     public function aGeneratedKeyIsSealedBeforeItIsWritten(): void
     {
         // When
-        $kid = self::displayed(self::console('heidi:keys:generate'), 'Key identifier');
+        $kid = self::displayed(self::console('beffroi:keys:generate'), 'Key identifier');
 
         // Then
         static::assertStringNotContainsString('"d"', self::string(file_get_contents(self::keyStorage() . '/default/' . $kid . '.json')));
     }
 
     /**
-     * Architecture §3.3: the key is staged then activated at once, both announced, with the context of a
-     * console that names its command and the user of the shell, and has no address.
+     * Architecture §3.3
      */
     #[Test]
     public function aGeneratedKeyIsAnnounced(): void
     {
         // When
-        $kid = self::displayed(self::console('heidi:keys:generate'), 'Key identifier');
+        $kid = self::displayed(self::console('beffroi:keys:generate'), 'Key identifier');
 
         // Then
         $events = self::service(RecordingEventHandler::class, RecordingEventHandler::class)->events;
         static::assertCount(2, $events);
-        static::assertInstanceOf(SigningKeyStaged::class, $events[0]);
+        static::assertInstanceOf(TenantKeyStaged::class, $events[0]);
         static::assertSame($kid, $events[0]->staged->kid);
-        static::assertInstanceOf(SigningKeyRotated::class, $events[1]);
+        static::assertInstanceOf(TenantKeyRotated::class, $events[1]);
         static::assertSame($kid, $events[1]->activated->kid);
         static::assertNull($events[1]->retiring);
         static::assertNull($events[1]->context->ipAddress);
-        static::assertStringStartsWith('heidi-console/heidi:keys:generate (', $events[1]->context->userAgent ?? '');
+        static::assertStringStartsWith('beffroi-console/beffroi:keys:generate (', $events[1]->context->userAgent ?? '');
     }
 
     #[Test]
     public function theListSaysWhenThereIsNoPublishedKey(): void
     {
         // When
-        $tester = self::console('heidi:keys:list');
+        $tester = self::console('beffroi:keys:list');
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode());
@@ -295,16 +331,16 @@ final class ProvisioningTest extends ConsoleTestCase
     public function generatingASecondKeyIsARotation(): void
     {
         // Given
-        $first = self::displayed(self::console('heidi:keys:generate'), 'Key identifier');
+        $first = self::displayed(self::console('beffroi:keys:generate'), 'Key identifier');
 
         // When
-        $tester = self::console('heidi:keys:generate');
+        $tester = self::console('beffroi:keys:generate');
 
         // Then
         $second = self::displayed($tester, 'Key identifier');
         static::assertNotSame($first, $second);
         static::assertStringContainsString(sprintf('The key "%s" was active and is now retiring', $first), self::flattened($tester));
-        $keys = self::service('test.heidi.keys', SigningKeyRepositoryInterface::class);
+        $keys = self::service('test.beffroi.keys', TenantKeyRepositoryInterface::class);
         static::assertSame(KeyStatus::Retiring, $keys->find(self::tenant(), $first)?->status);
         static::assertSame(KeyStatus::Active, $keys->find(self::tenant(), $second)?->status);
     }
@@ -313,23 +349,32 @@ final class ProvisioningTest extends ConsoleTestCase
     public function theListShowsThePublishedKeysWithTheirStatusAndDates(): void
     {
         // Given
-        $first = self::displayed(self::console('heidi:keys:generate'), 'Key identifier');
-        $second = self::displayed(self::console('heidi:keys:generate'), 'Key identifier');
+        $first = self::displayed(self::console('beffroi:keys:generate'), 'Key identifier');
+        $second = self::displayed(self::console('beffroi:keys:generate'), 'Key identifier');
 
         // When
-        $tester = self::console('heidi:keys:list');
+        $tester = self::console('beffroi:keys:list');
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Status\s+retiring\s+Created at\s+2026-\S+\s+Activated at\s+2026-\S+\s+Retiring since\s+2026-\S+\s+Retirement due at\s+2026-\S+/', $first), self::flattened($tester));
-        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Status\s+active\s+Created at\s+2026-\S+\s+Activated at\s+2026-\S+\s+-/', $second), self::flattened($tester));
+        static::assertMatchesRegularExpression(
+            sprintf(
+                '/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+retiring\s+Created at\s+2026-\S+\s+Activated at\s+2026-\S+\s+Retiring since\s+2026-\S+\s+Retirement due at\s+2026-\S+/',
+                $first,
+            ),
+            self::flattened($tester),
+        );
+        static::assertMatchesRegularExpression(
+            sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+active\s+Created at\s+2026-\S+\s+Activated at\s+2026-\S+\s+-/', $second),
+            self::flattened($tester),
+        );
     }
 
     #[Test]
     public function aUserIsCreatedWithAGeneratedSubject(): void
     {
         // When
-        $tester = self::console('heidi:user:create', [
+        $tester = self::console('beffroi:user:create', [
             'username' => ' bob ',
             '--email' => 'bob@example.com',
         ]);
@@ -339,7 +384,8 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertSame('bob', self::displayed($tester, 'Username'));
         static::assertSame('bob@example.com (unverified)', self::displayed($tester, 'Email'));
         static::assertInstanceOf(UuidV4::class, Uuid::fromString(self::displayed($tester, 'Subject')));
-        $user = self::service('test.heidi.users', UserRepositoryInterface::class)->findByUsername(self::tenant(), 'bob') ?? static::fail('The user is not stored.');
+        $user = self::service('test.beffroi.users', UserRepositoryInterface::class)
+            ->findByUsername(self::tenant(), 'bob') ?? static::fail('The user is not stored.');
         static::assertFalse($user->emailVerified);
     }
 
@@ -347,42 +393,115 @@ final class ProvisioningTest extends ConsoleTestCase
     public function aUserIsCreatedWithoutACredential(): void
     {
         // When
-        self::console('heidi:user:create', [
+        self::console('beffroi:user:create', [
             'username' => 'bob',
         ]);
 
         // Then
-        $user = self::service('test.heidi.users', UserRepositoryInterface::class)->findByUsername(self::tenant(), 'bob') ?? static::fail('The user is not stored.');
-        static::assertSame([], self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($user));
+        $user = self::service('test.beffroi.users', UserRepositoryInterface::class)
+            ->findByUsername(self::tenant(), 'bob') ?? static::fail('The user is not stored.');
+        static::assertSame([], self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($user));
     }
 
     /**
-     * Decision 0002: an imported identity keeps the subject its clients know.
+     * Decision 0022
+     */
+    #[Test]
+    public function theCreationOfAUserIsAnActOfTheirsThatNamesNoAdministrator(): void
+    {
+        // When
+        self::console('beffroi:user:create', [
+            'username' => 'bob',
+        ]);
+
+        // Then
+        $user = self::service('test.beffroi.users', UserRepositoryInterface::class)
+            ->findByUsername(self::tenant(), 'bob') ?? static::fail('The user is not stored.');
+        static::assertSame([[$user->subject->value, null]], array_map(
+            static fn (JournalEntry $act): array => [$act->subject?->value, $act->author?->value],
+            self::entityManager()->getRepository(JournalEntry::class)->findBy(['act' => PersonCreated::NAME]),
+        ));
+    }
+
+    /**
+     * Decision 0002
+     */
+    #[Test]
+    public function aUserOfTheConsoleIsLocal(): void
+    {
+        // When
+        self::console('beffroi:user:create', [
+            'username' => 'bob',
+        ]);
+
+        // Then
+        self::reload();
+        $user = self::service('test.beffroi.users', UserRepositoryInterface::class)
+            ->findByUsername(self::tenant(), 'bob') ?? static::fail('The user is not stored.');
+        static::assertTrue($user->source->isLocal());
+    }
+
+    /**
+     * Decision 0002
+     */
+    #[Test]
+    public function aDescriptionOfAClaimAnUpstreamProviderHoldsIsRefusedNamingIt(): void
+    {
+        // Given
+        $user = User::create(
+            Uuid::v7(),
+            self::tenant(),
+            new Subject('alice-subject'),
+            'alice',
+            self::now(),
+            source: UserSource::upstream('https://idp.acme.example/saml', ['given_name']),
+        );
+        $user->updateProfile(new Profile(givenName: 'Alice'), self::now());
+        self::service('test.beffroi.users', UserRepositoryInterface::class)->save($user);
+
+        // When
+        $tester = self::console('beffroi:user:profile', [
+            'username' => 'alice',
+            '--given-name' => 'Alicia',
+        ]);
+
+        // Then
+        static::assertSame(Command::INVALID, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertStringContainsString(
+            'The upstream provider "https://idp.acme.example/saml" created this person and holds "given_name"',
+            self::flattened($tester),
+        );
+    }
+
+    /**
+     * Decision 0002
      */
     #[Test]
     public function anImportedUserKeepsItsSubject(): void
     {
         // When
-        $tester = self::console('heidi:user:create', [
+        $tester = self::console('beffroi:user:create', [
             'username' => 'carol',
             '--subject' => 'carol-from-keycloak',
         ]);
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        static::assertNotNull(self::service('test.heidi.users', UserRepositoryInterface::class)->findBySubject(self::tenant(), new Subject('carol-from-keycloak')));
+        static::assertNotNull(
+            self::service('test.beffroi.users', UserRepositoryInterface::class)->findBySubject(self::tenant(), new Subject('carol-from-keycloak')),
+        );
     }
 
     #[Test]
     public function aUsernameIsNotTakenTwice(): void
     {
         // Given
-        self::console('heidi:user:create', [
+        self::console('beffroi:user:create', [
             'username' => 'carol',
         ]);
 
         // When
-        $tester = self::console('heidi:user:create', [
+        $tester = self::console('beffroi:user:create', [
             'username' => 'carol',
         ]);
 
@@ -395,13 +514,13 @@ final class ProvisioningTest extends ConsoleTestCase
     public function aSubjectIsNotTakenTwice(): void
     {
         // Given
-        self::console('heidi:user:create', [
+        self::console('beffroi:user:create', [
             'username' => 'carol',
             '--subject' => 'carol-from-keycloak',
         ]);
 
         // When
-        $tester = self::console('heidi:user:create', [
+        $tester = self::console('beffroi:user:create', [
             'username' => 'dave',
             '--subject' => 'carol-from-keycloak',
         ]);
@@ -409,7 +528,7 @@ final class ProvisioningTest extends ConsoleTestCase
         // Then
         static::assertSame(Command::FAILURE, $tester->getStatusCode());
         static::assertStringContainsString('A user with the subject "carol-from-keycloak" already exists', $tester->getDisplay());
-        static::assertNull(self::service('test.heidi.users', UserRepositoryInterface::class)->findByUsername(self::tenant(), 'dave'));
+        static::assertNull(self::service('test.beffroi.users', UserRepositoryInterface::class)->findByUsername(self::tenant(), 'dave'));
     }
 
     /**
@@ -420,14 +539,14 @@ final class ProvisioningTest extends ConsoleTestCase
     public function whatIsNotAnEmailOrASubjectIsRefusedBeforeAnythingIsWritten(array $input, string $message): void
     {
         // When
-        $tester = self::console('heidi:user:create', [
+        $tester = self::console('beffroi:user:create', [
             'username' => 'erin',
         ] + $input);
 
         // Then
         static::assertSame(Command::INVALID, $tester->getStatusCode());
         static::assertStringContainsString($message, $tester->getDisplay());
-        static::assertNull(self::service('test.heidi.users', UserRepositoryInterface::class)->findByUsername(self::tenant(), 'erin'));
+        static::assertNull(self::service('test.beffroi.users', UserRepositoryInterface::class)->findByUsername(self::tenant(), 'erin'));
     }
 
     /**
@@ -435,17 +554,22 @@ final class ProvisioningTest extends ConsoleTestCase
      */
     public static function provideInvalidUserOptions(): iterable
     {
-        yield 'not an email address' => [[
-            '--email' => 'not an address',
-        ], 'is not a valid email address'];
-        yield 'not a subject' => [[
-            '--subject' => 'with a space',
-        ], 'printable ASCII'];
+        yield 'not an email address' => [
+            [
+                '--email' => 'not an address',
+            ],
+            'is not a valid email address',
+        ];
+        yield 'not a subject' => [
+            [
+                '--subject' => 'with a space',
+            ],
+            'printable ASCII',
+        ];
     }
 
     /**
-     * OIDC Core §5.1: the attributes of the "profile", "phone" and "address" scopes, under the names of the
-     * specification, on an existing user.
+     * OIDC Core §5.1
      */
     #[Test]
     public function aUserIsDescribedWithTheStandardClaims(): void
@@ -454,7 +578,7 @@ final class ProvisioningTest extends ConsoleTestCase
         $user = self::user('alice');
 
         // When
-        $tester = self::console('heidi:user:profile', [
+        $tester = self::console('beffroi:user:profile', [
             'username' => ' alice ',
             '--name' => 'Alice Liddell',
             '--given-name' => 'Alice',
@@ -483,7 +607,7 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertSame('Alice Liddell', self::displayed($tester, 'Name'));
         static::assertSame('+44 1865 000000 (verified)', self::displayed($tester, 'Phone number'));
         static::assertSame('1 Wonderland Road, OX1 1AA, Oxford, Oxfordshire, United Kingdom', self::displayed($tester, 'Address'));
-        $described = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
+        $described = self::service('test.beffroi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
         static::assertSame('Alice Liddell', $described->profile->name);
         static::assertSame('Alice', $described->profile->givenName);
         static::assertSame('Liddell', $described->profile->familyName);
@@ -508,21 +632,18 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertSame('United Kingdom', $address->country);
     }
 
-    /**
-     * A run that says nothing is the read the command is not: it writes nothing rather than clearing everything.
-     */
     #[Test]
     public function aDescriptionThatSaysNothingWritesNothing(): void
     {
         // Given
         $user = self::user('alice');
-        self::console('heidi:user:profile', [
+        self::console('beffroi:user:profile', [
             'username' => 'alice',
             '--name' => 'Alice Liddell',
         ]);
 
         // When
-        $tester = self::console('heidi:user:profile', [
+        $tester = self::console('beffroi:user:profile', [
             'username' => 'alice',
             '--nickname' => '  ',
         ]);
@@ -530,27 +651,27 @@ final class ProvisioningTest extends ConsoleTestCase
         // Then
         static::assertSame(Command::INVALID, $tester->getStatusCode(), $tester->getDisplay());
         static::assertStringContainsString('Nothing was said', $tester->getDisplay(true));
-        static::assertStringContainsString('heidi:user:show', $tester->getDisplay(true));
-        $described = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
+        static::assertStringContainsString('beffroi:user:show', $tester->getDisplay(true));
+        $described = self::service('test.beffroi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
         static::assertSame('Alice Liddell', $described->profile->name);
     }
 
     /**
-     * Architecture §5.5: the read, the identity and the claims that are set, nothing written.
+     * Architecture §5.5
      */
     #[Test]
     public function aUserIsShownWithTheirIdentityAndTheClaimsThatAreSet(): void
     {
         // Given
         $user = self::user('alice');
-        self::console('heidi:user:profile', [
+        self::console('beffroi:user:profile', [
             'username' => 'alice',
             '--name' => 'Alice Liddell',
             '--phone-number' => '+44 1865 000000',
         ]);
 
         // When
-        $tester = self::console('heidi:user:show', [
+        $tester = self::console('beffroi:user:show', [
             'username' => ' alice ',
         ]);
 
@@ -568,7 +689,7 @@ final class ProvisioningTest extends ConsoleTestCase
     public function anUnknownUserIsNotShown(): void
     {
         // When
-        $tester = self::console('heidi:user:show', [
+        $tester = self::console('beffroi:user:show', [
             'username' => 'nobody',
         ]);
 
@@ -577,15 +698,12 @@ final class ProvisioningTest extends ConsoleTestCase
         static::assertStringContainsString('There is no user named "nobody"', $tester->getDisplay(true));
     }
 
-    /**
-     * The whole description every time: what the second run does not say is cleared.
-     */
     #[Test]
     public function aSecondDescriptionClearsWhatItDoesNotSay(): void
     {
         // Given
         $user = self::user('alice');
-        self::console('heidi:user:profile', [
+        self::console('beffroi:user:profile', [
             'username' => 'alice',
             '--name' => 'Alice Liddell',
             '--phone-number' => '+44 1865 000000',
@@ -594,14 +712,14 @@ final class ProvisioningTest extends ConsoleTestCase
         ]);
 
         // When
-        $tester = self::console('heidi:user:profile', [
+        $tester = self::console('beffroi:user:profile', [
             'username' => 'alice',
             '--given-name' => 'Alice',
         ]);
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        $described = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
+        $described = self::service('test.beffroi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
         static::assertNull($described->profile->name);
         static::assertSame('Alice', $described->profile->givenName);
         static::assertNull($described->phoneNumber);
@@ -620,12 +738,12 @@ final class ProvisioningTest extends ConsoleTestCase
         $user = self::user('alice');
 
         // When
-        $tester = self::console('heidi:user:profile', $input);
+        $tester = self::console('beffroi:user:profile', $input);
 
         // Then
         static::assertSame($status, $tester->getStatusCode());
         static::assertStringContainsString($message, $tester->getDisplay());
-        $described = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
+        $described = self::service('test.beffroi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
         static::assertNull($described->profile->name);
         static::assertNull($described->phoneNumber);
     }
@@ -635,26 +753,61 @@ final class ProvisioningTest extends ConsoleTestCase
      */
     public static function provideDescriptionsRefused(): iterable
     {
-        yield 'not a birthdate' => [[
-            'username' => 'alice',
-            '--name' => 'Alice Liddell',
-            '--birthdate' => '4 May 1990',
-        ], Command::INVALID, 'must be "YYYY-MM-DD" or "YYYY"'];
-        yield 'a verified phone number without a number' => [[
-            'username' => 'alice',
-            '--name' => 'Alice Liddell',
-            '--phone-number-verified' => true,
-        ], Command::INVALID, 'An absent phone number cannot be verified.'];
-        yield 'unknown user' => [[
-            'username' => 'nobody',
-            '--name' => 'Nobody',
-        ], Command::FAILURE, 'There is no user named "nobody"'];
+        yield 'not a birthdate' => [
+            [
+                'username' => 'alice',
+                '--name' => 'Alice Liddell',
+                '--birthdate' => '4 May 1990',
+            ],
+            Command::INVALID,
+            'The birthdate "4 May 1990" must be a day of the calendar',
+        ];
+        yield 'a birthdate that is no day of the calendar' => [
+            [
+                'username' => 'alice',
+                '--name' => 'Alice Liddell',
+                '--birthdate' => '2024-13-45',
+            ],
+            Command::INVALID,
+            'The birthdate "2024-13-45" must be a day of the calendar',
+        ];
+        yield 'a zone the zoneinfo database does not carry' => [
+            [
+                'username' => 'alice',
+                '--name' => 'Alice Liddell',
+                '--zoneinfo' => 'Europe/Atlantis',
+            ],
+            Command::INVALID,
+            'The value "Europe/Atlantis" is not one this claim may hold.',
+        ];
+        yield 'a language ICU has no data for' => [
+            [
+                'username' => 'alice',
+                '--name' => 'Alice Liddell',
+                '--locale' => 'tlh',
+            ],
+            Command::INVALID,
+            'The value "tlh" is not one this claim may hold.',
+        ];
+        yield 'a verified phone number without a number' => [
+            [
+                'username' => 'alice',
+                '--name' => 'Alice Liddell',
+                '--phone-number-verified' => true,
+            ],
+            Command::INVALID,
+            'An absent phone number cannot be verified.',
+        ];
+        yield 'unknown user' => [
+            [
+                'username' => 'nobody',
+                '--name' => 'Nobody',
+            ],
+            Command::FAILURE,
+            'There is no user named "nobody"',
+        ];
     }
 
-    /**
-     * What a script does: the password on the standard input, its line ending dropped, nothing on the
-     * command line.
-     */
     #[Test]
     public function thePasswordIsReadFromTheStandardInputForScripts(): void
     {
@@ -662,17 +815,22 @@ final class ProvisioningTest extends ConsoleTestCase
         $user = self::user('alice');
 
         // When
-        $tester = self::console('heidi:user:set-password', [
-            'username' => 'alice',
-            '--password-stdin' => true,
-        ], [self::PASSWORD]);
+        $tester = self::console(
+            'beffroi:user:set-password',
+            [
+                'username' => 'alice',
+                '--password-stdin' => true,
+            ],
+            [self::PASSWORD],
+        );
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        $credential = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($user, PasswordCredential::class)[0] ?? static::fail('No credential was created.');
-        static::assertSame(PasswordAlgorithm::Argon2id, $credential->hash->algorithm);
-        static::assertTrue(self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, self::PASSWORD));
-        static::assertFalse(self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, self::PASSWORD . "\n"));
+        $credential = self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
+            ->findByUser($user, PasswordCredential::class)[0] ?? static::fail('No credential was created.');
+        static::assertSame(Argon2id::NAME, $credential->hash->algorithm->name());
+        static::assertTrue(self::service('test.beffroi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, self::PASSWORD));
+        static::assertFalse(self::service('test.beffroi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, self::PASSWORD . "\n"));
     }
 
     #[Test]
@@ -680,24 +838,120 @@ final class ProvisioningTest extends ConsoleTestCase
     {
         // Given
         $user = self::user('alice');
-        self::console('heidi:user:set-password', [
-            'username' => 'alice',
-            '--password-stdin' => true,
-        ], ['first password']);
-        $first = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($user, PasswordCredential::class)[0]->id ?? static::fail('No credential was created.');
+        self::console(
+            'beffroi:user:set-password',
+            [
+                'username' => 'alice',
+                '--password-stdin' => true,
+            ],
+            ['the first password posed'],
+        );
+        $first = self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
+            ->findByUser($user, PasswordCredential::class)[0]->id ?? static::fail('No credential was created.');
         self::reload();
 
         // When
-        $tester = self::console('heidi:user:set-password', [
-            'username' => 'alice',
-        ], ['second password', 'second password']);
+        $tester = self::console(
+            'beffroi:user:set-password',
+            [
+                'username' => 'alice',
+            ],
+            ['the second password posed', 'the second password posed'],
+        );
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        $credential = self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($user, PasswordCredential::class)[0] ?? static::fail('The credential is gone.');
+        $credential = self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
+            ->findByUser($user, PasswordCredential::class)[0] ?? static::fail('The credential is gone.');
         static::assertTrue($first->equals($credential->id));
-        static::assertTrue(self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, 'second password'));
-        static::assertFalse(self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, 'first password'));
+        static::assertTrue(
+            self::service('test.beffroi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, 'the second password posed'),
+        );
+        static::assertFalse(
+            self::service('test.beffroi.password_hasher', PasswordHasherInterface::class)->verify($credential->hash, 'the first password posed'),
+        );
+    }
+
+    /**
+     * NIST SP 800-63B §3.1.1.2
+     */
+    #[Test]
+    public function aPasswordAListOfCompromisedPasswordsCountsIsRefused(): void
+    {
+        // Given
+        $user = self::user('alice');
+        self::breaches()->names([self::PASSWORD]);
+
+        // When
+        $tester = self::console(
+            'beffroi:user:set-password',
+            [
+                'username' => 'alice',
+                '--password-stdin' => true,
+            ],
+            [self::PASSWORD],
+        );
+
+        // Then
+        static::assertSame(Command::INVALID, $tester->getStatusCode());
+        static::assertStringContainsString('list of compromised passwords', $tester->getDisplay());
+        static::assertSame([], self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($user, PasswordCredential::class));
+    }
+
+    /**
+     * Decision 0006
+     */
+    #[Test]
+    public function aPasswordNoListCouldBeAskedAboutIsRefused(): void
+    {
+        // Given
+        $user = self::user('alice');
+        self::breaches()->cannotBeReached();
+
+        // When
+        $tester = self::console(
+            'beffroi:user:set-password',
+            [
+                'username' => 'alice',
+                '--password-stdin' => true,
+            ],
+            [self::PASSWORD],
+        );
+
+        // Then
+        static::assertSame(Command::INVALID, $tester->getStatusCode());
+        static::assertStringContainsString('could not be asked', $tester->getDisplay());
+        static::assertSame([], self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($user, PasswordCredential::class));
+    }
+
+    #[Test]
+    public function thePasswordTheConsoleWroteIsMarkedAsLookedUp(): void
+    {
+        // Given
+        $user = self::user('alice');
+        self::breaches()->names(['a password of somebody else']);
+
+        // When
+        self::console(
+            'beffroi:user:set-password',
+            [
+                'username' => 'alice',
+                '--password-stdin' => true,
+            ],
+            [self::PASSWORD],
+        );
+
+        // Then
+        self::reload();
+        $credential = self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
+            ->findByUser($user, PasswordCredential::class)[0] ?? static::fail('No credential was created.');
+        static::assertNotNull($credential->breachCheckedAt);
+        static::assertFalse($credential->isBreached());
+    }
+
+    private static function breaches(): BreachedPasswordsOfARecord
+    {
+        return self::service('test.beffroi.breached_passwords', BreachedPasswordsOfARecord::class);
     }
 
     /**
@@ -706,18 +960,23 @@ final class ProvisioningTest extends ConsoleTestCase
      */
     #[Test]
     #[DataProvider('providePasswordsRefused')]
-    public function aPasswordThatIsNotConfirmedTooShortEmptyOrUnaskableIsRefused(array $input, array $inputs, bool $interactive, int $status, string $message): void
-    {
+    public function aPasswordThatIsNotConfirmedTooShortEmptyOrUnaskableIsRefused(
+        array $input,
+        array $inputs,
+        bool $interactive,
+        int $status,
+        string $message,
+    ): void {
         // Given
         $user = self::user('alice');
 
         // When
-        $tester = self::console('heidi:user:set-password', $input, $inputs, $interactive);
+        $tester = self::console('beffroi:user:set-password', $input, $inputs, $interactive);
 
         // Then
         static::assertSame($status, $tester->getStatusCode());
         static::assertStringContainsString($message, $tester->getDisplay());
-        static::assertSame([], self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($user, PasswordCredential::class));
+        static::assertSame([], self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($user, PasswordCredential::class));
     }
 
     /**
@@ -728,39 +987,49 @@ final class ProvisioningTest extends ConsoleTestCase
         $alice = [
             'username' => 'alice',
         ];
-        $stdin = $alice + [
+        $stdin = $alice
+        + [
             '--password-stdin' => true,
         ];
         yield 'not confirmed' => [$alice, [self::PASSWORD, self::PASSWORD . 'r'], true, Command::INVALID, 'The two passwords differ.'];
-        yield 'too short' => [$alice, ['short', 'short'], true, Command::INVALID, 'at least 8 characters'];
+        yield 'too short' => [$alice, ['short', 'short'], true, Command::INVALID, 'at least 15 characters'];
+        yield 'too weak' => [$alice, ['passwordpassword', 'passwordpassword'], true, Command::INVALID, 'short of length and of alphabet'];
         yield 'empty on the terminal' => [$alice, ['', ''], true, Command::INVALID, 'The password is empty.'];
         yield 'empty on the standard input' => [$stdin, [''], true, Command::INVALID, 'The password is empty.'];
         yield 'too long' => [$stdin, [str_repeat('a', 4097)], true, Command::INVALID, 'at most 4096 bytes'];
         yield 'not askable' => [$alice, [], false, Command::INVALID, '--password-stdin'];
-        yield 'unknown user' => [[
-            'username' => 'nobody',
-            '--password-stdin' => true,
-        ], [self::PASSWORD], true, Command::FAILURE, 'There is no user named "nobody"'];
+        yield 'unknown user' => [
+            [
+                'username' => 'nobody',
+                '--password-stdin' => true,
+            ],
+            [self::PASSWORD],
+            true,
+            Command::FAILURE,
+            'There is no user named "nobody"',
+        ];
     }
 
     /**
-     * Steps 1 to 3 of the acceptance criterion: the tenant, a key, alice with a password, from the console.
-     *
      * @return array{kid: string, subject: string}
      */
     private static function provisionAliceFromTheConsole(): array
     {
         self::dropTenant();
-        self::console('heidi:tenant:synchronize');
-        $kid = self::displayed(self::console('heidi:keys:generate'), 'Key identifier');
-        $subject = self::displayed(self::console('heidi:user:create', [
+        self::console('beffroi:tenant:synchronize');
+        $kid = self::displayed(self::console('beffroi:keys:generate'), 'Key identifier');
+        $subject = self::displayed(self::console('beffroi:user:create', [
             'username' => 'alice',
             '--email' => 'alice@example.com',
             '--email-verified' => true,
         ]), 'Subject');
-        self::console('heidi:user:set-password', [
-            'username' => 'alice',
-        ], [self::PASSWORD, self::PASSWORD]);
+        self::console(
+            'beffroi:user:set-password',
+            [
+                'username' => 'alice',
+            ],
+            [self::PASSWORD, self::PASSWORD],
+        );
 
         return [
             'kid' => $kid,
@@ -768,17 +1037,13 @@ final class ProvisioningTest extends ConsoleTestCase
         ];
     }
 
-    /**
-     * The code the native client gets once alice signed in on the form and allowed.
-     */
     private function codeOfAliceSignedInOnTheForm(): string
     {
         $this->browser->request('GET', '/authorize', self::authorizationParameters());
         $interaction = self::redirectedInteraction($this->browser->getResponse());
         $form = $this->browser->request('GET', '/login', [
             'interaction' => $interaction,
-        ])->selectButton('Sign in')
-            ->form();
+        ])->selectButton('Sign in')->form();
         $form['_username'] = 'alice';
         $form['_password'] = self::PASSWORD;
         $this->browser->submit($form);
@@ -790,14 +1055,9 @@ final class ProvisioningTest extends ConsoleTestCase
         return self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail('The client got no code.');
     }
 
-    /**
-     * Before the first provisioning: the schema, and no tenant row.
-     */
     private static function dropTenant(): void
     {
-        self::entityManager()
-            ->getConnection()
-            ->executeStatement('DELETE FROM heidi_tenant');
+        self::entityManager()->getConnection()->executeStatement('DELETE FROM beffroi_tenant');
         self::reload();
     }
 

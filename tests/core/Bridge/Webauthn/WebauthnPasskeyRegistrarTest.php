@@ -2,25 +2,30 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Bridge\Webauthn;
+namespace Beffroi\Core\Tests\Bridge\Webauthn;
 
 use function array_map;
-use Heidi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
-use Heidi\Core\Bridge\Webauthn\WebauthnCeremonies;
-use Heidi\Core\Bridge\Webauthn\WebauthnPasskeyRegistrar;
-use Heidi\Core\Domain\Credential\PasskeyUserHandle;
-use Heidi\Core\Domain\Identity\Profile;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\PasskeyCeremonyFailedException;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\MetadataBlobs;
-use Heidi\Core\Tests\Fixture\SoftwareAuthenticator;
+use Beffroi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
+use Beffroi\Core\Bridge\Webauthn\WebauthnCeremonies;
+use Beffroi\Core\Bridge\Webauthn\WebauthnPasskeyRegistrar;
+use Beffroi\Core\Domain\Identity\Profile;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\PasskeyCeremonyFailedException;
+use Beffroi\Core\Tests\Fixture\Ed25519SoftwareKey;
+use Beffroi\Core\Tests\Fixture\Es256SoftwareKey;
+use Beffroi\Core\Tests\Fixture\Es384SoftwareKey;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\MetadataBlobs;
+use Beffroi\Core\Tests\Fixture\Rs1SoftwareKey;
+use Beffroi\Core\Tests\Fixture\SoftwareAuthenticator;
+use Beffroi\Core\Tests\Fixture\SoftwareCredentialKey;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function str_repeat;
 use function strlen;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 use Webauthn\MetadataService\Statement\AuthenticatorStatus;
 use Webauthn\PublicKeyCredentialCreationOptions;
@@ -28,7 +33,7 @@ use Webauthn\PublicKeyCredentialDescriptor;
 use Webauthn\PublicKeyCredentialParameters;
 
 /**
- * The registration ceremony of WebAuthn Level 3 §7.1 on webauthn-lib, answered by a software authenticator.
+ * WebAuthn Level 3 §7.1
  */
 final class WebauthnPasskeyRegistrarTest extends TestCase
 {
@@ -45,18 +50,17 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
         $this->tenant = Fixtures::tenant();
         $this->alice = Fixtures::user($this->tenant);
         $this->ceremonies = Fixtures::ceremonies();
-        $this->registrar = new WebauthnPasskeyRegistrar($this->ceremonies);
+        $this->registrar = new WebauthnPasskeyRegistrar($this->ceremonies, new MockClock(Fixtures::now()));
     }
 
     /**
-     * §5.4: the relying party is the tenant, the user entity carries the handle, a passkey is discoverable
-     * (§5.4.6), user verification preferred, no attestation asked for (§5.4.7).
+     * §5.4, §5.4.6, §5.4.7, Decision 0033
      */
     #[Test]
     public function theCreationOptionsAreThoseOfAPasskeyOfTheTenant(): void
     {
         // Given
-        $handle = PasskeyUserHandle::generate();
+        $handle = Fixtures::userHandle();
 
         // When
         $options = $this->registrar->creationOptions($this->alice, $handle, []);
@@ -67,7 +71,10 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
         static::assertSame('alice', $options->user->name);
         static::assertSame('alice', $options->user->displayName);
         static::assertSame(32, strlen($options->challenge));
-        static::assertSame([-7, -257], array_map(static fn (PublicKeyCredentialParameters $parameters): int => $parameters->alg, $options->pubKeyCredParams));
+        static::assertSame(
+            [-8, -7, -257],
+            array_map(static fn (PublicKeyCredentialParameters $parameters): int => $parameters->alg, $options->pubKeyCredParams),
+        );
         static::assertSame('required', $options->authenticatorSelection?->residentKey);
         static::assertSame('preferred', $options->authenticatorSelection->userVerification);
         static::assertNull($options->authenticatorSelection->authenticatorAttachment);
@@ -82,7 +89,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
         $this->alice->updateProfile(new Profile(name: 'Alice Martin'), Fixtures::now());
 
         // When
-        $options = $this->registrar->creationOptions($this->alice, PasskeyUserHandle::generate(), []);
+        $options = $this->registrar->creationOptions($this->alice, Fixtures::userHandle(), []);
 
         // Then
         static::assertSame('Alice Martin', $options->user->displayName);
@@ -92,7 +99,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     public function eachCallDrawsAnotherChallenge(): void
     {
         // Given
-        $handle = PasskeyUserHandle::generate();
+        $handle = Fixtures::userHandle();
 
         // When
         $first = $this->registrar->creationOptions($this->alice, $handle, []);
@@ -103,25 +110,31 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     }
 
     /**
-     * §5.4, excludeCredentials: the passkeys given, with their transports.
+     * §5.4, excludeCredentials
      */
     #[Test]
     public function theExistingPasskeysAreExcluded(): void
     {
         // Given
-        $handle = PasskeyUserHandle::generate();
-        $existing = [Fixtures::passkey($this->alice, credentialId: 'first', userHandle: $handle), Fixtures::passkey($this->alice, credentialId: 'second', userHandle: $handle)];
+        $handle = Fixtures::userHandle();
+        $existing = [
+            Fixtures::passkey($this->alice, credentialId: 'first', userHandle: $handle),
+            Fixtures::passkey($this->alice, credentialId: 'second', userHandle: $handle),
+        ];
 
         // When
         $options = $this->registrar->creationOptions($this->alice, $handle, $existing);
 
         // Then
-        static::assertSame(['first', 'second'], array_map(static fn (PublicKeyCredentialDescriptor $descriptor): string => $descriptor->id, $options->excludeCredentials));
+        static::assertSame(
+            ['first', 'second'],
+            array_map(static fn (PublicKeyCredentialDescriptor $descriptor): string => $descriptor->id, $options->excludeCredentials),
+        );
         static::assertSame(['usb'], $options->excludeCredentials[0]->transports);
     }
 
     /**
-     * §7.1: the record of the new credential, the flags of the authenticator data kept.
+     * §7.1
      */
     #[Test]
     #[DataProvider('provideAuthenticators')]
@@ -129,10 +142,10 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     {
         // Given
         $authenticator = new SoftwareAuthenticator('https://id.acme.example', backupEligible: $backupEligible, backedUp: $backedUp);
-        $options = $this->registrar->creationOptions($this->alice, PasskeyUserHandle::generate(), []);
+        $options = $this->registrar->creationOptions($this->alice, Fixtures::userHandle(), []);
 
         // When
-        $record = $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)));
+        $record = $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)))->record;
 
         // Then
         static::assertSame($authenticator->credentialId, $record->publicKeyCredentialId);
@@ -155,8 +168,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     }
 
     /**
-     * §7.1, step 21, and the spike README: an attestation statement the authenticator sends although none
-     * was asked for is verified, here a packed one in self attestation (§8.2).
+     * §7.1 step 21, §8.2
      */
     #[Test]
     public function anAttestationStatementSentAnywayIsVerified(): void
@@ -166,7 +178,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
         $options = $this->creationOptions();
 
         // When
-        $record = $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)));
+        $record = $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)))->record;
 
         // Then
         static::assertSame('self', $record->attestationType);
@@ -174,10 +186,63 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     }
 
     /**
-     * §5.4.7: the provider asks for no attestation, so the library consults no metadata (§7.1 step 22 is
-     * for an attestation asked for), and an authenticator the metadata say is compromised enrols all the
-     * same; the spike README: an attestation is never required. A policy that refuses is the hosted
-     * offer's, on the same metadata.
+     * Decision 0033, §8.2
+     */
+    #[Test]
+    #[DataProvider('provideKeysOfTheOfferedAlgorithms')]
+    public function aPasskeyOfAnAlgorithmTheOptionsOfferIsEnrolled(SoftwareCredentialKey $key): void
+    {
+        // Given
+        $authenticator = new SoftwareAuthenticator('https://id.acme.example', attestation: 'packed', credentialKey: $key);
+        $options = $this->creationOptions();
+
+        // When
+        $record = $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)))->record;
+
+        // Then
+        static::assertSame('self', $record->attestationType);
+        static::assertSame($authenticator->cosePublicKey(), $record->credentialPublicKey);
+    }
+
+    /**
+     * @return iterable<string, array{SoftwareCredentialKey}>
+     */
+    public static function provideKeysOfTheOfferedAlgorithms(): iterable
+    {
+        yield 'EdDSA over Ed25519' => [new Ed25519SoftwareKey()];
+        yield 'ES256' => [new Es256SoftwareKey()];
+    }
+
+    /**
+     * Decision 0033, §7.1
+     */
+    #[Test]
+    #[DataProvider('provideKeysOfTheAlgorithmsNotOffered')]
+    public function aPasskeyOfAnAlgorithmTheOptionsDoNotOfferIsRefused(SoftwareCredentialKey $key): void
+    {
+        // Given
+        $authenticator = new SoftwareAuthenticator('https://id.acme.example', credentialKey: $key);
+        $options = $this->creationOptions();
+
+        // Then
+        $this->expectException(PasskeyCeremonyFailedException::class);
+        $this->expectExceptionMessageIsOrContains('The attestation was refused');
+
+        // When
+        $this->registrar->verifyAttestation($this->tenant, $options, $authenticator->create($this->ceremonies->optionsToJson($options)));
+    }
+
+    /**
+     * @return iterable<string, array{SoftwareCredentialKey}>
+     */
+    public static function provideKeysOfTheAlgorithmsNotOffered(): iterable
+    {
+        yield 'RS1' => [new Rs1SoftwareKey()];
+        yield 'ES384' => [new Es384SoftwareKey()];
+    }
+
+    /**
+     * §5.4.7, §7.1 step 22
      */
     #[Test]
     public function theMetadataAreNotConsultedWhenNoAttestationWasAskedFor(): void
@@ -185,13 +250,16 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
         // Given
         $authenticator = new SoftwareAuthenticator('https://id.acme.example', attestation: 'packed');
         $store = new InMemoryMetadataBlobStore();
-        $store->write('mds', MetadataBlobs::payload([MetadataBlobs::entry(Uuid::fromBinary($authenticator->aaguid)->toRfc4122(), [AuthenticatorStatus::USER_VERIFICATION_BYPASS])]));
+        $store->write('mds', MetadataBlobs::payload([MetadataBlobs::entry(
+            Uuid::fromBinary($authenticator->aaguid)->toRfc4122(),
+            [AuthenticatorStatus::USER_VERIFICATION_BYPASS],
+        )]));
         $ceremonies = Fixtures::ceremonies($store);
-        $registrar = new WebauthnPasskeyRegistrar($ceremonies);
-        $options = $registrar->creationOptions($this->alice, PasskeyUserHandle::generate(), []);
+        $registrar = new WebauthnPasskeyRegistrar($ceremonies, new MockClock(Fixtures::now()));
+        $options = $registrar->creationOptions($this->alice, Fixtures::userHandle(), []);
 
         // When
-        $record = $registrar->verifyAttestation($this->tenant, $options, $authenticator->create($ceremonies->optionsToJson($options)));
+        $record = $registrar->verifyAttestation($this->tenant, $options, $authenticator->create($ceremonies->optionsToJson($options)))->record;
 
         // Then
         static::assertSame('self', $record->attestationType);
@@ -228,7 +296,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     }
 
     /**
-     * §13.4.9: the origin is the whole of it, port included; the issuer of the tenant names it.
+     * §13.4.9
      */
     #[Test]
     public function anAttestationFromTheSameHostOnAnotherPortIsRefused(): void
@@ -261,7 +329,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     }
 
     /**
-     * §7.1, step 8: the challenge of the response is the one of the options.
+     * §7.1, step 8
      */
     #[Test]
     public function anAttestationOfAnotherChallengeIsRefused(): void
@@ -280,7 +348,7 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
     }
 
     /**
-     * §7.1, step 14: a user must be present at creation.
+     * §7.1, step 14
      */
     #[Test]
     public function anAttestationWithoutUserPresenceIsRefused(): void
@@ -330,6 +398,6 @@ final class WebauthnPasskeyRegistrarTest extends TestCase
 
     private function creationOptions(): PublicKeyCredentialCreationOptions
     {
-        return $this->registrar->creationOptions($this->alice, PasskeyUserHandle::generate(), []);
+        return $this->registrar->creationOptions($this->alice, Fixtures::userHandle(), []);
     }
 }

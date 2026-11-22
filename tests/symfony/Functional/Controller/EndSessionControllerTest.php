@@ -2,25 +2,32 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
+use function array_filter;
 use function base64_encode;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
-use Heidi\Core\Port\SigningKeyRepositoryInterface;
-use Heidi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\TenantKeyRepositoryInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Domain\Token\RefreshToken;
+use Beffroi\Oidc\Port\RefreshTokenRepositoryInterface;
+use function count;
+use const DATE_ATOM;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * OIDC RP-Initiated Logout 1.0 §2 to §4 and architecture §4.9, §5.2: the end session endpoint, its
- * confirmation page, and what the browser holds afterwards.
+ * OIDC RP-Initiated Logout 1.0 §2 to §4, Architecture §4.9, §5.2
  */
 final class EndSessionControllerTest extends BrowserTestCase
 {
+    use TokensOfASession;
+
     /**
-     * §4: a logout request from a browser that holds no session is honoured as is.
+     * RP-Initiated Logout 1.0 §4
      */
     #[Test]
     public function aBrowserWithoutASessionIsLoggedOutAlready(): void
@@ -36,7 +43,7 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
-     * §2: without a hint the user is asked; the confirmation form carries the parameters over.
+     * RP-Initiated Logout 1.0 §2
      */
     #[Test]
     public function withoutAHintTheUserIsAsked(): void
@@ -61,7 +68,7 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
-     * §2, §3: on yes the session ends and the browser goes where the client asked, with the state.
+     * RP-Initiated Logout 1.0 §2, §3
      */
     #[Test]
     public function aConfirmedLogoutEndsTheSessionAndRedirectsWithTheState(): void
@@ -77,13 +84,11 @@ final class EndSessionControllerTest extends BrowserTestCase
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
         static::assertSame('https://demo.test/?state=after-logout', $response->headers->get('Location'));
-        $ended = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->find($session->id) ?? static::fail('The session is gone.');
+        $ended = self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)
+            ->find($session->id) ?? static::fail('The session is gone.');
         static::assertTrue($ended->hasEnded());
     }
 
-    /**
-     * After the logout the browser is not bound to anything any more: an authorization request needs a login.
-     */
     #[Test]
     public function aLoggedOutBrowserNeedsALoginAgain(): void
     {
@@ -99,7 +104,7 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
-     * §2: the user may refuse; nothing ends and the browser goes nowhere.
+     * RP-Initiated Logout 1.0 §2
      */
     #[Test]
     public function theUserMayStaySignedIn(): void
@@ -116,13 +121,13 @@ final class EndSessionControllerTest extends BrowserTestCase
         static::assertSame(Response::HTTP_OK, $response->getStatusCode());
         static::assertFalse($response->headers->has('Location'));
         static::assertStringContainsString('data-logged-out="no"', self::string($response->getContent()));
-        $kept = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->find($session->id) ?? static::fail('The session is gone.');
+        $kept = self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)
+            ->find($session->id) ?? static::fail('The session is gone.');
         static::assertFalse($kept->hasEnded());
     }
 
     /**
-     * §2: a hint that names the session the browser holds ends it without a question, the way
-     * oidc_login sends it: id_token_hint and post_logout_redirect_uri, nothing else.
+     * RP-Initiated Logout 1.0 §2
      */
     #[Test]
     public function aHintNamingTheSessionEndsItWithoutAQuestion(): void
@@ -144,7 +149,80 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
-     * §2: a hint of the same user but of another session asks first.
+     * Decision 0006
+     */
+    #[Test]
+    public function aLogoutRevokesTheTokensIssuedUnderTheSession(): void
+    {
+        // Given
+        self::signingKey();
+        $session = $this->signIn(self::user('alice'));
+        $tokens = self::tokensIssuedIn($session);
+        $idToken = $this->idTokenOfTheBoundBrowser();
+
+        // When
+        $this->browser->request('GET', '/logout', [
+            'id_token_hint' => $idToken,
+            'post_logout_redirect_uri' => 'https://demo.test/',
+        ]);
+
+        // Then
+        self::assertTheTokensAreRevoked($tokens);
+    }
+
+    /**
+     * beffroi/saml S-25, RFC 6749 §5.2
+     */
+    #[Test]
+    public function aRefreshTokenSavedAfterTheRevocationIsRevokedAtItsFirstUse(): void
+    {
+        // Given
+        self::signingKey();
+        $session = $this->signIn(self::user('alice'));
+        $idToken = $this->idTokenOfTheBoundBrowser();
+        $this->browser->request('GET', '/logout', [
+            'id_token_hint' => $idToken,
+            'post_logout_redirect_uri' => 'https://demo.test/',
+        ]);
+        self::reload();
+        $late = self::tokensIssuedIn(self::sessions()->find($session->id) ?? static::fail('The session is gone.'))['refresh'];
+
+        // When
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $late,
+            ],
+            server: [
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
+            ],
+        );
+
+        // Then
+        $error = self::json($this->browser->getResponse())['error'] ?? null;
+        self::reload();
+        $refreshTokens = self::service('test.beffroi.refresh_tokens', RefreshTokenRepositoryInterface::class);
+        static::assertSame(
+            [
+                'the error' => 'invalid_grant',
+                'the refresh tokens of the session left active' => 0,
+                'the late one revoked at' => self::sessions()->find($session->id)?->endedAt?->format(DATE_ATOM),
+            ],
+            [
+                'the error' => $error,
+                'the refresh tokens of the session left active' => count(array_filter(
+                    $refreshTokens->findBySession($session->id),
+                    static fn (RefreshToken $token): bool => ! $token->isRevoked(),
+                )),
+                'the late one revoked at' => $refreshTokens->findByTokenHash(DrawnSecret::digestOf($late))?->revokedAt?->format(DATE_ATOM),
+            ],
+        );
+    }
+
+    /**
+     * RP-Initiated Logout 1.0 §2
      */
     #[Test]
     public function aHintOfAnotherSessionAsksFirst(): void
@@ -165,9 +243,7 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §10.1.1 and architecture §3.3: a hint signed before a rotation still proves the session
-     * while its key is retiring; what oidc_login sends after a rotation ends the session without a
-     * question.
+     * OIDC Core §10.1.1, Architecture §3.3
      */
     #[Test]
     public function aHintSignedByARetiringKeyEndsTheSessionWithoutAQuestion(): void
@@ -191,8 +267,7 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
-     * §2, §6: a hint signed by a retired key is an invalid hint; the provider asks the user instead of
-     * failing, and drops the redirect the hint came with.
+     * RP-Initiated Logout 1.0 §2, §6
      */
     #[Test]
     public function aHintSignedByARetiredKeyAsksTheUser(): void
@@ -217,7 +292,7 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
-     * §2: on yes the session ends; §3: the browser goes nowhere, the hint having identified no client.
+     * RP-Initiated Logout 1.0 §2, §3
      */
     #[Test]
     public function aConfirmedLogoutWithAHintSignedByARetiredKeyEndsTheSessionAndRedirectsNowhere(): void
@@ -241,12 +316,13 @@ final class EndSessionControllerTest extends BrowserTestCase
         static::assertSame(Response::HTTP_OK, $response->getStatusCode());
         static::assertFalse($response->headers->has('Location'));
         static::assertStringContainsString('data-logged-out="yes"', self::string($response->getContent()));
-        $ended = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->find($session->id) ?? static::fail('The session is gone.');
+        $ended = self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)
+            ->find($session->id) ?? static::fail('The session is gone.');
         static::assertTrue($ended->hasEnded());
     }
 
     /**
-     * §4: a request found wrong is shown to the user, never redirected.
+     * RP-Initiated Logout 1.0 §4
      */
     #[Test]
     public function anUnregisteredRedirectUriIsShownToTheUser(): void
@@ -264,9 +340,6 @@ final class EndSessionControllerTest extends BrowserTestCase
         static::assertStringContainsString('data-error="invalid_request"', self::string($response->getContent()));
     }
 
-    /**
-     * The confirmation form is protected against cross-site submission: a forged "yes" ends nothing.
-     */
     #[Test]
     public function aForgedConfirmationEndsNothing(): void
     {
@@ -281,13 +354,11 @@ final class EndSessionControllerTest extends BrowserTestCase
 
         // Then
         static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode());
-        $kept = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class)->find($session->id) ?? static::fail('The session is gone.');
+        $kept = self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)
+            ->find($session->id) ?? static::fail('The session is gone.');
         static::assertFalse($kept->hasEnded());
     }
 
-    /**
-     * The confirmation page of a logout asked by oidc-demo without a hint, with a state.
-     */
     private function confirmationPage(): Crawler
     {
         return $this->browser->request('GET', '/logout', [
@@ -297,13 +368,9 @@ final class EndSessionControllerTest extends BrowserTestCase
         ]);
     }
 
-    /**
-     * An ID token issued to oidc-demo for a session of the user, obtained through the code flow, which
-     * leaves the browser bound to that session. The tenant signs with the key active at that moment.
-     */
     private function idTokenOf(User $user): string
     {
-        if (self::service('test.heidi.keys', SigningKeyRepositoryInterface::class)->findActive(self::tenant(), Algorithms::rs256()) === null) {
+        if (self::service('test.beffroi.keys', TenantKeyRepositoryInterface::class)->findActive(self::tenant(), Algorithms::rs256()) === null) {
             self::signingKey();
         }
         $this->signIn($user);
@@ -311,21 +378,28 @@ final class EndSessionControllerTest extends BrowserTestCase
         return $this->idTokenOfTheBoundBrowser();
     }
 
-    /**
-     * An ID token issued to oidc-demo for the session the browser is bound to.
-     */
+    private static function sessions(): AuthenticationSessionRepositoryInterface
+    {
+        return self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class);
+    }
+
     private function idTokenOfTheBoundBrowser(): string
     {
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));
         $code = self::redirectedQuery($this->browser->getResponse())['code'];
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => 'https://demo.test/login/check',
-            'code_verifier' => self::CODE_VERIFIER,
-        ], server: [
-            'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
-        ]);
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => 'https://demo.test/login/check',
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            server: [
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:demo-secret-of-at-least-32-characters-long'),
+            ],
+        );
         $tokens = self::json($this->browser->getResponse());
         static::assertIsString($tokens['id_token'] ?? null, self::string($this->browser->getResponse()->getContent()));
 

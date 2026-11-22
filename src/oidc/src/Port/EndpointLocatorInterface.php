@@ -2,15 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Port;
+namespace Beffroi\Oidc\Port;
 
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Domain\Discovery\ProviderEndpoints;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use LogicException;
+use Beffroi\Oidc\Domain\Discovery\ProviderEndpoints;
 
-/**
- * Where the endpoints of a tenant are served; routing belongs to the integration (architecture §5.2).
- */
 interface EndpointLocatorInterface
 {
+    /**
+     * @throws LogicException when the routes are not mounted under the issuer of the tenant
+     */
     public function locate(Tenant $tenant): ProviderEndpoints;
 }

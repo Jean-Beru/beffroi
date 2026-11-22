@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Bridge\Configuration;
+namespace Beffroi\Oidc\Bridge\Configuration;
 
 use function array_key_exists;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Port\PasswordHasherInterface;
-use Heidi\Core\Port\SignatureAlgorithmsInterface;
-use Heidi\Oidc\Domain\Client\AccessTokenFormat;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\ClientSecretInterface;
-use Heidi\Oidc\Port\ClientAuthenticationMethodsInterface;
-use Heidi\Oidc\Port\ClientRepositoryInterface;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\PasswordHasherInterface;
+use Beffroi\Oidc\Application\Client\ClientMetadataReader;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientSecretInterface;
+use Beffroi\Oidc\Domain\Client\InventoriedClient;
+use Beffroi\Oidc\Port\ClientInventoryInterface;
+use Beffroi\Oidc\Port\ClientSourceInterface;
 use WeakMap;
 
 /**
- * The clients declared in the configuration (architecture §4.1, §5.1): validated at boot, the secret hashed
- * on the first lookup. The clients are built per tenant instance, so that a client always points at the
- * tenant of the request that asked for it.
+ * Clients are built per tenant instance, so that a client always points at the tenant of the request that asked.
  */
-final class ConfigurationClientRepository implements ClientRepositoryInterface
+final class ConfigurationClientRepository implements ClientInventoryInterface, ClientSourceInterface
 {
+    public const string SOURCE = 'configuration';
+
     /**
      * @var array<string, ClientDefinition>
      */
@@ -44,18 +44,22 @@ final class ConfigurationClientRepository implements ClientRepositoryInterface
         private readonly string $tenantSlug,
         array $definitions,
         private readonly PasswordHasherInterface $hasher,
-        SignatureAlgorithmsInterface $algorithms,
-        ClientAuthenticationMethodsInterface $methods,
+        ClientMetadataReader $reader,
     ) {
         foreach ($definitions as $clientId => $definition) {
-            $this->definitions[$clientId] = ClientDefinition::fromArray((string) $clientId, $definition, $algorithms, $methods);
+            $this->definitions[$clientId] = ClientDefinition::fromArray((string) $clientId, $definition, $reader);
         }
         $this->clients = new WeakMap();
     }
 
+    private function serves(Tenant $tenant): bool
+    {
+        return $tenant->slug === $this->tenantSlug;
+    }
+
     public function findByClientId(Tenant $tenant, string $clientId): ?Client
     {
-        if ($tenant->slug !== $this->tenantSlug || ! isset($this->definitions[$clientId])) {
+        if (! $this->serves($tenant) || ! isset($this->definitions[$clientId])) {
             return null;
         }
         $clients = $this->clients[$tenant] ?? [];
@@ -71,11 +75,27 @@ final class ConfigurationClientRepository implements ClientRepositoryInterface
         return $clients[$clientId];
     }
 
-    public function issuesAccessTokensIn(Tenant $tenant, AccessTokenFormat $format): bool
+    public function registrationsIn(Tenant $tenant): iterable
     {
-        if ($tenant->slug !== $this->tenantSlug) {
-            return false;
+        if (! $this->serves($tenant)) {
+            return;
         }
-        return array_any($this->definitions, fn ($definition) => $definition->accessTokenFormat === $format);
+        foreach ($this->definitions as $definition) {
+            yield $definition->registration;
+        }
+    }
+
+    public function inventoryIn(Tenant $tenant): iterable
+    {
+        if (! $this->serves($tenant)) {
+            return;
+        }
+        foreach ($this->definitions as $definition) {
+            yield new InventoriedClient(
+                self::SOURCE,
+                $definition->registration->clientId,
+                $definition->registration->presentation->name,
+            );
+        }
     }
 }

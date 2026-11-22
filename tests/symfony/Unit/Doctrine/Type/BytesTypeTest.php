@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Doctrine\Type;
+namespace App\Tests\Symfony\Unit\Doctrine\Type;
 
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Platforms\SQLitePlatform;
 use Doctrine\DBAL\Types\ConversionException;
-use Heidi\Bundle\Doctrine\Type\BytesType;
+use App\Doctrine\Type\BytesType;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Architecture §5.3: raw bytes in a text column as base64url (RFC 4648 §5), never a stream.
+ * Architecture §5.3, RFC 4648 §5
  */
 final class BytesTypeTest extends TestCase
 {
@@ -63,8 +63,7 @@ final class BytesTypeTest extends TestCase
         $this->expectException(ConversionException::class);
 
         // When
-        new BytesType()
-            ->convertToDatabaseValue(12, new SQLitePlatform());
+        new BytesType()->convertToDatabaseValue(12, new SQLitePlatform());
     }
 
     #[Test]
@@ -75,8 +74,7 @@ final class BytesTypeTest extends TestCase
         $this->expectException(ConversionException::class);
 
         // When
-        new BytesType()
-            ->convertToPHPValue($stored, new SQLitePlatform());
+        new BytesType()->convertToPHPValue($stored, new SQLitePlatform());
     }
 
     /**

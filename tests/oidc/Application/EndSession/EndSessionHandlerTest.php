@@ -2,53 +2,50 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\EndSession;
+namespace Beffroi\Oidc\Tests\Application\EndSession;
 
-use Heidi\Core\Application\Authentication\SessionTerminator;
-use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
-use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
-use Heidi\Core\Domain\Event\AuthenticationSessionEnded;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Session\SessionEnd;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
-use Heidi\Oidc\Application\Claims\StandardClaimsProvider;
-use Heidi\Oidc\Application\EndSession\EndSessionHandler;
-use Heidi\Oidc\Application\EndSession\EndSessionRequestParser;
-use Heidi\Oidc\Application\Token\JwtIdTokenIssuer;
-use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
-use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
-use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
-use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
-use Heidi\Oidc\Domain\Authorization\IdTokenHint;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\EndSession\EndSessionRequest;
-use Heidi\Oidc\Domain\EndSession\LoggedOut;
-use Heidi\Oidc\Domain\EndSession\LogoutConfirmationReason;
-use Heidi\Oidc\Domain\EndSession\LogoutConfirmationRequired;
-use Heidi\Oidc\Domain\Token\AccessToken;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
-use Heidi\Oidc\Domain\Token\RefreshToken;
-use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\Jwts;
-use Heidi\Oidc\Tests\Fixture\Tokens;
+use Beffroi\Core\Application\Authentication\SessionTerminator;
+use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
+use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
+use Beffroi\Core\Domain\Event\AuthenticationSessionEnded;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Oidc\Application\Authorization\IdTokenHintVerifier;
+use Beffroi\Oidc\Application\Claims\AssignedSubjectIdentifiers;
+use Beffroi\Oidc\Application\Claims\StandardClaimsProvider;
+use Beffroi\Oidc\Application\EndSession\EndSessionHandler;
+use Beffroi\Oidc\Application\EndSession\EndSessionRequestParser;
+use Beffroi\Oidc\Application\Token\JwtIdTokenIssuer;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Beffroi\Oidc\Domain\Authorization\IdTokenHint;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\EndSession\EndSessionRequest;
+use Beffroi\Oidc\Domain\EndSession\LoggedOut;
+use Beffroi\Oidc\Domain\EndSession\LogoutConfirmationReason;
+use Beffroi\Oidc\Domain\EndSession\LogoutConfirmationRequired;
+use Beffroi\Oidc\Domain\Token\AccessToken;
+use Beffroi\Oidc\Domain\Token\UserAuthorization;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\Grants;
+use Beffroi\Oidc\Tests\Fixture\Jwts;
+use Beffroi\Oidc\Tests\Fixture\Tokens;
 use function http_build_query;
 use function parse_str;
 use const PHP_QUERY_RFC3986;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Beffroi\Oidc\Tests\Fixture\Subjects;
 use Symfony\Component\Clock\MockClock;
 
 final class EndSessionHandlerTest extends TestCase
@@ -67,11 +64,9 @@ final class EndSessionHandlerTest extends TestCase
 
     private InMemoryAuthenticationSessionRepository $sessions;
 
-    private InMemoryRefreshTokenRepository $refreshTokens;
-
-    private InMemoryAccessTokenRepository $accessTokens;
-
     private RecordingEventDispatcher $events;
+
+    private AssignedSubjectIdentifiers $subjects;
 
     private EndSessionHandler $handler;
 
@@ -85,16 +80,20 @@ final class EndSessionHandlerTest extends TestCase
         $this->session = Fixtures::session($this->alice, $this->clock->now()->modify('-1 hour'));
         $this->sessions = new InMemoryAuthenticationSessionRepository();
         $this->sessions->save($this->session);
-        $this->refreshTokens = new InMemoryRefreshTokenRepository();
-        $this->accessTokens = new InMemoryAccessTokenRepository();
         $this->events = new RecordingEventDispatcher();
-        $this->handler = new EndSessionHandler(new SessionTerminator($this->sessions, $this->clock, $this->events), new RefreshTokenRevocation($this->refreshTokens), $this->accessTokens, $this->clock);
+        $users = new InMemoryUserRepository();
+        $users->save($this->alice);
+        $users->save(Fixtures::user($this->tenant, 'bob', 'bob-subject'));
+        $this->subjects = Subjects::bothKinds($users);
+        $this->handler = new EndSessionHandler(
+            new SessionTerminator($this->sessions, $this->clock, $this->events),
+            $this->subjects,
+            $this->clock,
+        );
     }
 
     /**
-     * OIDC RP-Initiated Logout 1.0 §2 and architecture §4.9: a hint naming the user and the session the
-     * browser holds is honoured without a question, and the user agent goes where the client asked with
-     * its state (§3).
+     * OIDC RP-Initiated Logout 1.0 §2, §3, Architecture §4.9
      */
     #[Test]
     public function itEndsTheSessionTheHintDescribesWithoutAsking(): void
@@ -112,9 +111,6 @@ final class EndSessionHandlerTest extends TestCase
         static::assertSame('https://demo.localhost/?state=af0ifjsldkj', $decision->redirect?->toUri());
     }
 
-    /**
-     * The session ends by the relying party, now.
-     */
     #[Test]
     public function theSessionEndsByTheRelyingParty(): void
     {
@@ -141,9 +137,6 @@ final class EndSessionHandlerTest extends TestCase
         static::assertSame([$otherSession], $this->sessions->findActiveByUser($this->alice, $this->clock->now()));
     }
 
-    /**
-     * AuthenticationSessionEnded carries the request that ended the session, once.
-     */
     #[Test]
     public function theEndOfTheSessionIsAnnouncedOnceWithTheRequestContext(): void
     {
@@ -159,94 +152,7 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * Decision 0006: every refresh token issued in the session is revoked, rotated ones included; those
-     * of other sessions are not.
-     */
-    #[Test]
-    public function theRefreshTokensOfTheSessionAreRevoked(): void
-    {
-        // Given
-        $family = Tokens::family(Fixtures::now());
-        $rotated = $this->refreshToken('rotated', $this->session, $family);
-        $rotated->rotate(Fixtures::now()->modify('+1 day'));
-        $current = $this->refreshToken('current', $this->session, $family, '+2 days');
-        $otherSession = Fixtures::session($this->alice);
-        $this->sessions->save($otherSession);
-        $elsewhere = $this->refreshToken('elsewhere', $otherSession);
-
-        // When
-        $this->handler->begin($this->request($this->hint($this->session)), $this->session, $this->context);
-
-        // Then
-        static::assertTrue($rotated->isRevoked());
-        static::assertEquals($this->clock->now(), $rotated->revokedAt);
-        static::assertTrue($current->isRevoked());
-        static::assertFalse($elsewhere->isRevoked());
-    }
-
-    /**
-     * Decision 0006: every stored access token issued in the session is revoked; those of other
-     * sessions are not.
-     */
-    #[Test]
-    public function theStoredAccessTokensOfTheSessionAreRevoked(): void
-    {
-        // Given
-        $this->accessTokens->keep(Tokens::storedAccessToken('here', $this->client, $this->session, Fixtures::now()));
-        $otherSession = Fixtures::session($this->alice);
-        $this->sessions->save($otherSession);
-        $elsewhere = Tokens::storedAccessToken('elsewhere', $this->client, $otherSession, Fixtures::now());
-        $this->accessTokens->keep($elsewhere);
-
-        // When
-        $this->handler->begin($this->request($this->hint($this->session)), $this->session, $this->context);
-
-        // Then
-        static::assertSame([$elsewhere], $this->accessTokens->all());
-    }
-
-    /**
-     * A store that cannot take access tokens back is not asked to: the session ends all the same.
-     */
-    #[Test]
-    public function aStoreThatCannotRevokeIsNotAskedTo(): void
-    {
-        // Given
-        $handler = new EndSessionHandler(new SessionTerminator($this->sessions, $this->clock, $this->events), new RefreshTokenRevocation($this->refreshTokens), static::createStub(AccessTokenRepositoryInterface::class), $this->clock);
-
-        // When
-        $handler->begin($this->request($this->hint($this->session)), $this->session, $this->context);
-
-        // Then
-        static::assertTrue($this->session->hasEnded());
-    }
-
-    /**
-     * The tokens revoked now are saved; one already revoked keeps its date and is not saved again.
-     */
-    #[Test]
-    public function onlyTheTokensRevokedNowAreSaved(): void
-    {
-        // Given
-        $family = Tokens::family(Fixtures::now());
-        $revoked = $this->refreshToken('revoked', $this->session, $family, '+1 day');
-        $revoked->revoke(Fixtures::now()->modify('+2 days'));
-        $this->refreshToken('current', $this->session, $family, '+2 days');
-        $this->refreshToken('other', $this->session, $family, '+3 days');
-        $savesBefore = $this->refreshTokens->saves;
-
-        // When
-        $this->handler->begin($this->request($this->hint($this->session)), $this->session, $this->context);
-
-        // Then
-        static::assertEquals(Fixtures::now()->modify('+2 days'), $revoked->revokedAt, 'the first revocation wins');
-        static::assertSame($savesBefore + 2, $this->refreshTokens->saves);
-    }
-
-    /**
-     * §2: the provider must ask when there is no id_token_hint, when the hint names another user, or
-     * when it does not belong to the current session; §6: a request without a valid hint may be a
-     * denial of service.
+     * OIDC RP-Initiated Logout 1.0 §2, §6
      *
      * @param callable(self): ?IdTokenHint $hint
      */
@@ -268,8 +174,6 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * Nothing is written until the user answers.
-     *
      * @param callable(self): ?IdTokenHint $hint
      */
     #[Test]
@@ -277,16 +181,14 @@ final class EndSessionHandlerTest extends TestCase
     public function nothingIsWrittenUntilTheUserAnswers(callable $hint, LogoutConfirmationReason $reason): void
     {
         // Given
-        $token = $this->refreshToken('current', $this->session);
-        $savesBefore = $this->refreshTokens->saves + $this->sessions->saves;
+        $savesBefore = $this->sessions->saves;
 
         // When
         $this->handler->begin($this->request($hint($this)), $this->session, $this->context);
 
         // Then
         static::assertTrue($this->session->isActive($this->clock->now()));
-        static::assertFalse($token->isRevoked());
-        static::assertSame($savesBefore, $this->refreshTokens->saves + $this->sessions->saves);
+        static::assertSame($savesBefore, $this->sessions->saves);
         static::assertSame([], $this->events->events);
     }
 
@@ -303,6 +205,10 @@ final class EndSessionHandlerTest extends TestCase
             static fn (self $test): IdTokenHint => new IdTokenHint(new Subject('bob-subject'), ['oidc-demo'], $test->session->id),
             LogoutConfirmationReason::DifferentUser,
         ];
+        yield 'a subject that names nobody' => [
+            static fn (self $test): IdTokenHint => new IdTokenHint(new Subject('nobody-subject'), ['oidc-demo'], $test->session->id),
+            LogoutConfirmationReason::DifferentUser,
+        ];
         yield 'another session of the user' => [
             static fn (self $test): IdTokenHint => $test->hint(Fixtures::session($test->alice)),
             LogoutConfirmationReason::DifferentSession,
@@ -314,8 +220,43 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * §2, §6: a hint the provider could not verify (signed by a retired key, or forged) proves nothing;
-     * the user is asked, and told why.
+     * OIDC Core §8.1, RP-Initiated Logout §2
+     */
+    #[Test]
+    public function aHintOfAPairwiseClientNamingTheSessionEndsItWithoutAsking(): void
+    {
+        // Given
+        $client = Clients::pairwise($this->tenant);
+        $hint = new IdTokenHint($this->subjects->resolve($this->alice, $client), ['pairwise-app'], $this->session->id);
+
+        // When
+        $decision = $this->handler->begin(new EndSessionRequest($this->tenant, $client, $hint, null), $this->session, $this->context);
+
+        // Then
+        static::assertInstanceOf(LoggedOut::class, $decision);
+        static::assertSame($this->session, $decision->endedSession);
+    }
+
+    /**
+     * OIDC Core §8
+     */
+    #[Test]
+    public function theSubjectTheCoreKeepsNamesNobodyToAPairwiseClient(): void
+    {
+        // Given
+        $client = Clients::pairwise($this->tenant);
+        $hint = new IdTokenHint($this->alice->subject, ['pairwise-app'], $this->session->id);
+
+        // When
+        $decision = $this->handler->begin(new EndSessionRequest($this->tenant, $client, $hint, null), $this->session, $this->context);
+
+        // Then
+        static::assertInstanceOf(LogoutConfirmationRequired::class, $decision);
+        static::assertSame(LogoutConfirmationReason::DifferentUser, $decision->reason);
+    }
+
+    /**
+     * OIDC RP-Initiated Logout 1.0 §2, §6
      */
     #[Test]
     public function itAsksWhenTheHintCouldNotBeVerified(): void
@@ -332,8 +273,7 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * §2: once the user says yes, the session ends whatever the hint was worth; nothing redirects,
-     * since the hint identified no client.
+     * OIDC RP-Initiated Logout 1.0 §2
      */
     #[Test]
     public function itEndsTheSessionWhenTheUserConfirmsDespiteAnInvalidHint(): void
@@ -351,8 +291,7 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * §2: "If the End-User says yes, then the OP MUST log out the End-User": after the confirmation
-     * page, the session ends whatever the hint said, and the redirect is honoured.
+     * OIDC RP-Initiated Logout 1.0 §2
      *
      * @param callable(self): ?IdTokenHint $hint
      */
@@ -379,16 +318,12 @@ final class EndSessionHandlerTest extends TestCase
      */
     #[Test]
     #[DataProvider('provideHintsToConfirm')]
-    public function aConfirmedLogoutRevokesTheTokensAndAnnouncesTheEnd(callable $hint): void
+    public function aConfirmedLogoutAnnouncesTheEnd(callable $hint): void
     {
-        // Given
-        $token = $this->refreshToken('current', $this->session);
-
         // When
         $this->handler->confirm($this->request($hint($this)), $this->session, $this->context);
 
         // Then
-        static::assertTrue($token->isRevoked());
         static::assertCount(1, $this->events->of(AuthenticationSessionEnded::class));
     }
 
@@ -403,9 +338,7 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * §4: a logout request is idempotent, it is not an error to log out a user who is not logged in.
-     * No session, an ended one or an expired one: nothing to ask, nothing to end, and the user agent
-     * goes where the client asked when it may.
+     * OIDC RP-Initiated Logout 1.0 §4
      *
      * @param callable(self): ?AuthenticationSession $session
      */
@@ -448,17 +381,13 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * A token of the session the hint names is not revoked on the word of the token: the browser proves
-     * the session, the token does not. No event either.
-     *
      * @param callable(self): ?AuthenticationSession $session
      */
     #[Test]
     #[DataProvider('provideSessionsNotToEnd')]
-    public function nothingIsRevokedNorAnnouncedWithoutAnActiveSession(callable $session, bool $withHint): void
+    public function nothingIsAnnouncedWithoutAnActiveSession(callable $session, bool $withHint): void
     {
         // Given
-        $token = $this->refreshToken('current', $this->session);
         $request = $this->request($withHint ? $this->hint($this->session) : null);
         $held = $session($this);
 
@@ -467,7 +396,6 @@ final class EndSessionHandlerTest extends TestCase
         $this->handler->confirm($request, $held, $this->context);
 
         // Then
-        static::assertFalse($token->isRevoked());
         static::assertSame([], $this->events->events);
     }
 
@@ -484,21 +412,24 @@ final class EndSessionHandlerTest extends TestCase
             static fn (self $test): ?AuthenticationSession => null,
             false,
         ];
-        yield 'session ended' => [static function (self $test): AuthenticationSession {
-            $test->session->end(SessionEnd::User, $test->clock->now()->modify('-1 minute'));
+        yield 'session ended' => [
+            static function (self $test): AuthenticationSession {
+                $test->session->end(SessionEnd::User, $test->clock->now()->modify('-1 minute'));
 
-            return $test->session;
-        }, true];
-        yield 'session expired' => [static function (self $test): AuthenticationSession {
-            $test->clock->sleep(13 * 3600);
+                return $test->session;
+            },
+            true,
+        ];
+        yield 'session expired' => [
+            static function (self $test): AuthenticationSession {
+                $test->clock->sleep(13 * 3600);
 
-            return $test->session;
-        }, true];
+                return $test->session;
+            },
+            true,
+        ];
     }
 
-    /**
-     * A request that names no client, from a bare logout link, is confirmed like one without a hint.
-     */
     #[Test]
     public function itAsksWhenTheRequestNamesNoClient(): void
     {
@@ -514,8 +445,7 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * A request that names no client: the session ends after confirmation and there is nowhere to
-     * redirect to (§3).
+     * OIDC RP-Initiated Logout 1.0 §3
      */
     #[Test]
     public function itRedirectsNowhereWhenTheRequestNamesNoClient(): void
@@ -532,10 +462,6 @@ final class EndSessionHandlerTest extends TestCase
         static::assertTrue($this->session->hasEnded());
     }
 
-    /**
-     * The session the integration hands over is one of the tenant the request reached; anything else is
-     * a wiring error, not a decision.
-     */
     #[Test]
     public function beginRefusesASessionOfAnotherTenant(): void
     {
@@ -563,13 +489,7 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * The acceptance criterion of the issue, below HTTP: what OidcEndSessionListener of oidc_login 8.2
-     * sends on logout is honoured without a question. The listener redirects the browser to the
-     * end_session_endpoint with "id_token_hint", the last ID token it received, and
-     * "post_logout_redirect_uri", the URI it generated, serialized with http_build_query in RFC 3986
-     * encoding; no "state", no "client_id". The last ID token is often one re-issued on a refresh,
-     * without "nonce", and may well be expired (§2: the provider should accept it): both are minted
-     * here by the issuer of #8 and verified through the JWS bridge of the core, as the endpoint will.
+     * OIDC RP-Initiated Logout 1.0 §2
      */
     #[Test]
     #[DataProvider('provideIdTokensOidcLoginHolds')]
@@ -577,21 +497,31 @@ final class EndSessionHandlerTest extends TestCase
     {
         // Given
         $jwts = new Jwts($this->tenant);
-        $issuer = new JwtIdTokenIssuer($jwts->signer, new PublicSubjectIdentifierResolver(), new StandardClaimsProvider(), Algorithms::all());
+        $issuer = new JwtIdTokenIssuer($jwts->documents, Subjects::publicKind(), new StandardClaimsProvider(), Algorithms::all());
         $accessToken = new AccessToken('jHkWEdUXMU1BwAsC4vtUsZwnNvTIxEl0z9K3vx5KF0Y', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
-        $refreshToken = $this->refreshToken('current', $this->session);
+        $refreshToken = Tokens::refreshToken('current', $this->client, $this->session, Fixtures::now());
         $authorization = $refreshed
-            ? GrantedAuthorization::fromRefreshToken($refreshToken, null)
-            : GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now()));
-        $idToken = $issuer->issue($authorization, $accessToken, Fixtures::now());
+            ? UserAuthorization::fromRefreshToken(Grants::refreshToken(), $refreshToken, null)
+            : UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+                'the-code',
+                $this->client,
+                $this->session,
+                Fixtures::now(),
+            ));
+        $idToken = $issuer->issue($authorization, $accessToken, $issuer->address($authorization->client), Fixtures::now());
         $this->clock->sleep($secondsLater);
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
         $parser = new EndSessionRequestParser($clients, new IdTokenHintVerifier(new JwtLibraryJwsVerifier($jwts->keys, Algorithms::all())));
-        $query = http_build_query([
-            'id_token_hint' => $idToken,
-            'post_logout_redirect_uri' => 'https://demo.localhost/',
-        ], '', '&', PHP_QUERY_RFC3986);
+        $query = http_build_query(
+            [
+                'id_token_hint' => $idToken,
+                'post_logout_redirect_uri' => 'https://demo.localhost/',
+            ],
+            '',
+            '&',
+            PHP_QUERY_RFC3986,
+        );
 
         // When
         $decision = $this->handler->begin($parser->parse($this->tenant, self::parameters($query)), $this->session, $this->context);
@@ -601,7 +531,6 @@ final class EndSessionHandlerTest extends TestCase
         static::assertSame($this->session, $decision->endedSession);
         static::assertSame('https://demo.localhost/', $decision->redirect?->toUri(), 'no state was sent, none comes back');
         static::assertTrue($this->session->hasEnded());
-        static::assertTrue($refreshToken->isRevoked());
         static::assertCount(1, $this->events->of(AuthenticationSessionEnded::class));
     }
 
@@ -616,8 +545,6 @@ final class EndSessionHandlerTest extends TestCase
     }
 
     /**
-     * The query string as the integration will hand it over: parsed by PHP, names as strings.
-     *
      * @return array<string, mixed>
      */
     private static function parameters(string $query): array
@@ -633,22 +560,11 @@ final class EndSessionHandlerTest extends TestCase
 
     private function request(?IdTokenHint $hint, ?string $state = null): EndSessionRequest
     {
-        return new EndSessionRequest($this->tenant, $this->client, $hint, $this->client->postLogoutRedirectUris[0], $state);
+        return new EndSessionRequest($this->tenant, $this->client, $hint, $this->client->registration->postLogoutRedirectUris[0], $state);
     }
 
     private function hint(AuthenticationSession $session): IdTokenHint
     {
         return new IdTokenHint($session->user->subject, ['oidc-demo'], $session->id);
-    }
-
-    /**
-     * A refresh token of the session, issued at the fixture's "now" plus an offset, saved.
-     */
-    private function refreshToken(string $value, AuthenticationSession $session, ?RefreshTokenFamily $family = null, string $issuedOffset = '+0 seconds'): RefreshToken
-    {
-        $token = Tokens::refreshToken($value, $this->client, $session, Fixtures::now()->modify($issuedOffset), $family);
-        $this->refreshTokens->save($token);
-
-        return $token;
     }
 }

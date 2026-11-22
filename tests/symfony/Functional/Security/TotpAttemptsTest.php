@@ -2,34 +2,32 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Security;
+namespace App\Tests\Symfony\Functional\Security;
 
 use DateTimeImmutable;
-use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Heidi\Core\Application\Authentication\AuthenticationFailedException;
-use Heidi\Core\Application\Totp\TotpAuthentication;
-use Heidi\Core\Application\Totp\TotpEnrolment;
-use Heidi\Core\Domain\Credential\BackupCode;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
-use Heidi\Core\Domain\Credential\TotpCredential;
-use Heidi\Core\Domain\Credential\TotpSecret;
-use Heidi\Core\Domain\Event\AuthenticationFailureReason;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\CodeAttemptLimiterInterface;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\PasswordHasherInterface;
-use Heidi\Core\Port\SecretSealerInterface;
-use Heidi\Core\Port\TotpAlgorithmInterface;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Totps;
+use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
+use Beffroi\Core\Application\Authentication\AuthenticationFailedException;
+use Beffroi\Core\Application\Totp\TotpAuthentication;
+use Beffroi\Core\Application\Totp\TotpEnrolment;
+use Beffroi\Core\Domain\Credential\BackupCode;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Domain\Credential\TotpCredential;
+use Beffroi\Core\Domain\Credential\TotpSecret;
+use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\CodeAttemptLimiterInterface;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\PasswordHasherInterface;
+use Beffroi\Core\Port\SecretSealerInterface;
+use Beffroi\Core\Port\TotpAlgorithmInterface;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Totps;
 use function intdiv;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §3.4, decision 0006: the attempts at a code are counted by the rate limiter of Symfony
- * the bundle declares, five in a sliding window of a minute, the sixth refused whatever the code; the
- * TOTP enrolled and verified through the services of the kernel, the secret sealed by its KMS.
+ * Architecture §3.4, Decision 0006
  */
 final class TotpAttemptsTest extends DatabaseTestCase
 {
@@ -38,23 +36,27 @@ final class TotpAttemptsTest extends DatabaseTestCase
     private TotpSecret $secret;
 
     /**
-     * A TOTP enrolled an hour ago on the secret of RFC 6238, sealed by the KMS of the kernel; the backup
-     * codes hashed by the hasher of the suite, the tests that verify one enrolling through the kernel.
+     * The secret of the TOTP is the one of RFC 6238.
      */
     protected function setUp(): void
     {
         parent::setUp();
         $this->alice = self::user();
         $this->secret = Totps::secret();
-        $sealed = self::service('test.heidi.secret_sealer', SecretSealerInterface::class)->seal(self::tenant(), $this->secret->bytes);
-        self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
-            ->save(new TotpCredential(Uuid::v7(), $this->alice, $sealed, Totps::credential($this->alice, new FakePasswordHasher())->backupCodes, intdiv(new DateTimeImmutable('-1 hour')->getTimestamp(), TotpCredential::PERIOD), new DateTimeImmutable('-1 hour')));
+        $sealed = self::service('test.beffroi.secret_sealer', SecretSealerInterface::class)->seal(self::tenant(), $this->secret->bytes);
+        self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)
+            ->save(
+                new TotpCredential(
+                    Uuid::v7(),
+                    $this->alice,
+                    $sealed,
+                    Totps::credential($this->alice, new FakePasswordHasher())->backupCodes,
+                    intdiv(new DateTimeImmutable('-1 hour')->getTimestamp(), TotpCredential::PERIOD),
+                    new DateTimeImmutable('-1 hour'),
+                ),
+            );
     }
 
-    /**
-     * The whole enrolment through the services of the kernel: the secret sealed by its KMS, the backup
-     * codes hashed by its hasher, the step of the first code spent.
-     */
     #[Test]
     public function theEnrolmentThroughTheKernelSealsTheSecretUnderItsKmsAndHashesTheCodes(): void
     {
@@ -69,11 +71,20 @@ final class TotpAttemptsTest extends DatabaseTestCase
 
         // Then
         static::assertStringNotContainsString($provisioning->secret->bytes, $totp->sealedSecret);
-        static::assertSame($provisioning->secret->bytes, self::service('test.heidi.secret_sealer', SecretSealerInterface::class)->unseal(self::tenant(), $totp->sealedSecret));
+        static::assertSame(
+            $provisioning->secret->bytes,
+            self::service('test.beffroi.secret_sealer', SecretSealerInterface::class)->unseal(self::tenant(), $totp->sealedSecret),
+        );
         static::assertSame(intdiv($aStepAgo->getTimestamp(), TotpCredential::PERIOD), $totp->lastAcceptedStep);
-        static::assertSame(PasswordAlgorithm::Argon2id, $totp->backupCodes[0]->hash->algorithm);
-        static::assertTrue(self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->verify($totp->backupCodes[0]->hash, BackupCode::normalize($provisioning->backupCodes[0])));
-        static::assertSame($totp, self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($bob, TotpCredential::class)[0] ?? null);
+        static::assertSame(Argon2id::NAME, $totp->backupCodes[0]->hash->algorithm->name());
+        static::assertTrue(
+            self::service('test.beffroi.password_hasher', PasswordHasherInterface::class)
+                ->verify($totp->backupCodes[0]->hash, BackupCode::normalize($provisioning->backupCodes[0])),
+        );
+        static::assertSame(
+            $totp,
+            self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($bob, TotpCredential::class)[0] ?? null,
+        );
     }
 
     #[Test]
@@ -118,15 +129,11 @@ final class TotpAttemptsTest extends DatabaseTestCase
         static::assertTrue($totp->backupCodes[7]->isSpent());
     }
 
-    /**
-     * Issue #128: the limit read before the secret is opened counts nothing; the five attempts are still
-     * there to be counted.
-     */
     #[Test]
     public function readingTheLimitCountsNoAttempt(): void
     {
         // Given
-        $attempts = self::service('test.heidi.code_attempts', CodeAttemptLimiterInterface::class);
+        $attempts = self::service('test.beffroi.code_attempts', CodeAttemptLimiterInterface::class);
         for ($read = 1; $read <= 6; ++$read) {
             static::assertTrue($attempts->mayAttempt($this->alice));
         }
@@ -145,7 +152,7 @@ final class TotpAttemptsTest extends DatabaseTestCase
     public function theLimitReadIsTheLimitCounted(): void
     {
         // Given
-        $attempts = self::service('test.heidi.code_attempts', CodeAttemptLimiterInterface::class);
+        $attempts = self::service('test.beffroi.code_attempts', CodeAttemptLimiterInterface::class);
         for ($attempt = 1; $attempt <= 5; ++$attempt) {
             $attempts->attempt($this->alice);
         }
@@ -172,7 +179,8 @@ final class TotpAttemptsTest extends DatabaseTestCase
 
     private function codeAt(DateTimeImmutable $at): string
     {
-        return self::service('test.heidi.totp_algorithm', TotpAlgorithmInterface::class)->codeAt($this->secret, intdiv($at->getTimestamp(), TotpCredential::PERIOD));
+        return self::service('test.beffroi.totp_algorithm', TotpAlgorithmInterface::class)
+            ->codeAt($this->secret, intdiv($at->getTimestamp(), TotpCredential::PERIOD));
     }
 
     private function failToAuthenticate(User $user, string $code): AuthenticationFailedException
@@ -188,11 +196,11 @@ final class TotpAttemptsTest extends DatabaseTestCase
 
     private static function enrolment(): TotpEnrolment
     {
-        return self::service('test.heidi.totp_enrolment', TotpEnrolment::class);
+        return self::service('test.beffroi.totp_enrolment', TotpEnrolment::class);
     }
 
     private static function authentication(): TotpAuthentication
     {
-        return self::service('test.heidi.totp_authentication', TotpAuthentication::class);
+        return self::service('test.beffroi.totp_authentication', TotpAuthentication::class);
     }
 }

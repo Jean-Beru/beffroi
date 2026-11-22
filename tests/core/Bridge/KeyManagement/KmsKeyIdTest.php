@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Bridge\KeyManagement;
+namespace Beffroi\Core\Tests\Bridge\KeyManagement;
 
-use Heidi\Core\Bridge\KeyManagement\KmsKeyId;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Bridge\KeyManagement\KmsKeyId;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Architecture §5.1: "{tenant}" in the KMS key identifier stands for the slug of the tenant.
+ * Architecture §5.1
  */
 final class KmsKeyIdTest extends TestCase
 {
@@ -18,7 +18,7 @@ final class KmsKeyIdTest extends TestCase
     public function thePlaceholderIsTheSlugOfTheTenant(): void
     {
         // When / Then
-        static::assertSame('heidi-acme', new KmsKeyId('heidi-{tenant}')->of(Fixtures::tenant()));
+        static::assertSame('beffroi-acme', new KmsKeyId('beffroi-{tenant}')->of(Fixtures::tenant()));
     }
 
     #[Test]
@@ -26,5 +26,18 @@ final class KmsKeyIdTest extends TestCase
     {
         // When / Then
         static::assertSame('signing', new KmsKeyId('signing')->of(Fixtures::tenant('globex', 'https://id.globex.example')));
+    }
+
+    /**
+     * Decision 0018
+     */
+    #[Test]
+    public function theSlugAloneResolvesTheSameIdentifier(): void
+    {
+        // Given
+        $pattern = new KmsKeyId('beffroi-{tenant}');
+
+        // When / Then
+        static::assertSame($pattern->of(Fixtures::tenant('globex', 'https://id.globex.example')), $pattern->forSlug('globex'));
     }
 }

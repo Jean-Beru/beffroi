@@ -2,28 +2,25 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use function array_map;
-use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Oidc\Domain\EndSession\LogoutToken;
-use Heidi\Oidc\Domain\Event\LogoutTokenIssued;
+use App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Oidc\Domain\EndSession\LogoutToken;
+use Beffroi\Oidc\Domain\Event\LogoutTokenIssued;
 use PHPUnit\Framework\Attributes\Test;
 use function sort;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Back-Channel Logout 1.0 §2.4 and §2.6, architecture §4.9: a session that ends through the end session
- * endpoint leaves one logout token per client it signed in that registered a URI, and none for the
- * others. What carries them to those URIs is not this test (architecture §5.6).
+ * Back-Channel Logout 1.0 §2.4, §2.6, Architecture §4.9
  */
 final class BackChannelLogoutTest extends BrowserTestCase
 {
     /**
-     * §2.6: three clients of the session hold a token and declare a back-channel logout URI; the native
-     * client declares none and is not told.
+     * Back-Channel Logout 1.0 §2.6
      */
     #[Test]
     public function everyClientOfTheSessionThatRegisteredAUriGetsALogoutToken(): void
@@ -39,7 +36,7 @@ final class BackChannelLogoutTest extends BrowserTestCase
     }
 
     /**
-     * §2.6: one token per client, whatever the number of times that client signed in during the session.
+     * Back-Channel Logout 1.0 §2.6
      */
     #[Test]
     public function aClientThatSignedInTwiceIsToldOnce(): void
@@ -58,8 +55,7 @@ final class BackChannelLogoutTest extends BrowserTestCase
     }
 
     /**
-     * §2.4: the token is addressed to its client, names the session that ended, and is the security event
-     * token of the specification, not an ID token.
+     * Back-Channel Logout 1.0 §2.4
      */
     #[Test]
     public function theTokenNamesTheClientAndTheSessionThatEnded(): void
@@ -74,7 +70,7 @@ final class BackChannelLogoutTest extends BrowserTestCase
 
         // Then
         [$issued] = self::logoutTokens();
-        static::assertSame('oidc-demo', $issued->client->clientId);
+        static::assertSame('oidc-demo', $issued->clientId);
         static::assertSame('https://demo.test/backchannel-logout', $issued->logoutUri->value);
         $claims = self::claimsOf($issued->token);
         static::assertSame('https://op.test', $claims['iss']);
@@ -88,8 +84,7 @@ final class BackChannelLogoutTest extends BrowserTestCase
     }
 
     /**
-     * §2.6: a session the user refuses to end tells nobody; the announcement is made on the end, never on
-     * the request that asks for one.
+     * Back-Channel Logout 1.0 §2.6
      */
     #[Test]
     public function aLogoutTheUserRefusesTellsNobody(): void
@@ -106,8 +101,7 @@ final class BackChannelLogoutTest extends BrowserTestCase
     }
 
     /**
-     * A browser that holds no session ends nothing, so there is nothing to announce (§4 of RP-Initiated
-     * Logout: the request is idempotent).
+     * RP-Initiated Logout §4
      */
     #[Test]
     public function aLogoutWithoutASessionTellsNobody(): void
@@ -120,10 +114,6 @@ final class BackChannelLogoutTest extends BrowserTestCase
         static::assertSame([], self::clientsTold());
     }
 
-    /**
-     * The session of alice, signed in by the three clients that registered a back-channel logout URI and
-     * by the native one, which registered none.
-     */
     private function signedInWithFourClients(): User
     {
         $user = self::user('alice');
@@ -135,6 +125,28 @@ final class BackChannelLogoutTest extends BrowserTestCase
         $this->signInClient('legacy-app', 'https://legacy.test/callback', 'legacy-secret-of-at-least-32-characters-long');
 
         return $user;
+    }
+
+    /**
+     * OIDC Core §8.1
+     */
+    #[Test]
+    public function theTokenOfAPairwiseClientNamesTheUserUnderTheIdentifierThatClientSees(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        self::signingKey();
+        $this->signInClient('pairwise-app', 'https://pairwise.test/callback', 'pairwise-secret-of-at-least-32-characters');
+        $subject = self::claimsOf(self::string(self::json($this->browser->getResponse())['id_token']))['sub'];
+
+        // When
+        $this->logOut();
+
+        // Then
+        [$issued] = self::logoutTokens();
+        static::assertSame('pairwise-app', $issued->clientId);
+        static::assertSame($subject, self::claimsOf($issued->token)['sub']);
+        static::assertNotSame('alice-subject', $subject);
     }
 
     private function logOut(): void
@@ -150,11 +162,11 @@ final class BackChannelLogoutTest extends BrowserTestCase
     }
 
     /**
-     * @return list<string> sorted, the order of the grants being the repository's business
+     * @return list<string> sorted
      */
     private static function clientsTold(): array
     {
-        $told = array_map(static fn (LogoutTokenIssued $event): string => $event->client->clientId, self::logoutTokens());
+        $told = array_map(static fn (LogoutTokenIssued $event): string => $event->clientId, self::logoutTokens());
         sort($told);
 
         return $told;

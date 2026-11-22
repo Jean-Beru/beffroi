@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Messenger;
+namespace App\Tests\Symfony\Functional\Messenger;
 
 use function array_shift;
 use Closure;
@@ -21,11 +21,6 @@ use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 use function trim;
 
-/**
- * The relying parties of the test kernel seen from the provider: the HTTP client of the container
- * replaced by one that answers what the test lined up, one answer per attempt, and keeps what it was
- * sent. The last answer given serves every attempt after it, so that a client that is down stays down.
- */
 final class LogoutEndpoints
 {
     /**
@@ -42,10 +37,7 @@ final class LogoutEndpoints
     }
 
     /**
-     * What the clients answer from now on, one per attempt: a test says it without rebooting the kernel,
-     * so that the container keeps the endpoints it was handed.
-     *
-     * @param list<Closure(): ResponseInterface> $answers at least one
+     * @param list<Closure(): ResponseInterface> $answers one per attempt, at least one
      */
     public function willAnswer(array $answers): void
     {
@@ -54,9 +46,7 @@ final class LogoutEndpoints
     }
 
     /**
-     * Back-Channel Logout 1.0 §2.8: 200 when the relying party logged the session out, 400 when it found
-     * the request invalid, 501 when it does not implement the logout, 5xx when it failed for its own
-     * reasons.
+     * Back-Channel Logout 1.0 §2.8
      *
      * @return Closure(): ResponseInterface
      */
@@ -68,7 +58,7 @@ final class LogoutEndpoints
     }
 
     /**
-     * A client that answers a redirection, which no outbound request follows (decision 0006).
+     * Decision 0006
      *
      * @return Closure(): ResponseInterface
      */
@@ -83,8 +73,6 @@ final class LogoutEndpoints
     }
 
     /**
-     * A client that never answers: what the transport of Symfony throws when the request runs out of time.
-     *
      * @return Closure(): ResponseInterface
      */
     public static function timingOut(): Closure
@@ -110,15 +98,18 @@ final class LogoutEndpoints
             'headers' => self::headersOf($options),
             'parameters' => self::parametersOf($options['body'] ?? ''),
         ];
-        $answer = count($this->answers) > 1 ? array_shift($this->answers) : ($this->answers[0] ?? null);
+        $answer = count($this->answers) > 1 ? array_shift($this->answers) : $this->answers[0] ?? null;
 
-        return $answer === null ? new MockResponse('', [
-            'http_code' => 200,
-        ]) : $answer();
+        return (
+            $answer === null
+                ? new MockResponse('', [
+                    'http_code' => 200,
+                ]) : $answer()
+        );
     }
 
     /**
-     * The form the provider posted (Back-Channel Logout 1.0 §2.5).
+     * Back-Channel Logout 1.0 §2.5
      *
      * @return array<string, mixed>
      */
@@ -150,7 +141,8 @@ final class LogoutEndpoints
             if (! is_string($line)) {
                 continue;
             }
-            [$name, $value] = explode(':', $line, 2) + [
+            [$name, $value] = explode(':', $line, 2)
+            + [
                 1 => '',
             ];
             $headers[strtolower($name)][] = trim($value);

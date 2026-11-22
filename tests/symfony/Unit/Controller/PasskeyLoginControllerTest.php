@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Controller;
+namespace App\Tests\Symfony\Unit\Controller;
 
-use Heidi\Bundle\Controller\PasskeyLoginController;
-use Heidi\Bundle\Http\InteractionPages;
+use App\Controller\PasskeyLoginController;
+use App\Http\InteractionPages;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -20,8 +20,7 @@ use Twig\Environment;
 use Twig\Loader\ArrayLoader;
 
 /**
- * Architecture §5.4: the check path of the passkey login, reached only when no firewall took the POST,
- * sends the browser back to the login page and verifies nothing.
+ * Architecture §5.4
  */
 final class PasskeyLoginControllerTest extends TestCase
 {
@@ -30,7 +29,7 @@ final class PasskeyLoginControllerTest extends TestCase
     protected function setUp(): void
     {
         $routes = new RouteCollection();
-        $routes->add('heidi_interaction_login', new Route('/login'));
+        $routes->add('beffroi_interaction_login', new Route('/login'));
         $router = new Router(new ClosureLoader(), static fn (): RouteCollection => $routes, [], new RequestContext());
         $this->controller = new PasskeyLoginController(new InteractionPages(new Environment(new ArrayLoader()), $router));
     }

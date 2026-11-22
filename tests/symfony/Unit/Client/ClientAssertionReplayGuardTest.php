@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Client;
+namespace App\Tests\Symfony\Unit\Client;
 
 use DateTimeImmutable;
-use Heidi\Bundle\Client\ClientAssertionReplayGuard;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Tests\Fixture\Clients;
+use App\Cache\SeenOnce;
+use App\Client\ClientAssertionReplayGuard;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
 /**
- * RFC 7523 §3 and §4: an assertion authenticates once, and the "jti" that says so is remembered until it
- * expires.
+ * RFC 7523 §3, §4
  */
 final class ClientAssertionReplayGuardTest extends TestCase
 {
@@ -24,8 +24,8 @@ final class ClientAssertionReplayGuardTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->guard = new ClientAssertionReplayGuard(new ArrayAdapter());
-        // the pool expires an item against the wall clock, so the assertion expires ahead of it
+        $this->guard = new ClientAssertionReplayGuard(new SeenOnce(new ArrayAdapter()));
+        // The pool expires its items against the wall clock, so the assertion expires an hour ahead of it.
         $this->expiresAt = new DateTimeImmutable('+1 hour');
     }
 
@@ -48,7 +48,7 @@ final class ClientAssertionReplayGuardTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: a "jti" is unique to the client that issued it, and two clients may use the same one.
+     * RFC 7523 §3
      */
     #[Test]
     public function twoClientsMayUseTheSameIdentifier(): void

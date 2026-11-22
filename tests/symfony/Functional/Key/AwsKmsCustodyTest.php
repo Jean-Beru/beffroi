@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Key;
+namespace App\Tests\Symfony\Functional\Key;
 
 use AsyncAws\Core\Configuration;
 use AsyncAws\Core\Exception\Http\ClientException;
@@ -10,11 +10,11 @@ use AsyncAws\Kms\Input\DecryptRequest;
 use AsyncAws\Kms\KmsClient;
 use function base64_encode;
 use function getenv;
-use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Heidi\Core\Application\Key\SigningKeyRotator;
-use Heidi\Core\Domain\Key\SigningKey;
-use Heidi\Core\Port\SigningKeyRepositoryInterface;
-use Heidi\Core\Tests\Fixture\Algorithms;
+use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
+use Beffroi\Core\Application\Key\KeyTakeOver;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Port\TenantKeyRepositoryInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
 use function is_string;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
@@ -24,74 +24,55 @@ use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\KeyManagement\Dsn;
 use Symfony\Component\KeyManagement\Envelope;
 
-/**
- * Issue #58, against an AWS KMS (Floci on the development stack, the same API): the master key of the
- * tenant is the one docker/floci/init.sh creates under the alias the DSN names, and
- * the envelope holds the data key as that KMS wrapped it, bound to the tenant. Skipped unless the kernel
- * seals with AWS KMS: HEIDI_TEST_KMS_DSN is set by whoever runs the suite, pointing at the stack that
- * "castor provision --kms aws" provisioned (the task itself writes HEIDI_KMS_DSN, for the application);
- * every other test of the suite then runs against it too.
- */
 final class AwsKmsCustodyTest extends DatabaseTestCase
 {
     private const string SCHEME = 'aws-kms://';
 
-    private const string ALIAS = 'alias/heidi-default';
+    private const string ALIAS = 'alias/beffroi-default';
 
-    private const string AAD = 'heidi:signing-key:v2:default';
+    private const string AAD = 'beffroi:signing-key:v2:default';
 
     private Dsn $dsn;
 
     protected function setUp(): void
     {
-        $dsn = getenv('HEIDI_TEST_KMS_DSN');
+        $dsn = getenv('BEFFROI_TEST_KMS_DSN');
         if (! is_string($dsn) || ! str_starts_with($dsn, self::SCHEME)) {
-            static::markTestSkipped('The kernel seals with sodium; set HEIDI_TEST_KMS_DSN to an AWS KMS DSN to run this test.');
+            static::markTestSkipped('The kernel seals with sodium; set BEFFROI_TEST_KMS_DSN to an AWS KMS DSN to run this test.');
         }
         parent::setUp();
         $this->dsn = Dsn::fromString($dsn);
     }
 
-    /**
-     * The envelope of a sealed key names the alias of the tenant and carries a data key the KMS wrapped
-     * under it: what the KMS hands back, with the context the envelope bound, is the 32 bytes of the data
-     * key, never the private JWK, which stayed in the process.
-     */
     #[Test]
     public function theDataKeyOfASealedKeyIsWrappedByTheKeyOfTheTenant(): void
     {
         // Given
-        $rotator = self::service('test.heidi.key_rotator', SigningKeyRotator::class);
+        $takeOver = self::service('test.beffroi.key_take_over', KeyTakeOver::class);
 
         // When
-        $rotated = $rotator->rotate(self::tenant(), Algorithms::rs256(), self::context());
+        $rotated = $takeOver->rotate(self::tenant(), Algorithms::rs256(), self::context());
 
         // Then
         $envelope = self::envelopeOf($rotated);
         static::assertSame(self::ALIAS, $envelope->keyId);
         static::assertIsString($envelope->wrappedDek);
-        $unwrapped = $this->kms()
-            ->decrypt(new DecryptRequest([
-                'KeyId' => self::ALIAS,
-                'CiphertextBlob' => $envelope->wrappedDek,
-                'EncryptionContext' => [
-                    'aad' => base64_encode(self::AAD),
-                ],
-            ]));
+        $unwrapped = $this->kms()->decrypt(new DecryptRequest([
+            'KeyId' => self::ALIAS,
+            'CiphertextBlob' => $envelope->wrappedDek,
+            'EncryptionContext' => [
+                'aad' => base64_encode(self::AAD),
+            ],
+        ]));
         static::assertSame(32, strlen((string) $unwrapped->getPlaintext()));
         static::assertStringContainsString(':key/', (string) $unwrapped->getKeyId());
     }
 
-    /**
-     * The binding to the tenant is enforced by the KMS itself: the data key does not unwrap under the
-     * context of another tenant, whoever holds the credential.
-     */
     #[Test]
     public function theKmsRefusesToUnwrapTheDataKeyUnderAnotherTenant(): void
     {
         // Given
-        $rotated = self::service('test.heidi.key_rotator', SigningKeyRotator::class)
-            ->rotate(self::tenant(), Algorithms::rs256(), self::context());
+        $rotated = self::service('test.beffroi.key_take_over', KeyTakeOver::class)->rotate(self::tenant(), Algorithms::rs256(), self::context());
         $envelope = self::envelopeOf($rotated);
 
         // Then
@@ -104,15 +85,12 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
                 'KeyId' => self::ALIAS,
                 'CiphertextBlob' => (string) $envelope->wrappedDek,
                 'EncryptionContext' => [
-                    'aad' => base64_encode('heidi:signing-key:v2:other'),
+                    'aad' => base64_encode('beffroi:signing-key:v2:other'),
                 ],
-            ]))->getPlaintext();
+            ]))
+            ->getPlaintext();
     }
 
-    /**
-     * The key docker/floci/init.sh creates: symmetric, for encryption only, enabled, behind the alias
-     * the OP names, so that a new key behind the same alias changes nothing for it.
-     */
     #[Test]
     public function theKeyOfTheTenantIsSymmetricAndEncryptsOnly(): void
     {
@@ -126,18 +104,14 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
         static::assertSame('AWS_KMS', $key['Origin'] ?? null);
     }
 
-    private static function envelopeOf(SigningKey $key): Envelope
+    private static function envelopeOf(TenantKey $key): Envelope
     {
-        $stored = self::service('test.heidi.keys', SigningKeyRepositoryInterface::class)
+        $stored = self::service('test.beffroi.keys', TenantKeyRepositoryInterface::class)
             ->find(self::tenant(), $key->kid) ?? static::fail('The key is stored.');
 
         return Envelope::fromBytes($stored->sealedPrivateJwk);
     }
 
-    /**
-     * A client on the KMS of the DSN, as the bridge builds it: the region from the option, the credentials
-     * from the user information, the host as the endpoint over the scheme of the option.
-     */
     private function kms(): KmsClient
     {
         return new KmsClient(Configuration::create([
@@ -149,8 +123,7 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
     }
 
     /**
-     * DescribeKey, which async-aws/kms does not expose: the JSON protocol of KMS, the target in a header.
-     * The credential of the DSN names the region and the account, which is all the emulator reads of it.
+     * Sends DescribeKey by hand: async-aws/kms does not expose it.
      *
      * @return array<mixed>
      */
@@ -160,7 +133,11 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
             'headers' => [
                 'Content-Type' => 'application/x-amz-json-1.1',
                 'X-Amz-Target' => 'TrentService.DescribeKey',
-                'Authorization' => sprintf('AWS4-HMAC-SHA256 Credential=%s/20260101/%s/kms/aws4_request, SignedHeaders=host, Signature=unsigned', (string) $this->dsn->user, $this->option('region')),
+                'Authorization' => sprintf(
+                    'AWS4-HMAC-SHA256 Credential=%s/20260101/%s/kms/aws4_request, SignedHeaders=host, Signature=unsigned',
+                    (string) $this->dsn->user,
+                    $this->option('region'),
+                ),
             ],
             'json' => [
                 'KeyId' => $keyId,

@@ -2,20 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Domain\Credential;
+namespace Beffroi\Core\Tests\Domain\Credential;
 
 use function array_filter;
 use function array_map;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Credential\PasskeyUserHandle;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Exception\LogicException;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Domain\Credential\AuthenticatorTransport;
+use Beffroi\Core\Domain\Credential\Attestation\AttestationEvidence;
+use Beffroi\Core\Domain\Credential\Attestation\VerifiedRegistration;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\LogicException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -31,8 +33,7 @@ use Webauthn\PublicKeyCredentialDescriptor;
 use Webauthn\TrustPath\EmptyTrustPath;
 
 /**
- * Architecture §3.1: the passkey next to the password in the identity model of decision 0002, and what
- * an assertion proves (§3.2).
+ * Architecture §3.1, §3.2, Decision 0002
  */
 final class PasskeyCredentialTest extends TestCase
 {
@@ -41,8 +42,8 @@ final class PasskeyCredentialTest extends TestCase
     {
         // Given
         $user = Fixtures::user();
-        $handle = PasskeyUserHandle::generate();
-        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$x'), Fixtures::now());
+        $handle = Fixtures::userHandle();
+        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(new Argon2id(), '$argon2id$x'), Fixtures::now());
 
         // When
         $key = Fixtures::passkey($user, 'YubiKey 5', 'credential-one', $handle);
@@ -75,7 +76,7 @@ final class PasskeyCredentialTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §6.3.2: the credential ID is what a party presents a passkey by.
+     * WebAuthn Level 3 §6.3.2
      */
     #[Test]
     public function itIsPresentedByItsCredentialId(): void
@@ -89,8 +90,22 @@ final class PasskeyCredentialTest extends TestCase
     }
 
     /**
-     * The public key is the only key material: no property of the class, public or not, holds anything else.
+     * WebAuthn Level 3 §5.8.4, §5.2.1
      */
+    #[Test]
+    public function itIsReachedThroughTheTransportsTheSpecificationDefines(): void
+    {
+        // Given
+        $passkey = Fixtures::passkey(transports: ['hybrid', 'cable', 'internal', 'usb']);
+
+        // When
+        $reachedThrough = $passkey->reachedThrough;
+
+        // Then
+        static::assertSame([AuthenticatorTransport::Hybrid, AuthenticatorTransport::Internal, AuthenticatorTransport::Usb], $reachedThrough);
+        static::assertSame(['hybrid', 'cable', 'internal', 'usb'], $passkey->transports);
+    }
+
     #[Test]
     public function itHoldsThePublicKeyAndNoPrivateMember(): void
     {
@@ -102,7 +117,10 @@ final class PasskeyCredentialTest extends TestCase
 
         // Then
         static::assertContains('publicKey', $names);
-        static::assertSame([], array_filter($names, static fn (string $name): bool => str_contains(strtolower($name), 'private') || str_contains(strtolower($name), 'secret')));
+        static::assertSame(
+            [],
+            array_filter($names, static fn (string $name): bool => str_contains(strtolower($name), 'private') || str_contains(strtolower($name), 'secret')),
+        );
         static::assertSame([], array_filter($properties, static fn (ReflectionProperty $property): bool => $property->isPrivate() || $property->isProtected()));
     }
 
@@ -111,10 +129,10 @@ final class PasskeyCredentialTest extends TestCase
      */
     #[Test]
     #[DataProvider('provideFlags')]
-    public function anAssertionProvesTheKeyAndThePresenceOfTheUserByItsFlags(AuthenticatorData $data, array $expected): void
+    public function anAssertionProvesTheKeyOfThePasskeyAndThePresenceItsFlagsSay(bool $synced, AuthenticatorData $data, array $expected): void
     {
         // Given
-        $passkey = Fixtures::passkey();
+        $passkey = Fixtures::passkey(backupEligible: $synced, backedUp: $synced);
 
         // When
         $methods = $passkey->methods($data);
@@ -124,21 +142,20 @@ final class PasskeyCredentialTest extends TestCase
     }
 
     /**
-     * RFC 8176 §2 against the flags of WebAuthn Level 3 §6.1: the backup eligible flag tells a synced
-     * passkey from a device-bound key, the user presence flag says a user was there.
+     * RFC 8176 §2, WebAuthn Level 3 §6.1, §6.1.3
      *
-     * @return iterable<string, array{AuthenticatorData, list<string>}>
+     * @return iterable<string, array{bool, AuthenticatorData, list<string>}>
      */
     public static function provideFlags(): iterable
     {
-        yield 'device-bound key, user present' => [Fixtures::authenticatorData(userPresent: true, backupEligible: false), ['hwk', 'user']];
-        yield 'device-bound key, no presence test' => [Fixtures::authenticatorData(userPresent: false, backupEligible: false), ['hwk']];
-        yield 'synced passkey, user present' => [Fixtures::authenticatorData(userPresent: true, backupEligible: true, backedUp: true), ['swk', 'user']];
-        yield 'synced passkey, no presence test' => [Fixtures::authenticatorData(userPresent: false, backupEligible: true), ['swk']];
+        yield 'device-bound key, user present' => [false, Fixtures::authenticatorData(userPresent: true), ['hwk', 'user']];
+        yield 'device-bound key, no presence test' => [false, Fixtures::authenticatorData(userPresent: false), ['hwk']];
+        yield 'synced passkey, user present' => [true, Fixtures::authenticatorData(userPresent: true, backupEligible: true, backedUp: true), ['swk', 'user']];
+        yield 'synced passkey, no presence test' => [true, Fixtures::authenticatorData(userPresent: false, backupEligible: true), ['swk']];
     }
 
     /**
-     * WebAuthn Level 3 §6.2.3, NIST SP 800-63B §5.1.9: a verified user unlocked the key with a second factor.
+     * WebAuthn Level 3 §6.2.3, NIST SP 800-63B §3.1.7.1
      */
     #[Test]
     public function aVerifiedUserAddsTheMultipleFactorsMethod(): void
@@ -154,9 +171,7 @@ final class PasskeyCredentialTest extends TestCase
     }
 
     /**
-     * Architecture §4.3: before any ceremony, a passkey may prove the key as its backup eligibility says
-     * and the presence of the user, which WebAuthn Level 3 §7.2 (step 16) requires of every assertion;
-     * not "mfa", which the authenticator decides at each assertion.
+     * Architecture §4.3, WebAuthn Level 3 §7.2 step 16
      */
     #[Test]
     #[DataProvider('provideBackupEligibility')]
@@ -178,9 +193,6 @@ final class PasskeyCredentialTest extends TestCase
         yield 'synced passkey' => [true, 'swk'];
     }
 
-    /**
-     * A revoked passkey authenticates nobody: it may prove nothing, and a step-up does not count on it.
-     */
     #[Test]
     public function aRevokedOneMayProveNothing(): void
     {
@@ -197,14 +209,27 @@ final class PasskeyCredentialTest extends TestCase
     public function itTellsASignCountRegressionTheWayWebauthnLibDoes(int $stored, int $received, bool $regresses): void
     {
         // Given
-        $passkey = new PasskeyCredential(Uuid::v7(), Fixtures::user(), 'key', 'credential-id', 'cose', $stored, [], false, false, Uuid::v4(), PasskeyUserHandle::generate(), Fixtures::now());
+        $passkey = new PasskeyCredential(
+            Uuid::v7(),
+            Fixtures::user(),
+            'key',
+            'credential-id',
+            'cose',
+            $stored,
+            [],
+            false,
+            false,
+            Uuid::v4(),
+            Fixtures::userHandle(),
+            Fixtures::now(),
+        );
 
         // When / Then
         static::assertSame($regresses, $passkey->signCountRegresses(Fixtures::authenticatorData(signCount: $received)));
     }
 
     /**
-     * WebAuthn Level 3 §6.1.1; the CheckCounter step of webauthn-lib skips the check when both are zero.
+     * WebAuthn Level 3 §6.1.1
      *
      * @return iterable<string, array{int, int, bool}>
      */
@@ -218,11 +243,14 @@ final class PasskeyCredentialTest extends TestCase
         yield 'back to zero' => [5, 0, true];
     }
 
+    /**
+     * WebAuthn Level 3 §7.2 step 26, §6.1.4
+     */
     #[Test]
     public function aUseRecordsTheCountTheBackupStateAndTheDate(): void
     {
         // Given
-        $passkey = Fixtures::passkey();
+        $passkey = Fixtures::passkey(backupEligible: true);
         $used = new DateTimeImmutable('2026-09-19T08:00:00+00:00');
 
         // When
@@ -233,6 +261,33 @@ final class PasskeyCredentialTest extends TestCase
         static::assertTrue($passkey->backupEligible);
         static::assertTrue($passkey->backedUp);
         static::assertSame($used, $passkey->lastUsedAt);
+    }
+
+    /**
+     * WebAuthn Level 3 §6.1.3
+     */
+    #[Test]
+    #[DataProvider('provideFlippedBackupEligibility')]
+    public function aUseThatChangesTheBackupEligibilityIsRefused(bool $enrolledWith): void
+    {
+        // Given
+        $passkey = Fixtures::passkey(backupEligible: $enrolledWith, backedUp: $enrolledWith);
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The backup eligibility of a passkey is the one it was enrolled with and never changes (WebAuthn Level 3 §6.1.3).');
+
+        // When
+        $passkey->recordUse(Fixtures::authenticatorData(backupEligible: ! $enrolledWith), Fixtures::now());
+    }
+
+    /**
+     * @return iterable<string, array{bool}>
+     */
+    public static function provideFlippedBackupEligibility(): iterable
+    {
+        yield 'a synced passkey whose assertion says the key is bound to its authenticator' => [true];
+        yield 'a device-bound key whose assertion says the key is synced' => [false];
     }
 
     #[Test]
@@ -309,15 +364,35 @@ final class PasskeyCredentialTest extends TestCase
     {
         // Given
         $user = Fixtures::user();
-        $handle = PasskeyUserHandle::generate();
+        $handle = Fixtures::userHandle();
         $aaguid = Uuid::v4();
-        $record = CredentialRecord::create('credential-id', PublicKeyCredentialDescriptor::CREDENTIAL_TYPE_PUBLIC_KEY, [
-            1 => 'internal',
-            2 => 'hybrid',
-        ], 'none', EmptyTrustPath::create(), $aaguid, 'cose', $handle->value, 3, null, true, true, true);
+        $record = CredentialRecord::create(
+            'credential-id',
+            PublicKeyCredentialDescriptor::CREDENTIAL_TYPE_PUBLIC_KEY,
+            [
+                1 => 'internal',
+                2 => 'hybrid',
+            ],
+            'none',
+            EmptyTrustPath::create(),
+            $aaguid,
+            'cose',
+            $handle->value,
+            3,
+            null,
+            true,
+            true,
+            true,
+        );
 
         // When
-        $passkey = PasskeyCredential::fromRecord(Uuid::v7(), $user, 'Pixel', $record, Fixtures::now());
+        $passkey = PasskeyCredential::fromRecord(
+            Uuid::v7(),
+            $user,
+            'Pixel',
+            new VerifiedRegistration($record, AttestationEvidence::declared()),
+            Fixtures::now(),
+        );
 
         // Then
         static::assertSame('credential-id', $passkey->credentialId);
@@ -335,14 +410,33 @@ final class PasskeyCredentialTest extends TestCase
     public function aRecordWithoutBothBackupFlagsIsRefused(?bool $backupEligible, ?bool $backupStatus): void
     {
         // Given
-        $record = CredentialRecord::create('credential-id', PublicKeyCredentialDescriptor::CREDENTIAL_TYPE_PUBLIC_KEY, [], 'none', EmptyTrustPath::create(), Uuid::v4(), 'cose', str_repeat('h', 64), 0, null, $backupEligible, $backupStatus);
+        $record = CredentialRecord::create(
+            'credential-id',
+            PublicKeyCredentialDescriptor::CREDENTIAL_TYPE_PUBLIC_KEY,
+            [],
+            'none',
+            EmptyTrustPath::create(),
+            Uuid::v4(),
+            'cose',
+            str_repeat('h', 64),
+            0,
+            null,
+            $backupEligible,
+            $backupStatus,
+        );
 
         // Then
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessageIs('A passkey is enrolled with the backup flags of its authenticator data (WebAuthn Level 3 §6.1.3).');
 
         // When
-        PasskeyCredential::fromRecord(Uuid::v7(), Fixtures::user(), 'Pixel', $record, Fixtures::now());
+        PasskeyCredential::fromRecord(
+            Uuid::v7(),
+            Fixtures::user(),
+            'Pixel',
+            new VerifiedRegistration($record, AttestationEvidence::declared()),
+            Fixtures::now(),
+        );
     }
 
     /**

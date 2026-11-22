@@ -2,31 +2,29 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Domain\Credential;
+namespace Beffroi\Core\Tests\Domain\Credential;
 
-use Heidi\Core\Domain\Credential\TotpSecret;
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Bridge\Random\PlatformRandomness;
+use Beffroi\Core\Domain\Credential\TotpSecret;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function str_repeat;
 use function strlen;
 
 /**
- * RFC 4226 §4: the shared secret of a TOTP, 160 bits drawn at random, at least 128.
+ * RFC 4226 §4
  */
 final class TotpSecretTest extends TestCase
 {
     #[Test]
-    public function aGeneratedSecretIsTwentyRandomBytes(): void
+    public function aSecretDrawnAtItsOwnLengthIsTwentyBytes(): void
     {
         // When
-        $first = TotpSecret::generate();
-        $second = TotpSecret::generate();
+        $secret = new TotpSecret(new PlatformRandomness()->bytes(TotpSecret::LENGTH));
 
         // Then
-        static::assertSame(TotpSecret::LENGTH, strlen($first->bytes));
-        static::assertSame(20, strlen($second->bytes));
-        static::assertNotSame($first->bytes, $second->bytes);
+        static::assertSame(20, strlen($secret->bytes));
     }
 
     #[Test]

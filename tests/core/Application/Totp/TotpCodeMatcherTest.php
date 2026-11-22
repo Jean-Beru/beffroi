@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Application\Totp;
+namespace Beffroi\Core\Tests\Application\Totp;
 
 use DateTimeImmutable;
-use Heidi\Core\Application\Totp\TotpCodeMatcher;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Core\Application\Totp\TotpCodeMatcher;
+use Beffroi\Core\Tests\Fixture\Totps;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function substr;
 
 /**
- * RFC 6238 §5.2: a code is looked for at the current step and one step on each side, no further.
+ * RFC 6238 §5.2
  */
 final class TotpCodeMatcherTest extends TestCase
 {
@@ -23,7 +23,6 @@ final class TotpCodeMatcherTest extends TestCase
 
     protected function setUp(): void
     {
-        // the second of a step, so that the drift is one of steps, not of seconds
         $this->now = new DateTimeImmutable('2026-09-20T12:00:15+00:00');
         $this->matcher = new TotpCodeMatcher(Totps::algorithm());
     }
@@ -116,9 +115,6 @@ final class TotpCodeMatcherTest extends TestCase
         static::assertNull($this->matcher->matchingStep(Totps::secret(), $wrong, $this->now));
     }
 
-    /**
-     * The first step there is has no step before it: nothing is asked of the brick for a negative one.
-     */
     #[Test]
     public function theStepBeforeTheEpochIsNotTried(): void
     {

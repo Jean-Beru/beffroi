@@ -2,23 +2,25 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
-use Heidi\Bundle\Doctrine\TenantSynchronizer;
-use Heidi\Bundle\Tenant\TenantFactory;
-use Heidi\Core\Domain\Identity\Address;
-use Heidi\Core\Domain\Identity\EmailAddress;
-use Heidi\Core\Domain\Identity\Profile;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\UserRepositoryInterface;
+use App\Doctrine\TenantSynchronizer;
+use App\Tenant\TenantFactory;
+use Beffroi\Core\Tests\Fixture\Predicates;
+use Beffroi\Core\Domain\Identity\Address;
+use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Identity\Profile;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Identity\UserSource;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §3.4: users found by identifier, by subject and by username within a tenant.
+ * Architecture §3.4
  */
 final class DoctrineUserRepositoryTest extends DatabaseTestCase
 {
@@ -27,7 +29,24 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
     {
         // Given
         $user = User::create(Uuid::v7(), self::tenant(), new Subject('alice-subject'), 'alice', self::now(), new EmailAddress('alice@example.com'), true);
-        $user->updateProfile(new Profile('Alice Example', 'Alice', 'Example', null, 'ali', 'alice', 'https://example.com/alice', 'https://example.com/alice.png', 'https://alice.example', 'female', '1990-01-31', 'Europe/Paris', 'fr-FR'), self::now());
+        $user->updateProfile(
+            new Profile(
+                'Alice Example',
+                'Alice',
+                'Example',
+                null,
+                'ali',
+                'alice',
+                'https://example.com/alice',
+                'https://example.com/alice.png',
+                'https://alice.example',
+                'female',
+                '1990-01-31',
+                'Europe/Paris',
+                'fr-FR',
+            ),
+            self::now(),
+        );
         $user->changePhoneNumber('+33612345678', true, self::now());
         $user->changeAddress(new Address('1 rue de la Paix, 75002 Paris', '1 rue de la Paix', 'Paris', 'Île-de-France', '75002', 'FR'), self::now());
         $user->disable(self::now()->modify('+1 day'));
@@ -95,6 +114,32 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
     }
 
     #[Test]
+    public function whatItsSourceHoldsIsWrittenOnSave(): void
+    {
+        // Given
+        $user = User::create(
+            Uuid::v7(),
+            self::tenant(),
+            new Subject('alice-subject'),
+            'alice',
+            self::now(),
+            source: UserSource::upstream('https://idp.acme.example/saml', ['email', 'given_name']),
+        );
+        self::users()->save($user);
+        self::reload();
+        $found = self::users()->find($user->id) ?? static::fail('The user was not stored.');
+        $found->heldBy(UserSource::upstream('https://idp.acme.example/saml', ['email']), self::now()->modify('+1 hour'));
+        self::users()->save($found);
+        self::reload();
+
+        // When
+        $again = self::users()->find($user->id) ?? static::fail('The user was not stored.');
+
+        // Then
+        static::assertEquals(UserSource::upstream('https://idp.acme.example/saml', ['email']), $again->source);
+    }
+
+    #[Test]
     public function aUserIsFoundBySubjectWithinTheTenant(): void
     {
         // Given
@@ -124,15 +169,69 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Decision 0002: the same username and the same subject in another tenant are another user.
+     * RFC 5321 §2.4
+     */
+    #[Test]
+    #[DataProvider('provideAddressesBobHolds')]
+    public function aUserIsFoundByAddressWithinTheTenant(string $address): void
+    {
+        // Given
+        self::user();
+        $bob = self::user('bob', 'bob-subject');
+        $bob->changeEmail(new EmailAddress('Bob@acme.example'), false, self::now());
+        self::users()->save($bob);
+        self::reload();
+
+        // When
+        $found = self::users()->findAllByEmail(self::tenant(), new EmailAddress($address));
+
+        // Then
+        static::assertCount(1, $found);
+        static::assertTrue($bob->id->equals($found[0]->id));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideAddressesBobHolds(): iterable
+    {
+        yield 'as it was written' => ['Bob@acme.example'];
+        yield 'its domain in another case' => ['Bob@ACME.Example'];
+        // One mailbox however its local part is written, so no second person holds it under another spelling.
+        yield 'its local part in another case' => ['bob@acme.example'];
+    }
+
+    #[Test]
+    public function everyPersonWhoHoldsAnAddressIsFound(): void
+    {
+        // Given
+        $alice = self::user();
+        $alice->changeEmail(new EmailAddress('Shared@acme.example'), false, self::now());
+        self::users()->save($alice);
+        $bob = self::user('bob', 'bob-subject');
+        $bob->changeEmail(new EmailAddress('shared@acme.example'), false, self::now());
+        self::users()->save($bob);
+        self::reload();
+
+        // When
+        $found = self::users()->findAllByEmail(self::tenant(), new EmailAddress('shared@acme.example'));
+
+        // Then
+        static::assertCount(2, $found);
+    }
+
+    /**
+     * Decision 0002
      */
     #[Test]
     public function aUserOfAnotherTenantIsFoundInThatTenant(): void
     {
         // Given
         self::user();
-        $other = new TenantSynchronizer(new TenantFactory('https://other.test', 'other', null, new MockClock(self::now())), self::registry())
-            ->synchronize();
+        $other = new TenantSynchronizer(
+            new TenantFactory('https://other.test', 'other', null, new MockClock(self::now()), Predicates::wired()),
+            self::managers(),
+        )->synchronize();
         $stranger = User::create(Uuid::v7(), $other, new Subject('alice-subject'), 'alice', self::now());
         self::users()->save($stranger);
         self::reload();
@@ -170,6 +269,9 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
         yield 'a username in another case' => [
             static fn (UserRepositoryInterface $users): ?User => $users->findByUsername(self::tenant(), 'ALICE'),
         ];
+        yield 'an unknown address' => [
+            static fn (UserRepositoryInterface $users): ?User => $users->findAllByEmail(self::tenant(), new EmailAddress('carol@example.com'))[0] ?? null,
+        ];
         yield 'an unknown identifier' => [
             static fn (UserRepositoryInterface $users): ?User => $users->find(Uuid::v7()),
         ];
@@ -177,6 +279,6 @@ final class DoctrineUserRepositoryTest extends DatabaseTestCase
 
     private static function users(): UserRepositoryInterface
     {
-        return self::service('test.heidi.users', UserRepositoryInterface::class);
+        return self::service('test.beffroi.users', UserRepositoryInterface::class);
     }
 }

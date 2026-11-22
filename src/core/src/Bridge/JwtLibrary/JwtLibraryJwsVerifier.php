@@ -2,14 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Bridge\JwtLibrary;
+namespace Beffroi\Core\Bridge\JwtLibrary;
 
-use Heidi\Core\Domain\Key\VerifiedJws;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\InvalidJwsException;
-use Heidi\Core\Exception\UnsupportedAlgorithmException;
-use Heidi\Core\Port\JwsVerifierInterface;
-use Heidi\Core\Port\SigningKeyProviderInterface;
+use Beffroi\Core\Domain\Key\KeyUse;
+use Beffroi\Core\Domain\Key\VerifiedJws;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\InvalidJwsException;
+use Beffroi\Core\Exception\UnsupportedAlgorithmException;
+use Beffroi\Core\Port\JwsVerifierInterface;
+use Beffroi\Core\Port\PublicKeySetProviderInterface;
 use function is_string;
 use Jose\Component\Core\JWK;
 use Jose\Component\Signature\JWSVerifier;
@@ -17,9 +18,9 @@ use Jose\Component\Signature\Serializer\CompactSerializer;
 use Throwable;
 
 /**
- * The key is chosen by "kid" alone among the published keys of the tenant; "jwk", "jku" and "x5c" are
- * ignored (RFC 8725 §3.10). The "alg" of the header has to be one the provider signs with and the one
- * the key names (RFC 7515 §4.1.1, RFC 8725 §3.1).
+ * RFC 7515 §4.1.1, RFC 7517 §4.2, RFC 8725 §3.1, §3.10
+ *
+ * The key is chosen by "kid" alone; "jwk", "jku" and "x5c" are ignored.
  */
 final readonly class JwtLibraryJwsVerifier implements JwsVerifierInterface
 {
@@ -28,7 +29,7 @@ final readonly class JwtLibraryJwsVerifier implements JwsVerifierInterface
     private CompactSerializer $serializer;
 
     public function __construct(
-        private SigningKeyProviderInterface $keys,
+        private PublicKeySetProviderInterface $keys,
         private JoseSignatureAlgorithms $algorithms,
     ) {
         $this->verifier = new JWSVerifier($algorithms->manager());
@@ -45,8 +46,7 @@ final readonly class JwtLibraryJwsVerifier implements JwsVerifierInterface
         if ($jws->countSignatures() !== 1) {
             throw new InvalidJwsException('The token carries an unexpected number of signatures.');
         }
-        $header = $jws->getSignature(0)
-            ->getProtectedHeader();
+        $header = $jws->getSignature(0)->getProtectedHeader();
         $alg = $header['alg'] ?? null;
         if (! is_string($alg)) {
             throw new InvalidJwsException('The token does not name its algorithm.');
@@ -60,8 +60,7 @@ final readonly class JwtLibraryJwsVerifier implements JwsVerifierInterface
         if (! is_string($kid) || $kid === '') {
             throw new InvalidJwsException('The token does not name its key.');
         }
-        $key = $this->keys->publicKeys($tenant)
-            ->find($kid);
+        $key = $this->keys->publicKeys($tenant)->forUse(KeyUse::Signature)->find($kid);
         if ($key === null || $key->algorithm->name() !== $alg) {
             throw new InvalidJwsException('The token names a key this tenant does not publish.');
         }

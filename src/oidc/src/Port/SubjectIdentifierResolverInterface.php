@@ -2,16 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Port;
+namespace Beffroi\Oidc\Port;
 
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Oidc\Domain\Client\Client;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 
 /**
- * The "sub" a client sees for a user (OIDC Core §8); every token and UserInfo response go through it (§5.3.2).
+ * OIDC Core §8
  */
 interface SubjectIdentifierResolverInterface
 {
+    /**
+     * @throws InvalidArgumentException when the wiring assigns no identifier of the kind this client registered
+     */
     public function resolve(User $user, Client $client): Subject;
 }

@@ -2,17 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Token;
+namespace Beffroi\Oidc\Domain\Token;
 
 use function hash;
-use Heidi\Core\Domain\Key\SignatureAlgorithmInterface;
+use Beffroi\Core\Domain\Encoding\Base64Url;
+use Beffroi\Core\Domain\Key\SignatureAlgorithmInterface;
 use function intdiv;
 use SensitiveParameter;
 use function strlen;
 use function substr;
 
 /**
- * OIDC Core §3.1.3.6 "at_hash": the left-most half of the digest of the "alg", base64url encoded.
+ * OIDC Core §3.1.3.6
  */
 final readonly class TokenHash
 {

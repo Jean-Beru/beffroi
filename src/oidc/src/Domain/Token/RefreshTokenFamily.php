@@ -2,30 +2,37 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Token;
+namespace Beffroi\Oidc\Domain\Token;
 
+use Beffroi\Core\Domain\PersonalData\ClassifiedFieldsInterface;
+use Beffroi\Core\Domain\PersonalData\FieldClassificationInterface;
+use Beffroi\Core\Domain\PersonalData\NoPersonalDatum;
+use Beffroi\Core\Domain\PersonalData\Reason;
 use DateTimeImmutable;
-use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use function preg_match;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The lineage of refresh tokens descending from one authorization code (architecture §4.6), revoked at
- * once on a reuse or a replay (RFC 6749 §4.1.2, RFC 9700 §4.13.2). It carries the absolute lifetime no
- * rotation extends.
+ * RFC 6749 §4.1.2, RFC 9700 §4.13.2
  */
-final readonly class RefreshTokenFamily
+final class RefreshTokenFamily implements ClassifiedFieldsInterface
 {
+    /**
+     * @param Uuid $id not readonly: the persistence re-hydrates the identifier of an instance it already holds,
+     *                 which PHP refuses on a readonly property
+     */
     public function __construct(
         public Uuid $id,
-        public string $authorizationCodeHash,
-        public Uuid $grantId,
-        public DateTimeImmutable $startedAt,
-        public DateTimeImmutable $expiresAt,
+        public readonly Tenant $tenant,
+        public readonly string $grantingRecordHash,
+        public readonly Uuid $grantId,
+        public readonly DateTimeImmutable $startedAt,
+        public readonly DateTimeImmutable $expiresAt,
     ) {
-        if (preg_match(AuthorizationCode::HASH_PATTERN, $authorizationCodeHash) !== 1) {
-            throw new InvalidArgumentException('A refresh token family descends from an authorization code, named by its hex SHA-256.');
+        if (! DrawnSecret::isDigest($grantingRecordHash)) {
+            throw new InvalidArgumentException('A refresh token family descends from a record read once, named by its hex SHA-256.');
         }
         if ($expiresAt <= $startedAt) {
             throw new InvalidArgumentException('A refresh token family expires after it started.');
@@ -40,5 +47,20 @@ final readonly class RefreshTokenFamily
     public function isExpired(DateTimeImmutable $now): bool
     {
         return $now >= $this->expiresAt;
+    }
+
+    /**
+     * @return array<string, FieldClassificationInterface>
+     */
+    public static function classifiedFields(): array
+    {
+        return [
+            'grantingRecordHash' => new NoPersonalDatum(Reason::HASHED),
+            'grantId' => new NoPersonalDatum(Reason::DRAWN_AT_RANDOM),
+            'startedAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'expiresAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'id' => new NoPersonalDatum(Reason::DRAWN_AT_RANDOM),
+            'tenant' => new NoPersonalDatum(Reason::THE_TENANT),
+        ];
     }
 }

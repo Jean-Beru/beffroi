@@ -2,25 +2,33 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Client;
+namespace Beffroi\Oidc\Tests\Application\Client;
 
 use function base64_encode;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Oidc\Application\Client\ClientAuthenticator;
-use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\HashedClientSecret;
-use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
-use Heidi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
-use Heidi\Oidc\Exception\InvalidClientException;
-use Heidi\Oidc\Exception\InvalidRequestException;
-use Heidi\Oidc\Exception\OAuth2Exception;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\Methods;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\LoadBudgetSpentException;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Oidc\Application\Client\AuthenticatedClient;
+use Beffroi\Oidc\Application\Client\ClientAuthenticator;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Beffroi\Oidc\Domain\Client\Certificate\ClientCertificate;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\HashedClientSecret;
+use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailed;
+use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
+use Beffroi\Oidc\Domain\Token\CertificateConfirmation;
+use Beffroi\Oidc\Exception\InvalidClientException;
+use Beffroi\Oidc\Exception\InvalidRequestException;
+use Beffroi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Oidc\Tests\Fixture\Certificates;
+use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\FakeClientLoadBudget;
+use Beffroi\Oidc\Tests\Fixture\Methods;
+use Beffroi\Oidc\Tests\Fixture\RecordingCompactJwtReader;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -33,7 +41,7 @@ final class ClientAuthenticatorTest extends TestCase
     private const string CHALLENGE = 'Basic realm="https://id.acme.example"';
 
     /**
-     * The endpoint that received the request; an assertion may name it as its audience (RFC 7523 §3).
+     * RFC 7523 §3
      */
     private const string ENDPOINT = 'https://id.acme.example/token';
 
@@ -48,6 +56,8 @@ final class ClientAuthenticatorTest extends TestCase
     private RecordingEventDispatcher $events;
 
     private MockClock $clock;
+
+    private FakeClientLoadBudget $budget;
 
     private ClientAuthenticator $authenticator;
 
@@ -69,31 +79,46 @@ final class ClientAuthenticatorTest extends TestCase
         $this->clients->save($this->basicClient);
         $this->clients->save($this->postClient);
         $this->clients->save($this->publicClient);
-        $this->clients->save(Clients::confidential(Fixtures::tenant('other', 'https://id.other.example'), $this->hasher->hash(Clients::SECRET), Methods::clientSecretBasic(), 'foreign-client'));
+        $this->clients->save(Clients::confidential(
+            Fixtures::tenant('other', 'https://id.other.example'),
+            $this->hasher->hash(Clients::SECRET),
+            Methods::clientSecretBasic(),
+            'foreign-client',
+        ));
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
-        $this->authenticator = new ClientAuthenticator($this->clients, Methods::all($this->hasher), $this->clock, $this->events);
+        $this->budget = new FakeClientLoadBudget();
+        $this->authenticator = new ClientAuthenticator(
+            $this->clients,
+            Methods::all($this->hasher),
+            Methods::requestParser(),
+            $this->clock,
+            $this->events,
+            $this->budget,
+        );
     }
 
     /**
-     * RFC 6749 §2.3.1: the identifier and the secret are form-urlencoded before being Basic-encoded, which
-     * is what Symfony's ClientSecretBasic sends.
+     * RFC 6749 §2.3.1
      */
     #[Test]
     public function itAuthenticatesWithClientSecretBasic(): void
     {
         // When
-        $client = $this->authenticator->authenticate($this->tenant, self::ENDPOINT, self::basic('basic-client', Clients::SECRET), [
-            'grant_type' => 'authorization_code',
-        ], $this->context);
+        $client = $this->authenticator->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            self::basic('basic-client', Clients::SECRET),
+            [
+                'grant_type' => 'authorization_code',
+            ],
+            $this->context,
+        );
 
         // Then
-        static::assertSame($this->basicClient, $client);
+        static::assertSame($this->basicClient, $client->client);
     }
 
-    /**
-     * The secret is compared by the hasher, against the client's own hash, exactly once.
-     */
     #[Test]
     public function itVerifiesTheSecretAgainstTheHashOfTheClientOnce(): void
     {
@@ -115,7 +140,101 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.3.1: a colon, a plus sign or a percent sign in the secret survives the encoding.
+     * Decision 0014
+     */
+    #[Test]
+    public function anAuthenticatedClientTakesOneOfItsLoadBudget(): void
+    {
+        // When
+        $this->authenticator->authenticate($this->tenant, self::ENDPOINT, self::basic('basic-client', Clients::SECRET), [], $this->context);
+
+        // Then
+        static::assertSame([$this->tenant->slug . '|basic-client'], $this->budget->consumed);
+    }
+
+    /**
+     * Decision 0014, RFC 6749 §2.1
+     */
+    #[Test]
+    public function aPublicClientTakesNothingOfTheLoadBudgetOfAClient(): void
+    {
+        // When
+        $this->authenticator->authenticate($this->tenant, self::ENDPOINT, null, ['client_id' => 'public-client'], $this->context);
+
+        // Then
+        static::assertSame([], $this->budget->consumed);
+    }
+
+    /**
+     * Decision 0014
+     */
+    #[Test]
+    public function aRefusedClientTakesNothingOfTheLoadBudgetOfAClient(): void
+    {
+        // When
+        try {
+            $this->authenticator->authenticate($this->tenant, self::ENDPOINT, self::basic('basic-client', 'not-the-secret'), [], $this->context);
+        } catch (InvalidClientException) {
+        }
+
+        // Then
+        static::assertSame([], $this->budget->consumed);
+    }
+
+    /**
+     * Decision 0014, RFC 6585 §4
+     */
+    #[Test]
+    public function aClientWhoseLoadBudgetIsSpentIsRefused(): void
+    {
+        // Given
+        $authenticator = new ClientAuthenticator(
+            $this->clients,
+            Methods::all($this->hasher),
+            Methods::requestParser(),
+            $this->clock,
+            $this->events,
+            new FakeClientLoadBudget(0),
+        );
+
+        // Then
+        $this->expectException(LoadBudgetSpentException::class);
+        $this->expectExceptionMessageIs('The "client" budget is spent; the request is served again in 42 seconds.');
+
+        // When
+        $authenticator->authenticate($this->tenant, self::ENDPOINT, self::basic('basic-client', Clients::SECRET), [], $this->context);
+    }
+
+    /**
+     * RFC 7523 §2.2
+     */
+    #[Test]
+    public function theAssertionOfARequestIsReadOnceWhateverReadsItAfterwards(): void
+    {
+        // Given
+        $reader = new RecordingCompactJwtReader();
+        $authenticator = new ClientAuthenticator(
+            $this->clients,
+            Methods::all($this->hasher),
+            Methods::requestParser($reader),
+            $this->clock,
+            $this->events,
+            $this->budget,
+        );
+        $this->clients->save(Clients::withKeys($this->tenant));
+        $assertion = ClientAssertions::signedWithKey(
+            ClientAssertions::claims('key-client', $this->tenant->issuer->value, $this->context->receivedAt),
+        );
+
+        // When
+        $authenticator->authenticate($this->tenant, self::ENDPOINT, null, ClientAssertions::parameters($assertion), $this->context);
+
+        // Then
+        static::assertSame([$assertion], $reader->read);
+    }
+
+    /**
+     * RFC 6749 §2.3.1
      */
     #[Test]
     public function itDecodesTheFormEncodedBasicCredentials(): void
@@ -128,11 +247,11 @@ final class ClientAuthenticatorTest extends TestCase
         $client = $this->authenticator->authenticate($this->tenant, self::ENDPOINT, self::basic('odd client', $secret), [], $this->context);
 
         // Then
-        static::assertSame('odd client', $client->clientId);
+        static::assertSame('odd client', $client->client->registration->clientId);
     }
 
     /**
-     * RFC 7235 §2.1: the scheme is case-insensitive, followed by one or more spaces.
+     * RFC 7235 §2.1
      */
     #[Test]
     public function itReadsTheSchemeCaseInsensitively(): void
@@ -144,12 +263,11 @@ final class ClientAuthenticatorTest extends TestCase
         $client = $this->authenticator->authenticate($this->tenant, self::ENDPOINT, $header, [], $this->context);
 
         // Then
-        static::assertSame($this->basicClient, $client);
+        static::assertSame($this->basicClient, $client->client);
     }
 
     /**
-     * RFC 7617 §2: the first colon separates the identifier from the secret; a client that did not encode a
-     * colon in its secret is still understood, because the identifier never contains one.
+     * RFC 7617 §2
      */
     #[Test]
     public function onlyTheFirstColonSeparatesTheIdentifierFromTheSecret(): void
@@ -162,59 +280,74 @@ final class ClientAuthenticatorTest extends TestCase
         $client = $this->authenticator->authenticate($this->tenant, self::ENDPOINT, 'Basic ' . base64_encode('colon-client:' . $secret), [], $this->context);
 
         // Then
-        static::assertSame('colon-client', $client->clientId);
+        static::assertSame('colon-client', $client->client->registration->clientId);
     }
 
-    /**
-     * Symfony's OidcClient always sends client_id in the body, whatever the authentication method.
-     */
     #[Test]
     public function itAcceptsAMatchingClientIdInTheBodyNextToTheHeader(): void
     {
         // When
-        $client = $this->authenticator->authenticate($this->tenant, self::ENDPOINT, self::basic('basic-client', Clients::SECRET), [
-            'client_id' => 'basic-client',
-        ], $this->context);
+        $client = $this->authenticator->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            self::basic('basic-client', Clients::SECRET),
+            [
+                'client_id' => 'basic-client',
+            ],
+            $this->context,
+        );
 
         // Then
-        static::assertSame($this->basicClient, $client);
+        static::assertSame($this->basicClient, $client->client);
     }
 
     /**
-     * RFC 6749 §2.3.1: client_id and client_secret in the request body.
+     * RFC 6749 §2.3.1
      */
     #[Test]
     public function itAuthenticatesWithClientSecretPost(): void
     {
         // When
-        $client = $this->authenticator->authenticate($this->tenant, self::ENDPOINT, null, [
-            'client_id' => 'post-client',
-            'client_secret' => Clients::SECRET,
-        ], $this->context);
+        $client = $this->authenticator->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            null,
+            [
+                'client_id' => 'post-client',
+                'client_secret' => Clients::SECRET,
+            ],
+            $this->context,
+        );
 
         // Then
-        static::assertSame($this->postClient, $client);
+        static::assertSame($this->postClient, $client->client);
         static::assertSame([self::hashOf($this->postClient)], $this->hasher->verifiedAgainst);
     }
 
     /**
-     * RFC 6749 §2.1, §3.2.1: a public client only identifies itself.
+     * RFC 6749 §2.1, §3.2.1
      */
     #[Test]
     public function itIdentifiesAPublicClientByItsIdAlone(): void
     {
         // When
-        $client = $this->authenticator->authenticate($this->tenant, self::ENDPOINT, null, [
-            'client_id' => 'public-client',
-        ], $this->context);
+        $client = $this->authenticator->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            null,
+            [
+                'client_id' => 'public-client',
+            ],
+            $this->context,
+        );
 
         // Then
-        static::assertSame($this->publicClient, $client);
+        static::assertSame($this->publicClient, $client->client);
         static::assertSame([], $this->hasher->verifiedAgainst);
     }
 
     /**
-     * RFC 6749 §2.3: more than one authentication method is invalid_request.
+     * RFC 6749 §2.3
      */
     #[Test]
     public function itRefusesAHeaderAndABodySecretTogether(): void
@@ -223,14 +356,20 @@ final class ClientAuthenticatorTest extends TestCase
         $this->expectException(InvalidRequestException::class);
 
         // When
-        $this->authenticator->authenticate($this->tenant, self::ENDPOINT, self::basic('basic-client', Clients::SECRET), [
-            'client_id' => 'basic-client',
-            'client_secret' => Clients::SECRET,
-        ], $this->context);
+        $this->authenticator->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            self::basic('basic-client', Clients::SECRET),
+            [
+                'client_id' => 'basic-client',
+                'client_secret' => Clients::SECRET,
+            ],
+            $this->context,
+        );
     }
 
     /**
-     * RFC 6749 §2.3: two methods are refused before any lookup.
+     * RFC 6749 §2.3
      */
     #[Test]
     public function twoMethodsAreRefusedBeforeAnyVerification(): void
@@ -265,9 +404,15 @@ final class ClientAuthenticatorTest extends TestCase
         $this->expectException(InvalidRequestException::class);
 
         // When
-        $this->authenticator->authenticate($this->tenant, self::ENDPOINT, self::basic('basic-client', Clients::SECRET), [
-            'client_id' => 'post-client',
-        ], $this->context);
+        $this->authenticator->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            self::basic('basic-client', Clients::SECRET),
+            [
+                'client_id' => 'post-client',
+            ],
+            $this->context,
+        );
     }
 
     #[Test]
@@ -283,8 +428,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: an unsupported authentication method is invalid_client; the challenge names the
-     * scheme the provider supports.
+     * RFC 6749 §5.2
      */
     #[Test]
     #[DataProvider('provideHeadersThatAreNotBasic')]
@@ -324,6 +468,7 @@ final class ClientAuthenticatorTest extends TestCase
         yield 'Basic without credentials nor space' => ['Basic'];
         yield 'scheme not at the start' => ['x Basic ' . $credentials];
         yield 'something after the credentials' => ['Basic ' . $credentials . ' extra'];
+        yield 'a line feed behind the credentials' => ['Basic ' . $credentials . "\n"];
     }
 
     #[Test]
@@ -413,10 +558,6 @@ final class ClientAuthenticatorTest extends TestCase
         ]];
     }
 
-    /**
-     * A request whose credentials are not strings is refused before anything is read, and the audit
-     * trail keeps no identifier from it: none of what it carries can be trusted, the header included.
-     */
     #[Test]
     public function aMalformedBodyNextToAHeaderIsAnnouncedWithoutIdentifier(): void
     {
@@ -428,6 +569,23 @@ final class ClientAuthenticatorTest extends TestCase
         // Then
         static::assertInstanceOf(InvalidRequestException::class, $exception);
         $this->assertFailureAnnounced(ClientAuthenticationFailureReason::MalformedCredentials, null, null);
+    }
+
+    /**
+     * RFC 7523 §2.2, RFC 6749 §5.2
+     */
+    #[Test]
+    public function anAssertionOfAnotherTypeIsAnInvalidRequest(): void
+    {
+        // When
+        $exception = $this->failToAuthenticate(null, [
+            'client_assertion' => 'an.assertion.here',
+            'client_assertion_type' => 'urn:ietf:params:oauth:client-assertion-type:saml2-bearer',
+        ]);
+
+        // Then
+        static::assertInstanceOf(InvalidRequestException::class, $exception);
+        static::assertSame('invalid_request', $exception->error);
     }
 
     #[Test]
@@ -444,8 +602,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: "no client authentication included" is invalid_client; no header was used, so no
-     * challenge.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function itRefusesARequestWithoutAnyCredentials(): void
@@ -472,10 +629,6 @@ final class ClientAuthenticatorTest extends TestCase
         $this->assertFailureAnnounced(ClientAuthenticationFailureReason::NoCredentials, null, null);
     }
 
-    /**
-     * An unknown client presenting a secret is invalid_client, with the challenge of the scheme it used,
-     * and an error description that does not tell it from a known one.
-     */
     #[Test]
     public function anUnknownClientWithABasicSecretIsInvalidClient(): void
     {
@@ -502,10 +655,6 @@ final class ClientAuthenticatorTest extends TestCase
         static::assertNull($exception->challenge);
     }
 
-    /**
-     * An unknown client presenting a secret costs a verification against a decoy, the same decoy for the
-     * life of the authenticator, so that the time taken does not tell it from a known one.
-     */
     #[Test]
     public function anUnknownClientCostsAVerificationAgainstTheSameDecoyEveryTime(): void
     {
@@ -561,9 +710,6 @@ final class ClientAuthenticatorTest extends TestCase
         static::assertSame([], $this->hasher->verifiedAgainst);
     }
 
-    /**
-     * Clients are scoped by tenant: the same identifier in another tenant is unknown here.
-     */
     #[Test]
     public function aClientOfAnotherTenantIsUnknown(): void
     {
@@ -576,7 +722,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.3: a method other than the registered one is refused, with the challenge of the scheme used.
+     * RFC 6749 §2.3
      *
      * @param array<string, mixed> $parameters
      */
@@ -593,15 +739,19 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     /**
-     * RFC 6749 §2.3: a method other than the registered one costs the same as a wrong secret, against a
-     * decoy, never against the hash of the client.
+     * RFC 6749 §2.3
      *
      * @param array<string, mixed> $parameters
      */
     #[Test]
     #[DataProvider('provideUnexpectedMethods')]
-    public function anUnexpectedMethodCostsAVerificationAgainstADecoyWhenASecretIsPresented(?string $header, array $parameters, string $clientId, string $used, bool $secretPresented): void
-    {
+    public function anUnexpectedMethodCostsAVerificationAgainstADecoyWhenASecretIsPresented(
+        ?string $header,
+        array $parameters,
+        string $clientId,
+        string $used,
+        bool $secretPresented,
+    ): void {
         // When
         $this->failToAuthenticate($header, $parameters);
 
@@ -619,8 +769,13 @@ final class ClientAuthenticatorTest extends TestCase
      */
     #[Test]
     #[DataProvider('provideUnexpectedMethods')]
-    public function anUnexpectedMethodIsAnnouncedWithTheMethodUsed(?string $header, array $parameters, string $clientId, string $used, bool $secretPresented): void
-    {
+    public function anUnexpectedMethodIsAnnouncedWithTheMethodUsed(
+        ?string $header,
+        array $parameters,
+        string $clientId,
+        string $used,
+        bool $secretPresented,
+    ): void {
         // When
         $this->failToAuthenticate($header, $parameters);
 
@@ -633,24 +788,39 @@ final class ClientAuthenticatorTest extends TestCase
      */
     public static function provideUnexpectedMethods(): iterable
     {
-        yield 'registered basic, used post' => [null, [
-            'client_id' => 'basic-client',
-            'client_secret' => Clients::SECRET,
-        ], 'basic-client', 'client_secret_post', true];
-        yield 'registered basic, used none' => [null, [
-            'client_id' => 'basic-client',
-        ], 'basic-client', 'none', false];
+        yield 'registered basic, used post' => [
+            null,
+            [
+                'client_id' => 'basic-client',
+                'client_secret' => Clients::SECRET,
+            ],
+            'basic-client',
+            'client_secret_post',
+            true,
+        ];
+        yield 'registered basic, used none' => [
+            null,
+            [
+                'client_id' => 'basic-client',
+            ],
+            'basic-client',
+            'none',
+            false,
+        ];
         yield 'registered post, used basic' => [self::basic('post-client', Clients::SECRET), [], 'post-client', 'client_secret_basic', true];
         yield 'registered none, used basic' => [self::basic('public-client', Clients::SECRET), [], 'public-client', 'client_secret_basic', true];
-        yield 'registered none, used post' => [null, [
-            'client_id' => 'public-client',
-            'client_secret' => Clients::SECRET,
-        ], 'public-client', 'client_secret_post', true];
+        yield 'registered none, used post' => [
+            null,
+            [
+                'client_id' => 'public-client',
+                'client_secret' => Clients::SECRET,
+            ],
+            'public-client',
+            'client_secret_post',
+            true,
+        ];
     }
 
-    /**
-     * A wrong secret is invalid_client, with the challenge and a description that does not say why.
-     */
     #[Test]
     public function aWrongSecretIsInvalidClient(): void
     {
@@ -663,9 +833,6 @@ final class ClientAuthenticatorTest extends TestCase
         static::assertSame('Client authentication failed.', $exception->errorDescription);
     }
 
-    /**
-     * The secret is compared by the hasher, against the client's own hash, exactly once.
-     */
     #[Test]
     public function aWrongSecretIsVerifiedAgainstTheHashOfTheClientOnce(): void
     {
@@ -712,6 +879,57 @@ final class ClientAuthenticatorTest extends TestCase
             return $exception;
         }
         static::fail('The client should not have been authenticated.');
+    }
+
+    /**
+     * RFC 8705 §3.4, FAPI 1.0 Advanced Final §5.2.2
+     */
+    #[Test]
+    public function aClientRegisteredForCertificateBoundTokensIsBoundToTheCertificateItPresented(): void
+    {
+        // Given
+        $this->clients->save(Clients::boundToItsCertificate($this->tenant));
+
+        // When
+        $authenticated = $this->authenticateWithAnAssertion('bound-terminal', Certificates::client());
+
+        // Then
+        static::assertEquals(CertificateConfirmation::ofCertificate(Certificates::client()), $authenticated->confirmation);
+    }
+
+    /**
+     * RFC 8705 §3
+     */
+    #[Test]
+    public function aClientRegisteredForNoBindingIsNotBoundToTheCertificateItPresented(): void
+    {
+        // Given
+        $this->clients->save(Clients::withKeys($this->tenant));
+
+        // When
+        $authenticated = $this->authenticateWithAnAssertion('key-client', Certificates::client());
+
+        // Then
+        static::assertNull($authenticated->confirmation);
+    }
+
+    /**
+     * OIDC Core §9
+     */
+    private function authenticateWithAnAssertion(string $clientId, ClientCertificate $certificate): AuthenticatedClient
+    {
+        $assertion = ClientAssertions::signedWithKey(
+            ClientAssertions::claims($clientId, $this->tenant->issuer->value, $this->context->receivedAt),
+        );
+
+        return $this->authenticator->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            null,
+            ClientAssertions::parameters($assertion),
+            $this->context,
+            $certificate,
+        );
     }
 
     private function assertFailureAnnounced(ClientAuthenticationFailureReason $reason, ?string $clientId, ?string $method): void

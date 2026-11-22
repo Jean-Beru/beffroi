@@ -2,26 +2,28 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Exception;
+namespace Beffroi\Oidc\Tests\Exception;
 
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Exception\AccessDeniedException;
-use Heidi\Oidc\Exception\ConsentRequiredException;
-use Heidi\Oidc\Exception\InsufficientScopeException;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Exception\InvalidClientException;
-use Heidi\Oidc\Exception\InvalidGrantException;
-use Heidi\Oidc\Exception\InvalidRequestException;
-use Heidi\Oidc\Exception\InvalidScopeException;
-use Heidi\Oidc\Exception\InvalidTokenException;
-use Heidi\Oidc\Exception\LoginRequiredException;
-use Heidi\Oidc\Exception\MissingBearerTokenException;
-use Heidi\Oidc\Exception\OAuth2Exception;
-use Heidi\Oidc\Exception\RequestNotSupportedException;
-use Heidi\Oidc\Exception\RequestUriNotSupportedException;
-use Heidi\Oidc\Exception\UnauthorizedClientException;
-use Heidi\Oidc\Exception\UnsupportedGrantTypeException;
-use Heidi\Oidc\Exception\UnsupportedResponseTypeException;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Token\TokenResponse;
+use Beffroi\Oidc\Exception\AccessDeniedException;
+use Beffroi\Oidc\Exception\ConsentRequiredException;
+use Beffroi\Oidc\Exception\InsufficientScopeException;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Exception\InvalidClientException;
+use Beffroi\Oidc\Exception\InvalidGrantException;
+use Beffroi\Oidc\Exception\InvalidRequestException;
+use Beffroi\Oidc\Exception\InvalidRequestObjectException;
+use Beffroi\Oidc\Exception\InvalidRequestUriException;
+use Beffroi\Oidc\Exception\InvalidScopeException;
+use Beffroi\Oidc\Exception\InvalidTokenException;
+use Beffroi\Oidc\Exception\LoginRequiredException;
+use Beffroi\Oidc\Exception\MissingBearerTokenException;
+use Beffroi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Oidc\Exception\UnauthorizedClientException;
+use Beffroi\Oidc\Exception\UnsupportedGrantTypeException;
+use Beffroi\Oidc\Exception\UnsupportedResponseTypeException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -30,8 +32,7 @@ use RuntimeException;
 final class OAuth2ExceptionTest extends TestCase
 {
     /**
-     * RFC 6749 §5.2: invalid_request is a 400; the flag says whether the authorization endpoint may
-     * redirect it, which the token endpoint never does.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function anInvalidRequestIsA400AndIsNotRedirectableByDefault(): void
@@ -46,9 +47,6 @@ final class OAuth2ExceptionTest extends TestCase
         static::assertFalse($exception->redirectable);
     }
 
-    /**
-     * The message is the error and its description; the error is the code, the integer one means nothing.
-     */
     #[Test]
     public function theMessageIsTheErrorAndItsDescription(): void
     {
@@ -71,9 +69,6 @@ final class OAuth2ExceptionTest extends TestCase
         static::assertTrue($exception->redirectable);
     }
 
-    /**
-     * The cause stays for the logs.
-     */
     #[Test]
     #[DataProvider('provideExceptionsWithACause')]
     public function theCauseStaysForTheLogs(callable $build): void
@@ -106,7 +101,7 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: invalid_client is answered 401; architecture §4.10 makes 401 the only status for it.
+     * RFC 6749 §5.2, Architecture §4.10
      */
     #[Test]
     public function anInvalidClientIsA401WithoutChallengeByDefault(): void
@@ -122,7 +117,7 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: WWW-Authenticate when the client used the Authorization header.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function anInvalidClientMayCarryAChallenge(): void
@@ -135,8 +130,7 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2.1 and §5.2: invalid_scope is raised by both endpoints, so the flag is the caller's;
-     * the token endpoint answers 400.
+     * RFC 6749 §4.1.2.1, §5.2
      */
     #[Test]
     public function anInvalidScopeIsA400AndIsNotRedirectableByDefault(): void
@@ -151,7 +145,7 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.2: the errors of the token endpoint are 400 and never redirected.
+     * RFC 6749 §5.2
      */
     #[Test]
     #[DataProvider('provideErrorsOfTheTokenEndpoint')]
@@ -174,8 +168,7 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2.1: invalid_scope and unauthorized_client are also errors of the authorization
-     * endpoint, so their flag is the caller's.
+     * RFC 6749 §4.1.2.1
      */
     #[Test]
     #[DataProvider('provideErrorsOfBothEndpoints')]
@@ -195,8 +188,7 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2.1 and OIDC Core §3.1.2.6: the errors only the authorization endpoint raises, once
-     * the client and its redirect URI are known, are always sent back to the client.
+     * RFC 6749 §4.1.2.1, OIDC Core §3.1.2.6
      */
     #[Test]
     #[DataProvider('provideErrorsOfTheAuthorizationEndpointAlone')]
@@ -214,15 +206,38 @@ final class OAuth2ExceptionTest extends TestCase
     public static function provideErrorsOfTheAuthorizationEndpointAlone(): iterable
     {
         yield 'unsupported_response_type' => ['unsupported_response_type', new UnsupportedResponseTypeException('Only the code response type is supported.')];
-        yield 'request_not_supported' => ['request_not_supported', new RequestNotSupportedException('Request objects are not supported.')];
-        yield 'request_uri_not_supported' => ['request_uri_not_supported', new RequestUriNotSupportedException('Request URIs are not supported.')];
         yield 'login_required' => ['login_required', new LoginRequiredException('The end user is not authenticated.')];
         yield 'consent_required' => ['consent_required', new ConsentRequiredException('No consent covers the request.')];
         yield 'access_denied' => ['access_denied', new AccessDeniedException('The end user denied the request.')];
     }
 
     /**
-     * RFC 6749 §5.2: error_description is ASCII text without double quotes nor backslashes.
+     * OIDC Core §3.1.2.6, RFC 9101 §6.3
+     */
+    #[Test]
+    #[DataProvider('provideErrorsOfARequestObject')]
+    public function theErrorsOfARequestObjectAreA400AndAreNeverRedirectable(string $error, OAuth2Exception $exception): void
+    {
+        // When / Then
+        static::assertSame($error, $exception->error);
+        static::assertSame(400, $exception->statusCode);
+        static::assertFalse($exception->redirectable);
+    }
+
+    /**
+     * @return iterable<string, array{string, OAuth2Exception}>
+     */
+    public static function provideErrorsOfARequestObject(): iterable
+    {
+        yield 'invalid_request_object' => ['invalid_request_object', new InvalidRequestObjectException('The request object has expired.')];
+        yield 'invalid_request_uri' => [
+            'invalid_request_uri',
+            new InvalidRequestUriException('The request_uri parameter names no URL this client registered.'),
+        ];
+    }
+
+    /**
+     * RFC 6749 §5.2
      */
     #[Test]
     #[DataProvider('provideForbiddenDescriptions')]
@@ -246,10 +261,11 @@ final class OAuth2ExceptionTest extends TestCase
         yield 'backslash' => ['A back\\slash'];
         yield 'beyond ASCII' => ['Un accent aigu: é'];
         yield 'line break' => ["A line\nbreak"];
+        yield 'a line feed behind a description that would pass' => ["The request is missing a parameter.\n"];
     }
 
     /**
-     * RFC 6750 §3.1: invalid_token is a 401 raised by a protected resource, never redirected.
+     * RFC 6750 §3.1
      */
     #[Test]
     public function anInvalidTokenIsA401(): void
@@ -266,33 +282,58 @@ final class OAuth2ExceptionTest extends TestCase
     }
 
     /**
-     * RFC 6750 §3.1: insufficient_scope is a 403 that names the scopes the resource required.
+     * RFC 6750 §1.2
+     */
+    #[Test]
+    public function anInvalidTokenIsChallengedUnderTheBearerSchemeByDefault(): void
+    {
+        // When
+        $exception = InvalidTokenException::expired();
+
+        // Then
+        static::assertSame('Bearer', $exception->challengeScheme());
+        static::assertSame([], $exception->challengeHeaders());
+    }
+
+    /**
+     * RFC 9449 §7.2
+     */
+    #[Test]
+    public function anInvalidTokenPresentedUnderASchemeIsTheSameRefusalUnderThatScheme(): void
+    {
+        // Given
+        $refused = InvalidTokenException::expired();
+
+        // When
+        $presented = $refused->presentedUnder('DPoP');
+
+        // Then
+        static::assertSame('DPoP', $presented->challengeScheme());
+        static::assertSame('invalid_token', $presented->error);
+        static::assertSame('The access token expired.', $presented->errorDescription);
+        static::assertSame(401, $presented->statusCode);
+        static::assertFalse($presented->redirectable);
+        static::assertSame($refused, $presented->getPrevious());
+    }
+
+    /**
+     * RFC 6750 §3.1
      */
     #[Test]
     public function anInsufficientScopeIsA403NamingTheScopesRequired(): void
     {
         // When
-        $exception = new InsufficientScopeException('The token does not open this resource.', [Scope::openid()]);
+        $exception = new InsufficientScopeException('The token does not open this resource.', new Scopes([Scope::openid()]), TokenResponse::BEARER);
 
         // Then
         static::assertSame('insufficient_scope', $exception->error);
         static::assertSame(403, $exception->statusCode);
         static::assertFalse($exception->redirectable);
-        static::assertSame('openid', implode(' ', $exception->scopes));
-    }
-
-    #[Test]
-    public function anInsufficientScopeNamesAtLeastOneScope(): void
-    {
-        // Then
-        $this->expectException(InvalidArgumentException::class);
-
-        // When
-        new InsufficientScopeException('The token does not open this resource.', []);
+        static::assertSame('openid', (string) $exception->scopes);
     }
 
     /**
-     * RFC 6750 §3.1: a request without any token is not an OAuth 2.0 error; it is a 401 without code.
+     * RFC 6750 §3.1
      */
     #[Test]
     public function aMissingBearerTokenIsA401WithoutErrorCode(): void

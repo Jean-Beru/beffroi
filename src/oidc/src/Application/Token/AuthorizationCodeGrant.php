@@ -2,101 +2,119 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Application\Token;
+namespace Beffroi\Oidc\Application\Token;
 
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Core\Port\SubjectsOfSessionsInterface;
+use Beffroi\Core\Port\UuidGeneratorInterface;
 use DateInterval;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\GrantType;
-use Heidi\Oidc\Domain\Event\AuthorizationCodeReplayed;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
-use Heidi\Oidc\Domain\Token\IssuedTokens;
-use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
-use Heidi\Oidc\Exception\InvalidGrantException;
-use Heidi\Oidc\Exception\InvalidRequestException;
-use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
-use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
-use Heidi\Oidc\Port\CanRevokeAccessTokensByGrantInterface;
-use function preg_match;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Oidc\Application\Client\AuthenticatedClient;
+use Beffroi\Oidc\Application\Request\RequestParameters;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationCode;
+use Beffroi\Oidc\Domain\Authorization\CodeChallenge;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\GrantTypeName;
+use Beffroi\Oidc\Domain\Event\AuthorizationCodeReplayed;
+use Beffroi\Oidc\Domain\Token\UserAuthorization;
+use Beffroi\Oidc\Domain\Token\IssuedTokens;
+use Beffroi\Oidc\Domain\Token\RefreshTokenFamily;
+use Beffroi\Oidc\Domain\Token\RevokedTokenHashes;
+use Beffroi\Oidc\Exception\InvalidGrantException;
+use Beffroi\Oidc\Exception\InvalidRequestException;
+use Beffroi\Oidc\Port\AccessTokenRepositoryInterface;
+use Beffroi\Oidc\Port\AuthorizationCodeRepositoryInterface;
+use Beffroi\Oidc\Port\CanRevokeAccessTokensByGrantInterface;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use SensitiveParameter;
-use Symfony\Component\Uid\Uuid;
 
 /**
- * RFC 6749 §4.1.3, RFC 7636 §4.6, OIDC Core §3.1.3 (architecture §4.5). Every failure is "invalid_grant"
- * with one description. The code is consumed by its first presentation (RFC 9700 §4.5); presented again,
- * the grant and every token descending from it are revoked (RFC 6749 §4.1.2).
+ * RFC 6749 §4.1.3, RFC 7636 §4.6, OIDC Core §3.1.3
+ *
+ * What the KMS opens is read before the code is consumed: a code consumed and left unanswered would make its next
+ * presentation a replay.
  */
-final readonly class AuthorizationCodeGrant implements GrantInterface
+final readonly class AuthorizationCodeGrant implements IssuesRefreshTokensInterface, SendsTheUserToTheClientInterface
 {
-    /**
-     * RFC 7636 §4.1: code-verifier = 43*128unreserved.
-     */
-    private const string CODE_VERIFIER_PATTERN = '/^[A-Za-z0-9\-._~]{43,128}$/';
-
     private const string INVALID = 'The authorization code is invalid.';
 
-    /**
-     * @param DateInterval $refreshTokenFamilyLifetime the absolute lifetime no rotation extends (architecture §4.6)
-     */
     public function __construct(
         private AuthorizationCodeRepositoryInterface $codes,
         private RefreshTokenRevocation $refreshTokens,
         private AccessTokenRepositoryInterface $accessTokens,
+        private SubjectsOfSessionsInterface $subjects,
         private TokenIssuer $issuer,
+        private UuidGeneratorInterface $uuids,
         private ClockInterface $clock,
         private EventDispatcherInterface $events,
+        private RefreshTokenDue $refreshTokenDue,
+        private RequestedAuthorizationDetails $authorizationDetails,
         private DateInterval $refreshTokenFamilyLifetime = new DateInterval('P90D'),
-        private bool $refreshTokenWithoutOfflineAccess = true,
     ) {
     }
 
-    public function grantType(): GrantType
+    public function grantType(): GrantTypeName
     {
-        return GrantType::AuthorizationCode;
+        return new GrantTypeName('authorization_code');
     }
 
-    public function grant(Client $client, TokenRequest $request, RequestContext $context): IssuedTokens
+    public function grant(AuthenticatedClient $client, RequestParameters $request, RequestContext $context): IssuedTokens
     {
         $now = $this->clock->now();
         $code = $request->required('code');
         $redirectUri = $request->required('redirect_uri');
         $codeVerifier = $request->optional('code_verifier');
-        if ($codeVerifier !== null && preg_match(self::CODE_VERIFIER_PATTERN, $codeVerifier) !== 1) {
+        if ($codeVerifier !== null && ! CodeChallenge::hasTheShape($codeVerifier)) {
             throw new InvalidRequestException('The code_verifier parameter is not 43 to 128 unreserved characters (RFC 7636 section 4.1).');
         }
 
-        $record = $this->codes->findByCodeHash(AuthorizationCode::hash($code));
+        $record = $this->codes->findByCodeHash(DrawnSecret::digestOf($code));
         if ($record === null) {
             throw new InvalidGrantException(self::INVALID);
         }
-        // atomic: of the requests presenting this code at once, exactly one is the first
+        $addressed = $record->isUsed() ? null : $this->issuer->address($record->client, $record->scopes);
+        $sessionActive = ! $record->isUsed() && $record->session->isActive($now);
+        // Atomic: of the requests presenting this code at once, exactly one is the first.
         if (! $this->codes->consume($record, $now)) {
-            $this->replayed($record, $client, $context, $now);
+            $this->replayed($record, $client->client, $context, $now);
 
             throw new InvalidGrantException(self::INVALID);
         }
 
-        if (! $record->client->equals($client)
+        if (
+            ! $record->client->equals($client->client)
             || $record->isExpired($now)
             || ! $record->redirectUri->matches($redirectUri)
             || ! self::pkceSatisfied($record, $codeVerifier)
-            || ! $record->session->isActive($now)) {
+            || ! self::reservationSatisfied($record, $client)
+            || ! $sessionActive
+        ) {
             throw new InvalidGrantException(self::INVALID);
         }
 
-        $authorization = GrantedAuthorization::fromAuthorizationCode($record);
+        $authorization = UserAuthorization::fromAuthorizationCode(
+            $this->grantType(),
+            $record,
+            $client->confirmation,
+            RequestedResources::of($request, $record->resources),
+            $this->authorizationDetails->of($request, $record->authorizationDetails),
+        );
         $refreshToken = null;
-        if ($this->refreshTokenDue($authorization)) {
-            $family = new RefreshTokenFamily(Uuid::v7(), $record->codeHash, $record->grantId, $now, $now->add($this->refreshTokenFamilyLifetime));
+        if ($this->refreshTokenDue->forThe($authorization)) {
+            $family = new RefreshTokenFamily(
+                $this->uuids->timeOrdered(),
+                $authorization->tenant,
+                $record->codeHash,
+                $record->grantId,
+                $now,
+                $now->add($this->refreshTokenFamilyLifetime),
+            );
             $refreshToken = $this->issuer->refreshToken($family, $authorization, $now);
         }
 
-        return $this->issuer->issue($authorization, $refreshToken, $context, $now);
+        return $this->issuer->issue($authorization, $refreshToken, $context, $now, $addressed);
     }
 
     /**
@@ -111,20 +129,18 @@ final readonly class AuthorizationCodeGrant implements GrantInterface
         return $codeVerifier !== null && $record->codeChallenge->verifies($codeVerifier);
     }
 
-    private function refreshTokenDue(GrantedAuthorization $authorization): bool
+    /**
+     * RFC 9449 §10.1
+     */
+    private static function reservationSatisfied(AuthorizationCode $record, AuthenticatedClient $client): bool
     {
-        if (! $authorization->client->allowsGrant(GrantType::RefreshToken)) {
-            return false;
-        }
-        if ($authorization->hasScope(Scope::offlineAccess())) {
-            return true;
-        }
-
-        return $this->refreshTokenWithoutOfflineAccess && ! $authorization->client->isPublic();
+        return $record->dpopKey === null || $client->confirmation !== null && $client->confirmation->matches($record->dpopKey);
     }
 
     /**
-     * RFC 6749 §4.1.2: every token issued from the code is revoked.
+     * RFC 6749 §4.1.2
+     *
+     * The person is named by the subject the store of sessions keeps in the clear, so the KMS need not answer.
      */
     private function replayed(AuthorizationCode $code, Client $presentedBy, RequestContext $context, DateTimeImmutable $now): void
     {
@@ -134,6 +150,15 @@ final readonly class AuthorizationCodeGrant implements GrantInterface
         if ($this->accessTokens instanceof CanRevokeAccessTokensByGrantInterface) {
             $this->accessTokens->revokeByGrant($code->grantId);
         }
-        $this->events->dispatch(new AuthorizationCodeReplayed($now, $code, $presentedBy, $revoked, $context));
+        $this->events->dispatch(new AuthorizationCodeReplayed(
+            $now,
+            $code->tenant,
+            $code->codeHash,
+            $this->subjects->of($code->session->id),
+            $code->clientId,
+            $presentedBy->registration->clientId,
+            RevokedTokenHashes::of($revoked),
+            $context,
+        ));
     }
 }

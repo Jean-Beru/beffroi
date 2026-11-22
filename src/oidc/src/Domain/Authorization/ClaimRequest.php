@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Authorization;
+namespace Beffroi\Oidc\Domain\Authorization;
 
 /**
- * What a client asks about one claim (OIDC Core §5.5.1); a value is kept as the client sent it.
+ * OIDC Core §5.5.1
  */
 final readonly class ClaimRequest
 {

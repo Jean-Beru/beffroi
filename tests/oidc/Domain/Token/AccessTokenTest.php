@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Token;
+namespace Beffroi\Oidc\Tests\Domain\Token;
 
 use DateTimeImmutable;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Domain\Token\AccessToken;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Domain\Token\AccessToken;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -27,7 +27,7 @@ final class AccessTokenTest extends TestCase
     }
 
     /**
-     * RFC 6749 §5.1: "expires_in" is the lifetime in seconds from issuance.
+     * RFC 6749 §5.1
      */
     #[Test]
     #[DataProvider('provideLifetimes')]
@@ -59,9 +59,6 @@ final class AccessTokenTest extends TestCase
         new AccessToken('', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
     }
 
-    /**
-     * A token that expires within the second it was issued would advertise "expires_in": 0.
-     */
     #[Test]
     #[DataProvider('provideExpiriesWithinTheFirstSecond')]
     public function itRefusesToExpireWithinTheSecondItWasIssued(DateTimeImmutable $expiresAt): void

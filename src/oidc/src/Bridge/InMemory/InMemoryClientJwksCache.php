@@ -2,36 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Bridge\InMemory;
+namespace Beffroi\Oidc\Bridge\InMemory;
 
-use Heidi\Oidc\Domain\Client\CachedClientJwks;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Port\ClientJwksCacheInterface;
-use function sprintf;
+use Beffroi\Oidc\Domain\Client\CachedClientJwks;
+use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Port\ClientJwksCacheInterface;
 
-/**
- * The keys of the clients kept for the life of the process. What a single-process integration and the
- * tests use; a deployment of several workers points the port at a store they share.
- */
 final class InMemoryClientJwksCache implements ClientJwksCacheInterface
 {
     /**
-     * @var array<string, CachedClientJwks>
+     * @var array<string, CachedClientJwks> by the URL the set was read from
      */
     private array $keys = [];
 
-    public function read(Client $client): ?CachedClientJwks
+    public function read(ClientUri $jwksUri): ?CachedClientJwks
     {
-        return $this->keys[self::key($client)] ?? null;
+        return $this->keys[$jwksUri->value] ?? null;
     }
 
-    public function write(Client $client, CachedClientJwks $keys): void
+    public function write(ClientUri $jwksUri, CachedClientJwks $keys): void
     {
-        $this->keys[self::key($client)] = $keys;
-    }
-
-    private static function key(Client $client): string
-    {
-        return sprintf('%s|%s', $client->tenant->id->toRfc4122(), $client->clientId);
+        $this->keys[$jwksUri->value] = $keys;
     }
 }

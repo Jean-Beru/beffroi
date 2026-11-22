@@ -2,20 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Client;
+namespace Beffroi\Oidc\Tests\Application\Client;
 
 use function array_map;
-use Heidi\Oidc\Application\Client\ClientAuthenticationMethods;
-use Heidi\Oidc\Domain\Client\ClientAuthenticationMethodInterface;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Tests\Fixture\Methods;
+use Beffroi\Oidc\Application\Client\ClientAuthenticationMethods;
+use Beffroi\Oidc\Domain\Client\ClientAuthenticationMethodInterface;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-/**
- * What the wiring gave the provider, the one source of truth over the client authentication methods
- * (issue #98).
- */
 final class ClientAuthenticationMethodsTest extends TestCase
 {
     #[Test]
@@ -25,7 +21,10 @@ final class ClientAuthenticationMethodsTest extends TestCase
         $methods = new ClientAuthenticationMethods([Methods::none(), Methods::clientSecretBasic()])->clientAuthenticationMethods();
 
         // Then
-        static::assertSame(['none', 'client_secret_basic'], array_map(static fn (ClientAuthenticationMethodInterface $method): string => $method->name(), $methods));
+        static::assertSame(
+            ['none', 'client_secret_basic'],
+            array_map(static fn (ClientAuthenticationMethodInterface $method): string => $method->name(), $methods),
+        );
     }
 
     #[Test]

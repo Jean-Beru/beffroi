@@ -2,14 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Routing;
+namespace App\Tests\Symfony\Unit\Routing;
 
 use DateTimeImmutable;
-use Heidi\Bundle\Routing\RouterEndpointLocator;
-use Heidi\Core\Domain\Tenant\Issuer;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use App\Routing\RouterEndpointLocator;
+use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use LogicException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Routing\Generator\UrlGenerator;
@@ -19,9 +20,7 @@ use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §4.8 and §5.2: the endpoints are the routes of the bundle under the origin of the
- * issuer; the host of the request plays no part; the discovery document must sit where OIDC Discovery
- * §4.1 makes clients look for it.
+ * Architecture §4.8, §5.2, OIDC Discovery §4.1
  */
 final class RouterEndpointLocatorTest extends TestCase
 {
@@ -42,11 +41,14 @@ final class RouterEndpointLocatorTest extends TestCase
         static::assertSame('https://op.example/logout', $endpoints->endSession);
         static::assertSame('https://op.example/introspect', $endpoints->introspection);
         static::assertSame('https://op.example/revoke', $endpoints->revocation);
+        static::assertSame('https://op.example/par', $endpoints->pushedAuthorizationRequest);
+        static::assertSame('https://op.example/device_authorization', $endpoints->deviceAuthorization);
+        static::assertSame('https://op.example/device', $endpoints->deviceVerification);
+        static::assertSame('https://op.example/backchannel_authentication', $endpoints->backchannelAuthentication);
+        static::assertSame('https://op.example/account/approvals', $endpoints->backchannelApproval);
+        static::assertSame('https://op.example/register', $endpoints->clientRegistration);
     }
 
-    /**
-     * The request came in on another host, or on a port the issuer does not name: the issuer wins.
-     */
     #[Test]
     public function theHostOfTheRequestIsIgnored(): void
     {
@@ -61,7 +63,7 @@ final class RouterEndpointLocatorTest extends TestCase
     }
 
     /**
-     * An issuer with a path, the routes mounted under it (OIDC Discovery §4.1).
+     * OIDC Discovery §4.1
      */
     #[Test]
     public function anIssuerWithAPathHasItsRoutesUnderThatPath(): void
@@ -77,10 +79,6 @@ final class RouterEndpointLocatorTest extends TestCase
         static::assertSame('https://op.example/tenant1/token', $endpoints->token);
     }
 
-    /**
-     * The routes are not under the path of the issuer: clients would look for the discovery document
-     * where nothing is served. A configuration fault, refused rather than announced.
-     */
     #[Test]
     public function routesMountedElsewhereThanTheIssuerAreRefused(): void
     {
@@ -99,8 +97,7 @@ final class RouterEndpointLocatorTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.2: the token endpoint must be HTTPS, and the issuer says so; a loopback issuer in
-     * clear (allowed for development) cannot announce one.
+     * RFC 6749 §3.2
      */
     #[Test]
     public function aLoopbackIssuerInClearCannotAnnounceATokenEndpoint(): void
@@ -115,17 +112,65 @@ final class RouterEndpointLocatorTest extends TestCase
         $locator->locate(self::tenant('http://localhost:8000'));
     }
 
+    /**
+     * RFC 8705 §5
+     */
+    #[Test]
+    public function theAliasesAreTheSameRoutesOnTheHostThatAsksForACertificate(): void
+    {
+        // Given
+        $locator = new RouterEndpointLocator(self::router('/tenant1'), 'https://mtls.op.example');
+
+        // When
+        $endpoints = $locator->locateMutualTls(self::tenant('https://op.example/tenant1'));
+
+        // Then
+        static::assertSame('https://mtls.op.example/tenant1/token', $endpoints?->token);
+        static::assertSame('https://mtls.op.example/tenant1/userinfo', $endpoints->userinfo);
+        static::assertSame('https://mtls.op.example/tenant1/introspect', $endpoints->introspection);
+        static::assertSame('https://mtls.op.example/tenant1/revoke', $endpoints->revocation);
+        static::assertSame('https://mtls.op.example/tenant1/par', $endpoints->pushedAuthorizationRequest);
+        static::assertSame('https://mtls.op.example/tenant1/device_authorization', $endpoints->deviceAuthorization);
+    }
+
+    #[Test]
+    #[DataProvider('provideNoMutualTlsHost')]
+    public function aDeploymentWithoutSuchAHostLocatesNone(?string $origin): void
+    {
+        // Given
+        $locator = new RouterEndpointLocator(self::router(''), $origin);
+
+        // When / Then
+        static::assertNull($locator->locateMutualTls(self::tenant('https://op.example')));
+    }
+
+    /**
+     * @return iterable<string, array{string|null}>
+     */
+    public static function provideNoMutualTlsHost(): iterable
+    {
+        yield 'nothing configured' => [null];
+
+        yield 'an environment variable declared empty' => [''];
+    }
+
     private static function router(string $prefix, ?RequestContext $context = null): UrlGenerator
     {
         $routes = new RouteCollection();
-        $routes->add('heidi_protocol_discovery', new Route($prefix . '/.well-known/openid-configuration'));
-        $routes->add('heidi_protocol_jwks', new Route($prefix . '/jwks'));
-        $routes->add('heidi_protocol_token', new Route($prefix . '/token'));
-        $routes->add('heidi_protocol_userinfo', new Route($prefix . '/userinfo'));
-        $routes->add('heidi_interaction_authorize', new Route($prefix . '/authorize'));
-        $routes->add('heidi_interaction_logout', new Route($prefix . '/logout'));
-        $routes->add('heidi_protocol_introspection', new Route($prefix . '/introspect'));
-        $routes->add('heidi_protocol_revocation', new Route($prefix . '/revoke'));
+        $routes->add('beffroi_protocol_discovery', new Route($prefix . '/.well-known/openid-configuration'));
+        $routes->add('beffroi_protocol_jwks', new Route($prefix . '/jwks'));
+        $routes->add('beffroi_protocol_token', new Route($prefix . '/token'));
+        $routes->add('beffroi_protocol_userinfo', new Route($prefix . '/userinfo'));
+        $routes->add('beffroi_interaction_authorize', new Route($prefix . '/authorize'));
+        $routes->add('beffroi_interaction_logout', new Route($prefix . '/logout'));
+        $routes->add('beffroi_protocol_introspection', new Route($prefix . '/introspect'));
+        $routes->add('beffroi_protocol_revocation', new Route($prefix . '/revoke'));
+        $routes->add('beffroi_protocol_pushed_authorization_request', new Route($prefix . '/par'));
+        $routes->add('beffroi_protocol_device_authorization', new Route($prefix . '/device_authorization'));
+        $routes->add('beffroi_interaction_device', new Route($prefix . '/device'));
+        $routes->add('beffroi_protocol_backchannel_authentication', new Route($prefix . '/backchannel_authentication'));
+        $routes->add('beffroi_interaction_account_approvals', new Route($prefix . '/account/approvals'));
+        $routes->add('beffroi_protocol_client_registration', new Route($prefix . '/register'));
 
         return new UrlGenerator($routes, $context ?? new RequestContext());
     }

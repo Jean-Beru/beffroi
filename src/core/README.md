@@ -1,3 +1,3 @@
-# heidi/core
+# beffroi/core
 
-Part of [heidi/framework](https://github.com/Spomky-Labs/heidi). See the monorepo for documentation and contributions.
+Part of [beffroi/framework](https://github.com/beffroi-auth/beffroi). See the monorepo for documentation and contributions.

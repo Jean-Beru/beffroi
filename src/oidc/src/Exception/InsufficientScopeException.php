@@ -2,29 +2,33 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Exception;
+namespace Beffroi\Oidc\Exception;
 
-use Heidi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Scope\Scopes;
 
 /**
- * RFC 6750 §3.1 "insufficient_scope": 403, the challenge naming the scopes that would have sufficed.
+ * RFC 6750 §3.1, RFC 9449 §7.2
  */
-final class InsufficientScopeException extends OAuth2Exception
+final class InsufficientScopeException extends OAuth2Exception implements ChallengeInterface
 {
     /**
-     * @var non-empty-list<Scope>
+     * @param non-empty-string $scheme the scheme the token was presented under, spelled as this provider spells it
      */
-    public readonly array $scopes;
-
-    /**
-     * @param list<Scope> $scopes at least one
-     */
-    public function __construct(string $description, array $scopes)
-    {
-        if ($scopes === []) {
-            throw new InvalidArgumentException('An insufficient_scope error names the scopes that were required (RFC 6750 section 3).');
-        }
-        $this->scopes = $scopes;
+    public function __construct(
+        string $description,
+        public readonly Scopes $scopes,
+        private readonly string $scheme,
+    ) {
         parent::__construct('insufficient_scope', $description, 403, false);
+    }
+
+    public function challengeScheme(): string
+    {
+        return $this->scheme;
+    }
+
+    public function challengeHeaders(): array
+    {
+        return [];
     }
 }

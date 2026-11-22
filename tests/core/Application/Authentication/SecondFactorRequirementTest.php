@@ -2,23 +2,24 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Application\Authentication;
+namespace Beffroi\Core\Tests\Application\Authentication;
 
-use Heidi\Core\Application\Authentication\SecondFactorRequirement;
-use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Authentication\SecondFactorRequirement;
+use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Totps;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §3.2: a password alone does not sign in a user who holds an active second factor.
+ * Architecture §3.2
  */
 final class SecondFactorRequirementTest extends TestCase
 {
@@ -32,8 +33,10 @@ final class SecondFactorRequirementTest extends TestCase
     {
         $this->alice = Fixtures::user();
         $this->credentials = new InMemoryCredentialRepository();
-        $this->credentials->save(new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), Fixtures::now()));
-        $this->requirement = new SecondFactorRequirement($this->credentials);
+        $this->credentials->save(
+            new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(new Argon2id(), '$argon2id$alice'), Fixtures::now()),
+        );
+        $this->requirement = new SecondFactorRequirement(new ActiveCredentials($this->credentials));
     }
 
     #[Test]

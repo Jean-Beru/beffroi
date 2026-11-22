@@ -2,13 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Exception;
+namespace Beffroi\Oidc\Exception;
 
 use Throwable;
 
-/**
- * Marker implemented by every exception thrown by this package.
- */
 interface ExceptionInterface extends Throwable
 {
 }

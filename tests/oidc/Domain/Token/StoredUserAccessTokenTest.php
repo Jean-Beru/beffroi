@@ -1,0 +1,207 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Beffroi\Oidc\Tests\Domain\Token;
+
+use Beffroi\Oidc\Tests\Fixture\Secrets;
+use DateTimeImmutable;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Exception\KmsUnavailableException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\UnopenedRows;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Authorization\AuthenticationSnapshot;
+use Beffroi\Oidc\Domain\Authorization\ClaimRequest;
+use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Token\UserAuthorization;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Domain\Token\StoredUserAccessToken;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\Grants;
+use Beffroi\Oidc\Tests\Fixture\Tokens;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
+
+final class StoredUserAccessTokenTest extends TestCase
+{
+    private AuthenticationSession $session;
+
+    private Client $client;
+
+    protected function setUp(): void
+    {
+        $this->session = Fixtures::session();
+        $this->client = Clients::public($this->session->tenant);
+    }
+
+    #[Test]
+    public function itNamesThePersonItWasIssuedFor(): void
+    {
+        // Given
+        $token = Tokens::storedAccessToken('the-token', $this->client, $this->session, Fixtures::now());
+
+        // When / Then
+        static::assertTrue($token->person()->equals($this->session->user->subject));
+    }
+
+    #[Test]
+    public function itNamesItsPersonByTheSessionItDescendsFromWithoutOpeningIt(): void
+    {
+        // Given
+        $rows = new UnopenedRows();
+        $token = Tokens::storedAccessToken('the-token', $this->client, $rows->unopenedSession($this->session), Fixtures::now());
+        $rows->outage = new KmsUnavailableException('The KMS did not answer.');
+
+        // When / Then
+        static::assertTrue($this->session->id->equals($token->sessionNamingItsPerson()));
+    }
+
+    /**
+     * Architecture §4.6
+     */
+    #[Test]
+    public function itRecordsWhatAJwtWouldCarryAsClaims(): void
+    {
+        // Given
+        $issuedAt = Fixtures::now()->modify('+5 minutes');
+        $this->session->recordProof(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::context($issuedAt));
+        $claims = new ClaimsRequest([
+            'email' => new ClaimRequest(true),
+        ]);
+        $grant = Uuid::v7();
+
+        // When
+        $token = Tokens::storedAccessToken('the-token', $this->client, $this->session, $issuedAt, $grant, ['openid', 'profile'], $claims);
+
+        // Then
+        static::assertSame(DrawnSecret::digestOf('the-token'), $token->tokenHash);
+        static::assertSame($grant, $token->grantId);
+        static::assertSame($this->client, $token->client);
+        static::assertSame($this->client->registration->clientId, $token->clientId);
+        static::assertSame($this->client->tenant, $token->tenant);
+        static::assertSame($this->session, $token->session);
+        static::assertEquals([new Scope('openid'), new Scope('profile')], $token->scopes->all);
+        static::assertSame($claims, $token->claimsRequest);
+        static::assertEquals($issuedAt, $token->authentication->authenticatedAt);
+        static::assertSame(['pwd', 'otp', 'mfa'], $token->authentication->methods);
+        static::assertSame('2', $token->authentication->contextClass);
+        static::assertEquals($issuedAt, $token->issuedAt);
+        static::assertEquals($issuedAt->modify('+10 minutes'), $token->expiresAt);
+    }
+
+    #[Test]
+    public function itIsBuiltFromAnAuthorizationWithTheScopesOfTheResponse(): void
+    {
+        // Given
+        $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'email']);
+        $authorization = UserAuthorization::fromRefreshToken(
+            Grants::refreshToken(),
+            Tokens::refreshToken(
+                'previous',
+                $this->client,
+                $this->session,
+                Fixtures::now(),
+                Tokens::family(Fixtures::now(), $this->client->tenant, grantId: $code->grantId),
+                ['openid', 'email'],
+            ),
+            new Scopes([new Scope('email')]),
+        );
+
+        // When
+        $token = StoredUserAccessToken::fromAuthorization(
+            DrawnSecret::digestOf('the-token'),
+            $authorization,
+            Fixtures::now(),
+            Fixtures::now()->modify('+10 minutes'),
+        );
+
+        // Then
+        static::assertEquals([new Scope('email')], $token->scopes->all);
+        static::assertTrue($code->grantId->equals($token->grantId));
+        static::assertSame($this->session, $token->session);
+        static::assertEquals($this->session->authenticatedAt(), $token->authentication->authenticatedAt);
+    }
+
+    #[Test]
+    public function itExpiresAtTheSecondOfItsExpiry(): void
+    {
+        // Given
+        $token = Tokens::storedAccessToken('the-token', $this->client, $this->session, Fixtures::now());
+
+        // When / Then
+        static::assertFalse($token->isExpired(Fixtures::now()->modify('+9 minutes 59 seconds')));
+        static::assertTrue($token->isExpired(Fixtures::now()->modify('+10 minutes')));
+    }
+
+    #[Test]
+    public function itKnowsItsScopes(): void
+    {
+        // Given
+        $token = Tokens::storedAccessToken('the-token', $this->client, $this->session, Fixtures::now(), scopes: ['openid', 'email']);
+
+        // When / Then
+        static::assertTrue($token->scopes->has(new Scope('email')));
+        static::assertFalse($token->scopes->has(new Scope('profile')));
+    }
+
+    #[Test]
+    public function itRefusesAValueThatIsNotAHexSha256(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+
+        // When
+        $this->token(tokenHash: Secrets::draw());
+    }
+
+    #[Test]
+    public function itRefusesASessionOfAnotherTenant(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+
+        // When
+        $this->token(client: Clients::public(Fixtures::tenant('other', 'https://id.other.example')));
+    }
+
+    #[Test]
+    public function itRefusesToExpireBeforeItWasIssued(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+
+        // When
+        $this->token(expiresAt: Fixtures::now());
+    }
+
+    /**
+     * @param list<string>|null $methods
+     */
+    private function token(
+        ?string $tokenHash = null,
+        ?Client $client = null,
+        ?Scopes $scopes = null,
+        ?array $methods = null,
+        ?DateTimeImmutable $expiresAt = null,
+    ): StoredUserAccessToken {
+        return new StoredUserAccessToken(
+            $tokenHash ?? DrawnSecret::digestOf('the-token'),
+            Uuid::v7(),
+            $client ?? $this->client,
+            $this->session,
+            $scopes ?? new Scopes([Scope::openid()]),
+            null,
+            null,
+            null,
+            new AuthenticationSnapshot(Fixtures::now(), $methods ?? ['pwd'], '1'),
+            Fixtures::now(),
+            $expiresAt ?? Fixtures::now()->modify('+10 minutes'),
+        );
+    }
+}

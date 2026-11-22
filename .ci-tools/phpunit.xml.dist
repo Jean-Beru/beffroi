@@ -6,9 +6,16 @@
     cacheDirectory=".phpunit.cache"
     failOnWarning="true"
     failOnDeprecation="true"
+    failOnPhpunitDeprecation="true"
     failOnNotice="true"
+    failOnRisky="true"
+    failOnEmptyTestSuite="true"
+    beStrictAboutOutputDuringTests="true"
+    beStrictAboutTestsThatDoNotTestAnything="true"
     displayDetailsOnTestsThatTriggerDeprecations="true"
     displayDetailsOnTestsThatTriggerWarnings="true"
+    displayDetailsOnTestsThatTriggerNotices="true"
+    displayDetailsOnPhpunitDeprecations="true"
 >
     <coverage/>
     <testsuites>
@@ -21,22 +28,44 @@
         <testsuite name="symfony">
             <directory>../tests/symfony</directory>
         </testsuite>
+        <testsuite name="xml-security">
+            <directory>../tests/xml-security/Core/Unit</directory>
+            <directory>../tests/xml-security/Dsig/Unit</directory>
+            <directory>../tests/xml-security/Enc/Unit</directory>
+        </testsuite>
+        <testsuite name="saml2-model">
+            <directory>../tests/saml2-model/Unit</directory>
+        </testsuite>
+        <testsuite name="saml2-bindings">
+            <directory>../tests/saml2-bindings/Unit</directory>
+        </testsuite>
+        <testsuite name="saml">
+            <directory>../tests/saml/Unit</directory>
+        </testsuite>
+        <testsuite name="tui">
+            <directory>../tests/tui</directory>
+        </testsuite>
     </testsuites>
     <php>
         <ini name="display_errors" value="1"/>
         <ini name="error_reporting" value="-1"/>
         <ini name="date.timezone" value="UTC"/>
+        <ini name="zend.exception_ignore_args" value="0"/>
         <server name="APP_ENV" value="test" force="true"/>
         <server name="APP_DEBUG" value="0" force="true"/>
         <server name="SHELL_VERBOSITY" value="-1"/>
-        <server name="KERNEL_CLASS" value="Heidi\Bundle\Tests\Functional\AppKernel"/>
+        <server name="KERNEL_CLASS" value="App\Tests\Symfony\Functional\AppKernel"/>
     </php>
     <source ignoreIndirectDeprecations="true">
         <include>
             <directory>../src</directory>
+            <directory>../apps/beffroi/src</directory>
+            <directory>../apps/beffroi/migrations</directory>
+            <directory>../apps/tui/src</directory>
         </include>
         <exclude>
-            <directory>../src/symfony/config</directory>
+            <directory>../apps/beffroi/src/Demonstration</directory>
+            <directory>../apps/beffroi/src/Lab</directory>
         </exclude>
     </source>
     <extensions>

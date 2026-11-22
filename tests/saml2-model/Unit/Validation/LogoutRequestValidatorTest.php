@@ -1,0 +1,912 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Beffroi\Saml2\Model\Tests\Unit\Validation;
+
+use Beffroi\Saml2\Model\Assertion\Issuer;
+use Beffroi\Saml2\Model\Exception\DestinationMismatch;
+use Beffroi\Saml2\Model\Exception\InvalidNameId;
+use Beffroi\Saml2\Model\Exception\IssuerMismatch;
+use Beffroi\Saml2\Model\Exception\LimitExceeded;
+use Beffroi\Saml2\Model\Exception\MalformedMessage;
+use Beffroi\Saml2\Model\Exception\MessageRefused;
+use Beffroi\Saml2\Model\Exception\OutsideValidityWindow;
+use Beffroi\Saml2\Model\Exception\Replayed;
+use Beffroi\Saml2\Model\Exception\SignatureRequired;
+use Beffroi\Saml2\Model\Exception\Unsupported;
+use Beffroi\Saml2\Model\Metadata\IdentityProvider;
+use Beffroi\Saml2\Model\Metadata\ServiceProvider;
+use Beffroi\Saml2\Model\Protocol\UnverifiedLogoutRequest;
+use Beffroi\Saml2\Model\SamlLoader;
+use Beffroi\Saml2\Model\Tests\Support\InMemoryReplayGuard;
+use Beffroi\Saml2\Model\Tests\Unit\Metadata\MetadataFixtures;
+use Beffroi\Saml2\Model\Validation\AcceptedLogoutRequest;
+use Beffroi\Saml2\Model\Validation\Authentication;
+use Beffroi\Xml\Core\Document;
+use Beffroi\Xml\Dsig\Exception\SignatureMismatch;
+use DateTimeImmutable;
+use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+use function strtr;
+
+/**
+ * Sections 5.6 and 6.3, M-2, SAML Profiles §4.4.4.1, section 6.8
+ */
+final class LogoutRequestValidatorTest extends TestCase
+{
+    private const string SIGNED = 'behaviour/logout-request-written-and-signed-by-the-writer.xml';
+
+    private const string REDIRECT = 'behaviour/logout-request-written-for-http-redirect.xml';
+
+    /**
+     * Section 6.3, M-2, M-1
+     */
+    #[Test]
+    public function itAcceptsARequestSignedByThePeer(): void
+    {
+        // Given
+        $request = UnverifiedLogoutRequest::of(MetadataFixtures::load(self::SIGNED));
+
+        // When
+        $accepted = LogoutFixtures::requestValidator()->validate(
+            $request,
+            LogoutFixtures::identityProvider(),
+            LogoutFixtures::serviceProvider(),
+            LogoutFixtures::SP_SLO,
+        );
+
+        // Then
+        static::assertEquals(
+            new AcceptedLogoutRequest(LogoutFixtures::request(), Authentication::XmlSignature),
+            $accepted,
+        );
+    }
+
+    /**
+     * Section 6.8, SAML Bindings §3.4.4.1
+     */
+    #[Test]
+    public function itAcceptsARequestTheBindingAuthenticated(): void
+    {
+        // When
+        $accepted = $this->byBinding(MetadataFixtures::load(self::REDIRECT));
+
+        // Then
+        static::assertEquals(new AcceptedLogoutRequest(LogoutFixtures::request(), Authentication::Binding), $accepted);
+    }
+
+    /**
+     * Section 6.8, M-3
+     */
+    #[Test]
+    public function itRefusesTheBindingPathForAPeerWithoutKey(): void
+    {
+        // Then
+        $this->expectException(SignatureRequired::class);
+        $this->expectExceptionMessageIs('The metadata of the peer holds no signing key to verify the message with (M-3).');
+
+        // When
+        $this->byBinding(MetadataFixtures::load(self::REDIRECT), 0, LogoutFixtures::identityProvider(''));
+    }
+
+    /**
+     * §9.2 row 34, M-2, SAML Profiles §4.4.4.1
+     */
+    #[Test]
+    public function itRefusesAnUnsignedRequestGivenToValidate(): void
+    {
+        // Given
+        $request = UnverifiedLogoutRequest::of(MetadataFixtures::load(self::REDIRECT));
+
+        // Then
+        $this->expectException(SignatureRequired::class);
+        $this->expectExceptionMessageIs('The message carries no ds:Signature, which the profile requires (M-2).');
+
+        // When
+        LogoutFixtures::requestValidator()->validate(
+            $request,
+            LogoutFixtures::identityProvider(),
+            LogoutFixtures::serviceProvider(),
+            LogoutFixtures::SP_SLO,
+        );
+    }
+
+    /**
+     * M-3, D-7
+     */
+    #[Test]
+    public function itRefusesARequestSignedByAKeyNotOfThePeer(): void
+    {
+        // Given
+        $request = UnverifiedLogoutRequest::of(MetadataFixtures::load(self::SIGNED));
+
+        // Then
+        $this->expectException(SignatureMismatch::class);
+        $this->expectExceptionMessageIs('No trusted key verifies the signature over SignedInfo (D-7, D-8).');
+
+        // When
+        LogoutFixtures::requestValidator()->validate(
+            $request,
+            LogoutFixtures::identityProvider('sp'),
+            LogoutFixtures::serviceProvider(),
+            LogoutFixtures::SP_SLO,
+        );
+    }
+
+    /**
+     * M-3, section 5.3
+     */
+    #[Test]
+    public function itRefusesWhenThePeerHasNoSigningKey(): void
+    {
+        // Given
+        $request = UnverifiedLogoutRequest::of(MetadataFixtures::load(self::SIGNED));
+
+        // Then
+        $this->expectException(SignatureRequired::class);
+        $this->expectExceptionMessageIs('The metadata of the peer holds no signing key to verify the message with (M-3).');
+
+        // When
+        LogoutFixtures::requestValidator()->validate(
+            $request,
+            LogoutFixtures::identityProvider(''),
+            LogoutFixtures::serviceProvider(),
+            LogoutFixtures::SP_SLO,
+        );
+    }
+
+    /**
+     * Section 5.6, SAML Bindings §3.4.4.1
+     */
+    #[Test]
+    public function itRefusesASignatureInARequestTheBindingAuthenticated(): void
+    {
+        // Given
+        $document = MetadataFixtures::load(self::SIGNED);
+
+        // Then
+        $this->expectException(MalformedMessage::class);
+        $this->expectExceptionMessageIs('The message carries a ds:Signature, which the HTTP-Redirect encoding removes (SAML Bindings §3.4.4.1).');
+
+        // When
+        $this->byBinding($document);
+    }
+
+    /**
+     * §9.2 row 34, M-7, SAML Core §3.7.1
+     */
+    #[Test]
+    public function itRefusesARequestWhoseNotOnOrAfterHasPassed(): void
+    {
+        // Given
+        $request = UnverifiedLogoutRequest::of(
+            MetadataFixtures::load('hostile/logout-request-not-on-or-after-passed-refused.xml'),
+        );
+
+        // Then
+        $this->expectException(OutsideValidityWindow::class);
+        $this->expectExceptionMessageIs('The NotOnOrAfter of the LogoutRequest is at or before now minus the clock skew (M-7).');
+
+        // When
+        LogoutFixtures::requestValidator()->validate(
+            $request,
+            LogoutFixtures::identityProvider(),
+            LogoutFixtures::serviceProvider(),
+            LogoutFixtures::SP_SLO,
+        );
+    }
+
+    /**
+     * §9.2 row 16, M-8, SAML Profiles §4.4.4.1
+     */
+    #[Test]
+    public function itRefusesTheIssuerOfAnotherEntity(): void
+    {
+        // Given
+        $request = UnverifiedLogoutRequest::of(
+            MetadataFixtures::load('hostile/logout-request-issuer-of-another-entity-refused.xml'),
+        );
+
+        // Then
+        $this->expectException(IssuerMismatch::class);
+        $this->expectExceptionMessageIs('The Issuer is not the entity ID of the peer (M-8).');
+
+        // When
+        LogoutFixtures::requestValidator()->validate(
+            $request,
+            LogoutFixtures::identityProvider(),
+            LogoutFixtures::serviceProvider(),
+            LogoutFixtures::SP_SLO,
+        );
+    }
+
+    /**
+     * §9.2 row 36, section 7, M-17
+     */
+    #[Test]
+    public function itRefusesOneSessionIndexOverTheBound(): void
+    {
+        // Given
+        $request = UnverifiedLogoutRequest::of(
+            MetadataFixtures::load('hostile/logout-request-seventeen-session-indexes-refused.xml'),
+        );
+
+        // Then
+        $this->expectException(LimitExceeded::class);
+        $this->expectExceptionMessageIs('A LogoutRequest names more than 16 session indexes, the bound of section 7 (M-17).');
+
+        // When
+        LogoutFixtures::requestValidator()->validate(
+            $request,
+            LogoutFixtures::identityProvider(),
+            LogoutFixtures::serviceProvider(),
+            LogoutFixtures::SP_SLO,
+        );
+    }
+
+    /**
+     * M-17, D-6
+     */
+    #[Test]
+    public function itCountsTheSessionIndexesBeforeAnySignature(): void
+    {
+        // Given
+        $request = UnverifiedLogoutRequest::of(
+            MetadataFixtures::load('hostile/logout-request-seventeen-session-indexes-refused.xml'),
+        );
+
+        // Then
+        $this->expectException(LimitExceeded::class);
+        $this->expectExceptionMessageIs('A LogoutRequest names more than 16 session indexes, the bound of section 7 (M-17).');
+
+        // When
+        LogoutFixtures::requestValidator()->validate(
+            $request,
+            LogoutFixtures::identityProvider(''),
+            LogoutFixtures::serviceProvider(),
+            LogoutFixtures::SP_SLO,
+        );
+    }
+
+    /**
+     * §9.2 row 25, M-5, section 6.3, section 8, §9.2 row 29, section 6.7
+     *
+     * @param class-string<MessageRefused> $exception
+     */
+    #[Test]
+    #[DataProvider('provideStructuresRefused')]
+    public function itRefusesAStructureTheSchemaDoesNotAllow(string $path, string $exception, string $message): void
+    {
+        // Given
+        $request = UnverifiedLogoutRequest::of(MetadataFixtures::load($path));
+
+        // Then
+        $this->expectException($exception);
+        $this->expectExceptionMessageIs($message);
+
+        // When
+        LogoutFixtures::requestValidator()->validate(
+            $request,
+            LogoutFixtures::identityProvider(),
+            LogoutFixtures::serviceProvider(),
+            LogoutFixtures::SP_SLO,
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, class-string<MessageRefused>, string}>
+     */
+    public static function provideStructuresRefused(): iterable
+    {
+        $outOfOrder = 'The samlp:LogoutRequest holds a child out of the order of the schema, or one it does not allow there (M-5).';
+        yield 'no saml:Issuer' => [
+            'hostile/logout-request-without-issuer-refused.xml',
+            MalformedMessage::class,
+            'A samlp:LogoutRequest holds no saml:Issuer, which the profile requires (SAML Profiles §4.4.4.1).',
+        ];
+        yield 'the ds:Signature before the saml:Issuer' => [
+            'hostile/logout-request-signature-before-issuer-refused.xml',
+            MalformedMessage::class,
+            $outOfOrder,
+        ];
+        yield 'the saml:NameID before the saml:Issuer' => [
+            'hostile/logout-request-name-id-before-issuer-refused.xml',
+            MalformedMessage::class,
+            $outOfOrder,
+        ];
+        yield 'a saml:NameID after a samlp:SessionIndex' => [
+            'hostile/logout-request-name-id-after-session-index-refused.xml',
+            MalformedMessage::class,
+            $outOfOrder,
+        ];
+        yield 'no saml:NameID' => [
+            'hostile/logout-request-without-name-id-refused.xml',
+            MalformedMessage::class,
+            'The samlp:LogoutRequest holds no identifier (M-4).',
+        ];
+        yield 'two saml:NameID' => [
+            'hostile/logout-request-two-name-ids-refused.xml',
+            MalformedMessage::class,
+            'The samlp:LogoutRequest holds more than one identifier (M-4).',
+        ];
+        yield 'a saml:BaseID' => [
+            'hostile/logout-request-base-id-refused.xml',
+            Unsupported::class,
+            'The LogoutRequest names its principal with a saml:BaseID, which the package does not support (section 8).',
+        ];
+        yield 'a saml:EncryptedID' => [
+            'hostile/logout-request-encrypted-id-refused.xml',
+            Unsupported::class,
+            'The LogoutRequest names its principal with a saml:EncryptedID, which the package does not support (section 6.7).',
+        ];
+    }
+
+    /**
+     * §9.2 rows 16, 25, 26 and 27, M-5, M-6, M-8, M-12, M-16
+     *
+     * @param array<string, string> $replacements
+     * @param class-string<MessageRefused> $exception
+     */
+    #[Test]
+    #[DataProvider('provideValuesRefused')]
+    public function itRefusesAValue(array $replacements, string $exception, string $message): void
+    {
+        // Given
+        $document = $this->variant($replacements);
+
+        // Then
+        $this->expectException($exception);
+        $this->expectExceptionMessageIs($message);
+
+        // When
+        $this->byBinding($document);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, string>, class-string<MessageRefused>, string}>
+     */
+    public static function provideValuesRefused(): iterable
+    {
+        $issuer = '<saml:Issuer>' . LogoutFixtures::IDP . '</saml:Issuer>';
+        $nameId = '>_7a2f4c1d9e</saml:NameID>';
+        yield 'an Issuer with Format unspecified' => [
+            [
+                $issuer => '<saml:Issuer Format="urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified">' . LogoutFixtures::IDP . '</saml:Issuer>',
+            ],
+            IssuerMismatch::class,
+            'The Issuer has a Format other than entity (M-8).',
+        ];
+        foreach (['NameQualifier', 'SPNameQualifier', 'SPProvidedID'] as $qualifier) {
+            yield 'an Issuer with an ' . $qualifier . ' (section 9.8)' => [
+                [
+                    $issuer => '<saml:Issuer ' . $qualifier . '="' . LogoutFixtures::IDP . '">' . LogoutFixtures::IDP . '</saml:Issuer>',
+                ],
+                IssuerMismatch::class,
+                'The Issuer carries a NameQualifier, an SPNameQualifier or an SPProvidedID, which an entity identifier omits (M-8).',
+            ];
+        }
+        yield 'an Issuer with another case' => [
+            [$issuer => '<saml:Issuer>https://IDP.example.com/saml</saml:Issuer>'],
+            IssuerMismatch::class,
+            'The Issuer is not the entity ID of the peer (M-8).',
+        ];
+        yield 'Version 2.1' => [
+            ['Version="2.0"' => 'Version="2.1"'],
+            MalformedMessage::class,
+            'The version is not 2.0 (M-6).',
+        ];
+        yield 'no Version' => [
+            ['Version="2.0"' => ''],
+            MalformedMessage::class,
+            'The samlp:LogoutRequest has no Version (M-5).',
+        ];
+        yield 'no ID' => [
+            ['ID="' . LogoutFixtures::REQUEST_ID . '"' => ''],
+            MalformedMessage::class,
+            'The samlp:LogoutRequest has no ID (M-5).',
+        ];
+        yield 'no IssueInstant' => [
+            ['IssueInstant="2026-09-30T12:00:00Z"' => ''],
+            MalformedMessage::class,
+            'The samlp:LogoutRequest has no IssueInstant (M-5).',
+        ];
+        yield 'an IssueInstant with +00:00' => [
+            ['IssueInstant="2026-09-30T12:00:00Z"' => 'IssueInstant="2026-09-30T12:00:00+00:00"'],
+            MalformedMessage::class,
+            'A time is not an xs:dateTime in UTC with the Z designator (M-6).',
+        ];
+        yield 'a NotOnOrAfter without Z' => [
+            ['NotOnOrAfter="2026-09-30T12:05:00Z"' => 'NotOnOrAfter="2026-09-30T12:05:00"'],
+            MalformedMessage::class,
+            'A time is not an xs:dateTime in UTC with the Z designator (M-6).',
+        ];
+        yield 'an empty NameID' => [
+            [$nameId => '></saml:NameID>'],
+            InvalidNameId::class,
+            'The NameID is empty (M-12).',
+        ];
+        yield 'a NameID with a leading space' => [
+            [$nameId => '> _7a2f4c1d9e</saml:NameID>'],
+            InvalidNameId::class,
+            'The NameID starts or ends with whitespace or a control character, or is not UTF-8 (M-12).',
+        ];
+        yield 'an unknown NameID Format' => [
+            ['nameid-format:persistent' => 'nameid-format:pairwise'],
+            InvalidNameId::class,
+            'The NameID format is not one of the eight of SAML Core (M-12).',
+        ];
+        yield 'a relative Reason' => [
+            ['Reason="urn:oasis:names:tc:SAML:2.0:logout:user"' => 'Reason="user"'],
+            MalformedMessage::class,
+            'A URI is not absolute (M-6).',
+        ];
+    }
+
+    /**
+     * M-7
+     */
+    #[Test]
+    #[DataProvider('provideInstantsRefused')]
+    public function itRefusesAnInstantOutsideItsWindow(int $seconds, string $notOnOrAfter, string $message): void
+    {
+        // Given
+        $document = $this->variant(['NotOnOrAfter="2026-09-30T12:05:00Z"' => 'NotOnOrAfter="' . $notOnOrAfter . '"']);
+
+        // Then
+        $this->expectException(OutsideValidityWindow::class);
+        $this->expectExceptionMessageIs($message);
+
+        // When
+        $this->byBinding($document, $seconds);
+    }
+
+    /**
+     * @return iterable<string, array{int, string, string}>
+     */
+    public static function provideInstantsRefused(): iterable
+    {
+        yield 'issued one second beyond now plus the skew' => [
+            -181,
+            '2026-09-30T12:05:00Z',
+            'The IssueInstant of the message is later than now plus the clock skew (M-7).',
+        ];
+        yield 'one second older than maxMessageAge' => [
+            301,
+            '2026-09-30T12:10:00Z',
+            'The IssueInstant of the message is older than maxMessageAge (M-7).',
+        ];
+        yield 'a NotOnOrAfter at now minus the skew' => [
+            200,
+            '2026-09-30T12:00:20Z',
+            'The NotOnOrAfter of the LogoutRequest is at or before now minus the clock skew (M-7).',
+        ];
+    }
+
+    /**
+     * M-7, section 6.3
+     */
+    #[Test]
+    #[DataProvider('provideInstantsAccepted')]
+    public function itAcceptsTheEdgesOfTheWindows(int $seconds, string $notOnOrAfter): void
+    {
+        // Given
+        $document = $this->variant(['NotOnOrAfter="2026-09-30T12:05:00Z"' => 'NotOnOrAfter="' . $notOnOrAfter . '"']);
+
+        // When
+        $accepted = $this->byBinding($document, $seconds);
+
+        // Then
+        static::assertSame($notOnOrAfter, $accepted->request->notOnOrAfter?->format('Y-m-d\TH:i:s\Z'));
+    }
+
+    /**
+     * @return iterable<string, array{int, string}>
+     */
+    public static function provideInstantsAccepted(): iterable
+    {
+        yield 'issued at now plus the skew' => [-180, '2026-09-30T12:05:00Z'];
+        yield 'exactly maxMessageAge old' => [300, '2026-09-30T12:10:00Z'];
+        yield 'a NotOnOrAfter one second after now minus the skew' => [200, '2026-09-30T12:00:21Z'];
+        yield 'a NotOnOrAfter one second after the IssueInstant' => [0, '2026-09-30T12:00:01Z'];
+    }
+
+    /**
+     * M-8, section 9.8
+     */
+    #[Test]
+    public function itRefusesTheIssuerQualifierTheAdversarialPassFound(): void
+    {
+        // Given
+        $document = MetadataFixtures::load('hostile/adversarial-logout-request-issuer-sp-name-qualifier-refused.xml');
+
+        // Then
+        $this->expectException(IssuerMismatch::class);
+        $this->expectExceptionMessageIs('The Issuer carries a NameQualifier, an SPNameQualifier or an SPProvidedID, which an entity identifier omits (M-8).');
+
+        // When
+        $this->byBinding($document);
+    }
+
+    /**
+     * §9.2 row 34, section 6.3, SAML Core §3.7.1
+     */
+    #[Test]
+    #[DataProvider('provideNotOnOrAfterNotAfterTheIssueInstant')]
+    public function itRefusesANotOnOrAfterNotLaterThanTheIssueInstant(string $notOnOrAfter): void
+    {
+        // Given
+        $document = $this->variant(['NotOnOrAfter="2026-09-30T12:05:00Z"' => 'NotOnOrAfter="' . $notOnOrAfter . '"']);
+
+        // Then
+        $this->expectException(MalformedMessage::class);
+        $this->expectExceptionMessageIs('The NotOnOrAfter of the LogoutRequest is not later than its IssueInstant (section 6.3).');
+
+        // When
+        $this->byBinding($document);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideNotOnOrAfterNotAfterTheIssueInstant(): iterable
+    {
+        yield 'at the IssueInstant' => ['2026-09-30T12:00:00Z'];
+        yield 'a second before the IssueInstant' => ['2026-09-30T11:59:59Z'];
+    }
+
+    /**
+     * §9.2 rows 12 and 13, M-8, SAML Bindings §3.4.5.2
+     */
+    #[Test]
+    #[DataProvider('provideDestinationsRefused')]
+    public function itRefusesADestinationOtherThanTheUrlOfArrival(string $destination, string $message): void
+    {
+        // Given
+        $document = $this->variant(['Destination="' . LogoutFixtures::SP_SLO . '"' => $destination]);
+
+        // Then
+        $this->expectException(DestinationMismatch::class);
+        $this->expectExceptionMessageIs($message);
+
+        // When
+        $this->byBinding($document);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideDestinationsRefused(): iterable
+    {
+        $other = 'The Destination of the message is not the URL at which it arrived (M-8).';
+        yield 'absent' => ['', 'The message has no Destination, which a signed message carries (M-8).'];
+        yield 'another URL' => ['Destination="https://sp.example.com/saml/acs"', $other];
+        yield 'a trailing slash' => ['Destination="https://sp.example.com/saml/slo/"', $other];
+        yield 'another case in the host' => ['Destination="https://SP.example.com/saml/slo"', $other];
+        yield 'a percent-encoded character' => ['Destination="https://sp.example.com/saml/%73lo"', $other];
+    }
+
+    /**
+     * Sections 5.6 and 6.3, M-8, SAML Metadata §2.2.2
+     */
+    #[Test]
+    #[DataProvider('provideUrlsOfArrivalNotOurs')]
+    public function itRefusesAUrlOfArrivalThatIsNotOneOfOurSingleLogoutServices(
+        string $issuer,
+        string $url,
+        IdentityProvider|ServiceProvider $peer,
+        IdentityProvider|ServiceProvider $self,
+    ): void {
+        // Given
+        $document = $this->variant([
+            '>' . LogoutFixtures::IDP . '</saml:Issuer>' => '>' . $issuer . '</saml:Issuer>',
+            'Destination="' . LogoutFixtures::SP_SLO . '"' => 'Destination="' . $url . '"',
+        ]);
+
+        // Then
+        $this->expectException(DestinationMismatch::class);
+        $this->expectExceptionMessageIs('The URL at which the message arrived is not one of our single logout services (M-8).');
+
+        // When
+        $this->byBinding($document, 0, $peer, $self, $url);
+    }
+
+    /**
+     * @return iterable<string, array{string, string, IdentityProvider|ServiceProvider, IdentityProvider|ServiceProvider}>
+     */
+    public static function provideUrlsOfArrivalNotOurs(): iterable
+    {
+        yield 'a URL of the service provider that is not a single logout service' => [
+            LogoutFixtures::IDP,
+            'https://sp.example.com/saml/acs',
+            LogoutFixtures::identityProvider(),
+            LogoutFixtures::serviceProvider(),
+        ];
+        yield 'the ResponseLocation of the identity provider' => [
+            LogoutFixtures::SP,
+            LogoutFixtures::IDP_SLO_RESPONSE,
+            LogoutFixtures::serviceProvider(),
+            LogoutFixtures::identityProvider(),
+        ];
+    }
+
+    /**
+     * Sections 5.6 and 6.3, SAML Profiles §4.4.4.1
+     */
+    #[Test]
+    #[DataProvider('provideLocationsOfTheIdentityProvider')]
+    public function itAcceptsARequestToTheIdentityProvider(string $url): void
+    {
+        // Given
+        $document = $this->variant([
+            '>' . LogoutFixtures::IDP . '</saml:Issuer>' => '>' . LogoutFixtures::SP . '</saml:Issuer>',
+            'Destination="' . LogoutFixtures::SP_SLO . '"' => 'Destination="' . $url . '"',
+        ]);
+
+        // When
+        $accepted = $this->byBinding(
+            $document,
+            0,
+            LogoutFixtures::serviceProvider(),
+            LogoutFixtures::identityProvider(),
+            $url,
+        );
+
+        // Then
+        static::assertSame([LogoutFixtures::SP, $url], [
+            $accepted->request->issuer->entityId,
+            $accepted->request->destination,
+        ]);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideLocationsOfTheIdentityProvider(): iterable
+    {
+        yield 'HTTP-Redirect' => [LogoutFixtures::IDP_SLO];
+        yield 'HTTP-POST' => [LogoutFixtures::IDP_SLO_POST];
+    }
+
+    /**
+     * Section 5.6
+     */
+    #[Test]
+    #[DataProvider('provideRolesThatDoNotFaceEachOther')]
+    public function itRefusesRolesThatDoNotFaceEachOther(
+        IdentityProvider|ServiceProvider $peer,
+        IdentityProvider|ServiceProvider $self,
+    ): void {
+        // Given
+        $document = MetadataFixtures::load(self::REDIRECT);
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('Our role is the one that faces the peer\'s, a service provider facing an identity provider or the reverse (section 5.6).');
+
+        // When
+        $this->byBinding($document, 0, $peer, $self);
+    }
+
+    /**
+     * @return iterable<string, array{IdentityProvider|ServiceProvider, IdentityProvider|ServiceProvider}>
+     */
+    public static function provideRolesThatDoNotFaceEachOther(): iterable
+    {
+        yield 'two identity providers' => [LogoutFixtures::identityProvider(), LogoutFixtures::identityProvider()];
+        yield 'two service providers' => [LogoutFixtures::serviceProvider(), LogoutFixtures::serviceProvider()];
+    }
+
+    /**
+     * M-8
+     */
+    #[Test]
+    public function itAcceptsAnIssuerOfFormatEntity(): void
+    {
+        // Given
+        $document = $this->variant([
+            '<saml:Issuer>' => '<saml:Issuer Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">',
+        ]);
+
+        // When
+        $accepted = $this->byBinding($document);
+
+        // Then
+        static::assertEquals(new Issuer(LogoutFixtures::IDP), $accepted->request->issuer);
+    }
+
+    /**
+     * M-12, I-12, §9.3 row 1
+     */
+    #[Test]
+    public function itReadsTheNameIdAroundAComment(): void
+    {
+        // Given
+        $document = $this->variant(['>_7a2f4c1d9e<' => '>_7a2f<!---->4c1d9e<']);
+
+        // When
+        $accepted = $this->byBinding($document);
+
+        // Then
+        static::assertSame('_7a2f4c1d9e', $accepted->request->nameId->value);
+    }
+
+    /**
+     * §9.3 row 9, M-5
+     */
+    #[Test]
+    public function itAcceptsExtensionsWithoutReadingThem(): void
+    {
+        // When
+        $accepted = $this->byBinding(MetadataFixtures::load('behaviour/logout-request-extensions.xml'));
+
+        // Then
+        static::assertEquals(LogoutFixtures::request(), $accepted->request);
+    }
+
+    /**
+     * SAML Core §3.7.1
+     */
+    #[Test]
+    public function itAcceptsARequestWithoutItsOptionalParts(): void
+    {
+        // Given
+        $document = $this->variant([
+            ' NotOnOrAfter="2026-09-30T12:05:00Z"' => '',
+            ' Reason="urn:oasis:names:tc:SAML:2.0:logout:user"' => '',
+            '<samlp:SessionIndex>_session-1</samlp:SessionIndex>' => '',
+        ]);
+
+        // When
+        $accepted = $this->byBinding($document);
+
+        // Then
+        static::assertSame([null, [], null], [
+            $accepted->request->notOnOrAfter,
+            $accepted->request->sessionIndexes,
+            $accepted->request->reason,
+        ]);
+    }
+
+    /**
+     * §9.2 row 37, M-11
+     */
+    #[Test]
+    public function itRefusesTheSameSignedRequestTwice(): void
+    {
+        // Given
+        $validator = LogoutFixtures::requestValidator();
+        $validator->validate(
+            UnverifiedLogoutRequest::of(MetadataFixtures::load(self::SIGNED)),
+            LogoutFixtures::identityProvider(),
+            LogoutFixtures::serviceProvider(),
+            LogoutFixtures::SP_SLO,
+        );
+
+        // Then
+        $this->expectException(Replayed::class);
+        $this->expectExceptionMessageIs('The logout message was already accepted from its issuer (M-11).');
+
+        // When
+        $validator->validate(
+            UnverifiedLogoutRequest::of(MetadataFixtures::load(self::SIGNED)),
+            LogoutFixtures::identityProvider(),
+            LogoutFixtures::serviceProvider(),
+            LogoutFixtures::SP_SLO,
+        );
+    }
+
+    /**
+     * §9.2 row 37, M-11
+     */
+    #[Test]
+    public function itRefusesTheSameRequestTheBindingAuthenticatedTwice(): void
+    {
+        // Given
+        $replay = new InMemoryReplayGuard();
+        $this->byBinding(MetadataFixtures::load(self::REDIRECT), replay: $replay);
+
+        // Then
+        $this->expectException(Replayed::class);
+        $this->expectExceptionMessageIs('The logout message was already accepted from its issuer (M-11).');
+
+        // When
+        $this->byBinding(MetadataFixtures::load(self::REDIRECT), replay: $replay);
+    }
+
+    /**
+     * M-11
+     */
+    #[Test]
+    public function itRemembersTheIssuerAndTheIdOfTheRequest(): void
+    {
+        // Given
+        $replay = new InMemoryReplayGuard();
+
+        // When
+        $this->byBinding(MetadataFixtures::load(self::REDIRECT), replay: $replay);
+
+        // Then
+        static::assertNotNull($replay->expiresAt(LogoutFixtures::IDP, LogoutFixtures::REQUEST_ID));
+    }
+
+    /**
+     * §9.3 row 21, M-11
+     */
+    #[Test]
+    public function itRemembersNothingOfARefusedRequest(): void
+    {
+        // Given
+        $replay = new InMemoryReplayGuard();
+        $document = $this->variant(['Destination="' . LogoutFixtures::SP_SLO . '"' => 'Destination="https://sp.example.com/saml/acs"']);
+
+        // When
+        try {
+            $this->byBinding($document, replay: $replay);
+        } catch (DestinationMismatch) {
+        }
+
+        // Then
+        static::assertTrue($replay->isEmpty());
+    }
+
+    /**
+     * §9.3 row 22, M-11, section 6.3
+     */
+    #[Test]
+    #[DataProvider('provideWindowsOfARequest')]
+    public function itRemembersARequestUntilItsWindowCloses(string $notOnOrAfter, string $until): void
+    {
+        // Given
+        $replay = new InMemoryReplayGuard();
+        $document = $this->variant([' NotOnOrAfter="2026-09-30T12:05:00Z"' => $notOnOrAfter]);
+
+        // When
+        $this->byBinding($document, replay: $replay);
+
+        // Then
+        static::assertEquals(
+            new DateTimeImmutable($until),
+            $replay->expiresAt(LogoutFixtures::IDP, LogoutFixtures::REQUEST_ID),
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideWindowsOfARequest(): iterable
+    {
+        yield 'no NotOnOrAfter: the IssueInstant, 300 s of maxMessageAge and 180 s of skew' => ['', '2026-09-30T12:08:00Z'];
+        yield 'a NotOnOrAfter earlier than that: it and the skew' => [' NotOnOrAfter="2026-09-30T12:01:00Z"', '2026-09-30T12:04:00Z'];
+        yield 'a NotOnOrAfter later than that: the IssueInstant, maxMessageAge and the skew' => [
+            ' NotOnOrAfter="2026-09-30T12:05:01Z"',
+            '2026-09-30T12:08:00Z',
+        ];
+    }
+
+    /**
+     * @param array<string, string> $replacements
+     */
+    private function variant(array $replacements): Document
+    {
+        return SamlLoader::create()->load(strtr(MetadataFixtures::bytes(self::REDIRECT), $replacements));
+    }
+
+    private function byBinding(
+        Document $document,
+        int $seconds = 0,
+        IdentityProvider|ServiceProvider|null $peer = null,
+        IdentityProvider|ServiceProvider|null $self = null,
+        string $receivedAt = LogoutFixtures::SP_SLO,
+        InMemoryReplayGuard $replay = new InMemoryReplayGuard(),
+    ): AcceptedLogoutRequest {
+        return LogoutFixtures::requestValidator($seconds, $replay)->validateAuthenticatedByBinding(
+            UnverifiedLogoutRequest::of($document),
+            $peer ?? LogoutFixtures::identityProvider(),
+            $self ?? LogoutFixtures::serviceProvider(),
+            $receivedAt,
+        );
+    }
+}

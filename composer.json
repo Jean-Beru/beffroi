@@ -1,16 +1,15 @@
 {
-    "name": "heidi/framework",
-    "description": "An identity provider for the Symfony ecosystem: identity core, OAuth 2.0 / OpenID Connect module, Symfony bundle.",
-    "type": "symfony-bundle",
+    "name": "beffroi/framework",
+    "description": "An identity provider for the Symfony ecosystem: identity core, OAuth 2.0 / OpenID Connect module, SAML 2.0 module, XML security, the SAML 2.0 model and its bindings, the application built on them, and the terminal client that administers it.",
+    "type": "library",
     "license": "MIT",
-    "homepage": "https://github.com/Spomky-Labs/heidi",
+    "homepage": "https://github.com/beffroi-auth/beffroi",
     "keywords": [
         "oauth2",
         "openid-connect",
         "identity-provider",
         "authorization-server",
-        "symfony",
-        "symfony-bundle"
+        "symfony"
     ],
     "authors": [
         {
@@ -19,21 +18,39 @@
     ],
     "require": {
         "php": ">=8.4",
+        "ext-dom": "*",
+        "ext-intl": "*",
+        "ext-libxml": "*",
+        "ext-openssl": "*",
+        "ext-sodium": "*",
+        "ext-zlib": "*",
+        "amphp/http-client": "^5.3.2",
+        "amphp/process": "^2.0",
+        "amphp/socket": "^2.3",
         "bacon/bacon-qr-code": "^3.0",
-        "doctrine/dbal": "^4.4",
-        "doctrine/doctrine-bundle": "^3.3",
+        "doctrine/dbal": "^4.6",
+        "doctrine/doctrine-bundle": "^3.4",
         "doctrine/migrations": "^3.9",
-        "doctrine/orm": "^3.7",
+        "doctrine/orm": "^3.8",
+        "maxmind-db/reader": "^1.14",
         "paragonie/constant_time_encoding": "^3.1",
         "psr/clock": "^1.0",
         "psr/event-dispatcher": "^1.0",
         "psr/log": "^3.0",
+        "revolt/event-loop": "^1.0",
+        "spomky-labs/aes-key-wrap": "^7.0",
         "spomky-labs/otphp": "^11.5",
+        "spomky-labs/pki-framework": "^1.2.1",
+        "spomky-labs/web-push-lib": "^3.2",
         "symfony/clock": "8.2.*",
         "symfony/config": "8.2.*",
         "symfony/console": "^8.1",
         "symfony/dependency-injection": "8.2.*",
         "symfony/doctrine-bridge": "8.2.*",
+        "symfony/doctrine-dbal-key-management": "8.2.*",
+        "symfony/doctrine-messenger": "8.2.*",
+        "symfony/doctrine-orm-key-management": "8.2.*",
+        "symfony/form": "8.2.*",
         "symfony/framework-bundle": "8.2.*",
         "symfony/http-client": "8.2.*",
         "symfony/http-foundation": "8.2.*",
@@ -43,17 +60,19 @@
         "symfony/password-hasher": "^8.1",
         "symfony/rate-limiter": "8.2.*",
         "symfony/routing": "8.2.*",
+        "symfony/runtime": "8.2.*",
         "symfony/scheduler": "8.2.*",
         "symfony/security-bundle": "8.2.*",
         "symfony/security-core": "8.2.*",
         "symfony/security-csrf": "8.2.*",
         "symfony/security-http": "8.2.*",
         "symfony/translation": "8.2.*",
+        "symfony/tui": "^8.1",
         "symfony/twig-bridge": "8.2.*",
         "symfony/twig-bundle": "8.2.*",
         "symfony/uid": "8.2.*",
         "twig/twig": "^3.21",
-        "web-auth/webauthn-lib": "^5.3",
+        "web-auth/webauthn-lib": "^5.3.12",
         "web-token/jwt-library": "^4.2"
     },
     "require-dev": {
@@ -63,35 +82,70 @@
         "symfony/css-selector": "8.2.*",
         "symfony/hashicorp-vault-key-management": "8.2.*",
         "symfony/phpunit-bridge": "8.2.*",
+        "symfony/web-profiler-bundle": "8.2.*",
         "symfony/yaml": "8.2.*"
     },
+    "conflict": {
+        "symfony/cache-contracts": "3.8.0",
+        "symfony/event-dispatcher-contracts": "3.8.0",
+        "symfony/service-contracts": "3.8.0"
+    },
     "replace": {
-        "heidi/core": "self.version",
-        "heidi/oidc": "self.version",
-        "heidi/symfony-bundle": "self.version"
+        "symfony/polyfill-intl-icu": "*",
+        "beffroi/core": "self.version",
+        "beffroi/oidc": "self.version",
+        "beffroi/saml": "self.version",
+        "beffroi/saml2-bindings": "self.version",
+        "beffroi/saml2-model": "self.version",
+        "beffroi/xml-security": "self.version"
     },
     "minimum-stability": "dev",
     "prefer-stable": true,
     "autoload": {
         "psr-4": {
-            "Heidi\\Core\\": "src/core/src/",
-            "Heidi\\Oidc\\": "src/oidc/src/",
-            "Heidi\\Bundle\\": "src/symfony/src/"
+            "Beffroi\\Core\\": "src/core/src/",
+            "Beffroi\\Oidc\\": "src/oidc/src/",
+            "Beffroi\\Saml\\": "src/saml/src/",
+            "App\\": "apps/beffroi/src/",
+            "Beffroi\\Xml\\": "src/xml-security/src/",
+            "Beffroi\\Saml2\\Model\\": "src/saml2-model/src/",
+            "Beffroi\\Saml2\\Bindings\\": "src/saml2-bindings/src/",
+            "Beffroi\\Tui\\": "apps/tui/src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Heidi\\Core\\Tests\\": "tests/core/",
-            "Heidi\\Oidc\\Tests\\": "tests/oidc/",
-            "Heidi\\Bundle\\Tests\\": "tests/symfony/",
-            "Heidi\\Bundle\\Migrations\\": "src/symfony/migrations/"
-        }
+            "Beffroi\\Core\\Tests\\": "tests/core/",
+            "Beffroi\\Oidc\\Tests\\": "tests/oidc/",
+            "Beffroi\\Saml\\Tests\\": "tests/saml/",
+            "App\\Tests\\Symfony\\": "tests/symfony/",
+            "DoctrineMigrations\\": "apps/beffroi/migrations/",
+            "Beffroi\\Xml\\Tests\\": "tests/xml-security/",
+            "Beffroi\\Saml2\\Model\\Tests\\": "tests/saml2-model/",
+            "Beffroi\\Saml2\\Bindings\\Tests\\": "tests/saml2-bindings/",
+            "Beffroi\\Tui\\Tests\\": "tests/tui/"
+        },
+        "exclude-from-classmap": [
+            "tests/saml2-model/Fixture/",
+            "tests/saml2-model/Interop/",
+            "tests/saml2-bindings/Fixture/",
+            "tests/saml2-bindings/Interop/",
+            "tests/saml/Interop/",
+            "tests/saml/PhpStan/Fixture/"
+        ]
     },
     "config": {
         "sort-packages": true,
         "allow-plugins": {
             "infection/extension-installer": true,
-            "phpstan/extension-installer": true
+            "phpstan/extension-installer": true,
+            "symfony/runtime": false
+        }
+    },
+    "extra": {
+        "bamarni-bin": {
+            "bin-links": false,
+            "forward-command": false
         }
     }
 }

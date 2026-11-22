@@ -2,18 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Port;
+namespace Beffroi\Oidc\Port;
 
-use Heidi\Oidc\Domain\Token\StoredAccessToken;
+use Beffroi\Oidc\Domain\Token\StoredAccessToken;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * A companion of AccessTokenRepositoryInterface: every token of a session, for its end (architecture §4.9).
- */
 interface CanRevokeAccessTokensBySessionInterface
 {
     /**
-     * @return list<StoredAccessToken> the records removed
+     * @return list<StoredAccessToken>
      */
     public function revokeBySession(Uuid $session): array;
 }

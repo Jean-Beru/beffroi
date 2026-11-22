@@ -1,5 +1,10 @@
 framework:
     secret: 'test'
+    # The panel of the provider is wired by kernel.debug, and the profiler that shows it follows it here:
+    # every test runs on a kernel that is not in debug, the one test of the panel asks for one that is.
+    profiler:
+        enabled: '%kernel.debug%'
+        collect: true
     test: true
     http_method_override: false
     handle_all_throwables: true
@@ -15,79 +20,116 @@ framework:
         storage_factory_id: session.storage.factory.mock_file
         cookie_secure: auto
         cookie_samesite: lax
-    csrf_protection: true
-    # The two locales the bundle ships (architecture §5.7); the pages choose between them, never the URL.
+    # Declared as the recipe of symfony/security-csrf 8.2 writes it into the application
+    # through Flex (symfony/recipes#1554, #1553): three identifiers of the forms of Symfony whose token is checked
+    # against where the request says it comes from, and not against the session. A form of the provider that carries a
+    # token posts it under an identifier of the provider, which no such list names, so that it stays the one the session
+    # holds: under the "Referrer-Policy: no-referrer" of the interaction pages, a browser that sends no
+    # "Sec-Fetch-Site" says nothing of where a form comes from (issue #891).
+    csrf_protection:
+        enabled: true
+        stateless_token_ids: [authenticate, logout, switch_user]
+    # The profile page writes a person through a form (Symfony Form), as the application serves it.
+    form:
+        enabled: true
+    # The strings of the pages, which the application keeps in its own catalogue.
+    translator:
+        paths:
+            - '%kernel.project_dir%/../../apps/beffroi/translations'
+    # The two locales the provider ships (architecture §5.7); the pages choose between them, never the URL.
     default_locale: en
     enabled_locales: ['en', 'fr']
-    # The scheduled messages of the bundle go through the routing of Messenger like every other message
+    # The scheduled messages of the provider go through the routing of Messenger like every other message
     # (architecture §5.6); synchronous here like the rest.
     scheduler:
         use_messenger_routing: true
-    # The three buses of architecture §5.6, everything synchronous under test.
-    messenger:
-        default_bus: command.bus
-        buses:
-            command.bus: ~
-            query.bus: ~
-            event.bus:
-                default_middleware: allow_no_handlers
-        transports:
-            sync: 'sync://'
-            # What the provider tells a third party, which the protocol must not wait for: a relying
-            # party that hangs would hold the logout response (architecture §4.9, §5.6). Queued here as
-            # it is queued in production, and the tests of the delivery play the worker on the queue.
-            notifications: 'in-memory://'
-        routing:
-            Heidi\Core\Domain\Event\DomainEventInterface: sync
-            Heidi\Bundle\Message\Notification: notifications
-            Heidi\Bundle\Message\Command: sync
-            Heidi\Bundle\Message\Event: sync
-            Heidi\Bundle\Message\Query: sync
-            Heidi\Bundle\Message\SyncMessage: sync
 
-# The pages of the bundle, and nothing else: a missing variable is a defect of a template.
+# The three buses, their middleware and where each marker is sent are prepended by the provider
+# (architecture §5.6, issue #456). What this kernel says is what a test kernel owes: every lane of its
+# own writes played in the request, so that a test reads what a handler did without a worker.
+messenger:
+    transports:
+        # What the provider tells a third party, which the protocol must not wait for: a relying
+        # party that hangs would hold the logout response (architecture §4.9, §5.6). Queued here as
+        # it is queued in production, and the tests of the delivery play the worker on the queue.
+        async_notifications: 'in-memory://'
+        async_priority_high: 'sync://'
+        async_priority_medium: 'sync://'
+        async_priority_low: 'sync://'
+        failed: 'in-memory://'
+
+# The pages of the provider, and nothing else: a missing variable is a defect of a template.
 twig:
     strict_variables: true
+    # The pages of the provider are the application's (apps/beffroi/templates/beffroi), but for four the
+    # application dresses in its own skeletons, which read what this kernel does not boot (the theme, the
+    # navigation of the account, the asset map): this suite renders those bare, from templates/ beside it.
+    paths:
+        '%kernel.project_dir%/templates': Beffroi
+        '%kernel.project_dir%/../../apps/beffroi/templates/beffroi': Beffroi
 
 # The firewall of the interaction pages as an application declares it (architecture §5.4): the provider,
-# the checker and the handlers of the bundle, the form login on the login route, the CSRF token the page
+# the checker and the handlers of the provider, the form login on the login route, the CSRF token the page
 # renders. The protocol plane sits outside of any firewall: no cookie is read there, no session started.
-# The hasher of the users of the bundle is prepended by the bundle.
+# The hasher of the users of the provider is prepended by the provider.
 security:
     providers:
-        heidi:
-            id: Heidi\Bundle\Security\IdentityUserProvider
+        beffroi:
+            id: App\Security\IdentityUserProvider
+        # The users of the application are the people the provider signed in for it (issue #282), built from
+        # what the provider said of them.
+        application:
+            oidc: ~
     firewalls:
-        heidi_protocol:
-            pattern: ^/(\.well-known/(openid-configuration|oauth-authorization-server)|jwks|token|userinfo|introspect|revoke)$
+        # The administration API of a tenant (decision 0038), which a process of its own plane serves: guarded by the
+        # token of each request (App\Administration\AdministrationGuard) and never by a session, so the firewall
+        # reads no cookie there and starts none.
+        beffroi_administration:
+            request_matcher: App\Administration\AdministrationRequestMatcher
             security: false
-        heidi_interaction:
+        beffroi_protocol:
+            pattern: ^/(\.well-known/(openid-configuration|oauth-authorization-server)|jwks|token|userinfo|introspect|revoke|par|device_authorization|backchannel_authentication|register(/.+)?)$
+            security: false
+        # The application signs its own users in at the provider it serves (issue #282), with the "oidc_login"
+        # of Symfony: what it was declared with under
+        # "beffroi.self_client" is what this firewall names, through the three parameters the provider exposes, and
+        # nothing of it is written twice. What it asks the provider is answered by this kernel.
+        application:
+            pattern: ^/application/
+            provider: application
+            oidc_login:
+                provider_uri: '%beffroi.self_client.issuer%'
+                client_id: '%beffroi.self_client.client_id%'
+                client_authentication:
+                    client_secret_basic: '%beffroi.self_client.secret%'
+                http_client: beffroi_test.provider_of_this_kernel
+                check_path: /application/oidc/callback
+                start_path: /application/oidc/start
+        beffroi_interaction:
             lazy: true
-            provider: heidi
-            user_checker: Heidi\Bundle\Security\UserChecker
-            form_login:
-                login_path: heidi_interaction_login
-                check_path: heidi_interaction_login
-                username_parameter: _username
-                password_parameter: _password
-                enable_csrf: true
-                csrf_token_id: authenticate
-                success_handler: Heidi\Bundle\Security\InteractionLoginHandler
-                failure_handler: Heidi\Bundle\Security\InteractionLoginHandler
-            # The passkey login and the second step of a password login on the same firewall: the
-            # assertion posted by the login page, the code posted by the code page, one
-            # LoginSuccessListener for the three (architecture §5.4).
+            provider: beffroi
+            user_checker: App\Security\UserChecker
+            # The four logins of the provider, each an authenticator of its own: the form of the login
+            # page, the assertion that page posts, the code posted by the code page, and the response an
+            # upstream identity provider posts to the assertion consumer service (beffroi/saml S-52),
+            # with one LoginSuccessListener for the four (architecture §5.4). Each hands what it reads to a use
+            # case of the core, where the order of a login is written once and nothing of it is written
+            # a second time here (issue #130), which is why the form login of Symfony is not wired: it
+            # would verify a hash the core has verified. The entry point is the login page.
+            entry_point: App\Security\PasswordLoginAuthenticator
             custom_authenticators:
-                - Heidi\Bundle\Security\PasskeyLoginAuthenticator
-                - Heidi\Bundle\Security\TotpLoginAuthenticator
+                - App\Security\PasswordLoginAuthenticator
+                - App\Security\PasskeyLoginAuthenticator
+                - App\Security\TotpLoginAuthenticator
+                - App\Security\UpstreamAssertionAuthenticator
 
 # SQLite in a file of the cache directory (architecture §7): a kernel reboot between two requests keeps the
-# rows, a fresh schema is created by the tests that need one. The mappings and the types of the bundle are
-# prepended by the bundle itself; the host application of this kernel maps an entity of its own, "User" of
+# rows, a fresh schema is created by the tests that need one. The mappings and the types of the provider are
+# prepended by the provider itself; the application of this kernel maps an entity of its own, "User" of
 # all names, to show the two schemas side by side (decision 0002).
 doctrine:
     dbal:
-        url: 'sqlite:///%heidi_test.database%'
+        url: 'sqlite:///%beffroi_test.database%'
     orm:
         validate_xml_mapping: true
         mappings:
@@ -95,38 +137,274 @@ doctrine:
                 type: attribute
                 is_bundle: false
                 dir: '%kernel.project_dir%/Functional/Doctrine/Host'
-                prefix: 'Heidi\Bundle\Tests\Functional\Doctrine\Host'
+                prefix: 'App\Tests\Symfony\Functional\Doctrine\Host'
                 alias: Host
 
 # A full configuration (architecture §5.1): one tenant, a KMS, files for the sealed keys, a JWK Set cached
 # for two minutes rather than the default five so that the tests see the value travel, the default
-# lifetimes and four clients, the third one carrying the PKCE exception of decision 0008, the fourth one
-# registered for opaque access tokens; three of them are told by back channel when a session they signed in
+# lifetimes and twelve clients, one of which only starts an authorization request by pushing it (RFC 9126
+# §6), two of which send their authorization requests in a JWT (RFC 9101 §4), one signing it with the key
+# it publishes and one registering that it signs nothing, the third one carrying the PKCE exception of decision 0008, the fourth one
+# registered for opaque access tokens, the last two recognised by the certificate they present (RFC 8705
+# §2.1), one under the subject of that certificate and one under a name of its subject alternative name
+# extension, the second one registered for opaque tokens so that both shapes are bound, and two registered
+# for the same two resources (RFC 8707 §2), one taking self-contained tokens and one taking opaque ones so
+# that the audience is read from the token and from its introspection; three of them are
+# told by back channel when a session they signed in
 # ends (Back-Channel Logout 1.0 §2.2) and the native one is not; two of those three are also loaded in a
 # frame by the logout page (Front-Channel Logout 1.0 §3), one of them reading the session on its URI. The KMS is sodium unless the environment
-# names another one: the CI runs what seals and unseals again against a key file (job "Key custody",
-# issue #58), and Vault Transit and the AWS KMS of Floci are exercised by their own custody tests on the
-# development stack, to prove that the code between the backends is the same. The sodium key is a fixture
-# of this kernel and seals nothing outside of it.
+# names another one: the CI runs Functional/Key, Functional/Security and the dump of the database again
+# against a key file (issue #58), the DSN and the key id changing; the custody tests of a Vault, with a
+# token under the policy of the OP (issue #57), and of the KMS of Floci (issue #58) are run by hand
+# against the development stack, and skipped without their DSN. The sodium key is a fixture of this kernel
+# and seals nothing outside of it.
 parameters:
     # The file of the database above, which DatabaseTestCase copies from its template before every test.
-    heidi_test.database: '%kernel.cache_dir%/heidi.sqlite'
-    env(HEIDI_TEST_KMS_DSN): 'sodium://?keys[signing]=PGI3BsLfSoNqJ2bNkhFrG4rqZoHn1dzo7OM52jV5lZw'
-    env(HEIDI_TEST_KMS_KEY_ID): signing
+    beffroi_test.database: '%kernel.cache_dir%/beffroi.sqlite'
+    # The numbers of the two load budgets, which a deployment sets and a test of a refusal sets to one:
+    # they reach the budgets at runtime, so a test names them before it boots its kernel, the way
+    # PlaneTest names BEFFROI_PLANE. Left alone, they are far above what the suite sends.
+    env(BEFFROI_TEST_ORIGIN_BUDGET): 100000
+    env(BEFFROI_TEST_CLIENT_BUDGET): 100000
+    # Settings the application reads from the environment (issues #911 and #913), read the same way here: what
+    # an environment variable carries is a value at runtime only, so the bounds and the rules of the tree hold
+    # it when a service is built, and a test that plays one out of them names it before it boots a kernel.
+    # Left alone, they are the defaults of the provider: sixty seconds for a code, ten minutes for an access
+    # token and an ID token, thirty days for a refresh token and ninety for its family, a staging delay
+    # derived from the max-age, ninety days for a key to work, no nonce asked of a DPoP proof, five seconds
+    # between two polls of either flow, a minute for the window of either budget, and the subject web push is
+    # wired with.
+    env(BEFFROI_TEST_AUTHORIZATION_CODE_TTL): 60
+    env(BEFFROI_TEST_ACCESS_TOKEN_TTL): 600
+    env(BEFFROI_TEST_ID_TOKEN_TTL): 600
+    env(BEFFROI_TEST_REFRESH_TOKEN_TTL): 2592000
+    env(BEFFROI_TEST_REFRESH_TOKEN_ABSOLUTE_TTL): 7776000
+    env(BEFFROI_TEST_STAGING_DELAY): ''
+    env(BEFFROI_TEST_KEY_AGE): 7776000
+    env(BEFFROI_TEST_DPOP_NONCE_REQUIRED): 'false'
+    env(BEFFROI_TEST_DEVICE_CODE_INTERVAL): 5
+    env(BEFFROI_TEST_BACKCHANNEL_AUTHENTICATION_INTERVAL): 5
+    env(BEFFROI_TEST_ORIGIN_INTERVAL): 60
+    env(BEFFROI_TEST_CLIENT_INTERVAL): 60
+    env(BEFFROI_TEST_WEB_PUSH_SUBJECT): 'mailto:operator@op.test'
+    # The figures of issue #915, read the same way and left at the defaults of the provider: the slug of the tenant, the
+    # family of the SAML keys, the window of a DPoP proof and of its nonce, the longest a backchannel request may ask
+    # for, the delivery of a logout token and its retries, what one call to a client, to a push service and to the list
+    # of compromised passwords is given, the window of a client assertion and what a read of a published set costs,
+    # the window of a request object and what a read of a request_uri costs, how long a registered client is kept,
+    # what a read of a sector identifier costs and the window of a software statement; then how a "login_hint" is read
+    # on either side, the defaults the container also validates the two names against.
+    env(BEFFROI_TEST_TENANT_SLUG): default
+    env(BEFFROI_TEST_SAML_STAGING_DELAY): 604800
+    env(BEFFROI_TEST_SAML_KEY_AGE): 31536000
+    env(BEFFROI_TEST_SAML_CACHE_DURATION): 86400
+    env(BEFFROI_TEST_DPOP_PROOF_MAX_AGE): 60
+    env(BEFFROI_TEST_DPOP_LEEWAY): 30
+    env(BEFFROI_TEST_DPOP_NONCE_TTL): 300
+    env(BEFFROI_TEST_BACKCHANNEL_AUTHENTICATION_MAX_REQUESTED_EXPIRY): 1800
+    env(BEFFROI_TEST_BACK_CHANNEL_LOGOUT_TIMEOUT): 5.0
+    env(BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRIES): 6
+    env(BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_DELAY): 2
+    env(BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_MULTIPLIER): 3
+    env(BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_MAX_DELAY): 60
+    env(BEFFROI_TEST_CLIENT_NOTIFICATION_TIMEOUT): 3.0
+    env(BEFFROI_TEST_WEB_PUSH_TIMEOUT): 3.0
+    env(BEFFROI_TEST_BREACHED_PASSWORDS_TIMEOUT): 2.0
+    env(BEFFROI_TEST_CLIENT_ASSERTION_MAX_LIFETIME): 300
+    env(BEFFROI_TEST_CLIENT_ASSERTION_LEEWAY): 30
+    env(BEFFROI_TEST_JWKS_TIMEOUT): 3.0
+    env(BEFFROI_TEST_JWKS_MAX_SIZE): 65536
+    env(BEFFROI_TEST_JWKS_TTL): 86400
+    env(BEFFROI_TEST_JWKS_REFETCH_COOLDOWN): 300
+    env(BEFFROI_TEST_REQUEST_OBJECT_MAX_LIFETIME): 3600
+    env(BEFFROI_TEST_REQUEST_OBJECT_LEEWAY): 30
+    env(BEFFROI_TEST_REQUEST_OBJECT_TIMEOUT): 3.0
+    env(BEFFROI_TEST_REQUEST_OBJECT_MAX_SIZE): 65536
+    env(BEFFROI_TEST_KEEP_A_CLIENT_UNUSED_FOR): 7776000
+    env(BEFFROI_TEST_KEEP_A_CLIENT_NEVER_USED_FOR): 604800
+    env(BEFFROI_TEST_SECTOR_IDENTIFIER_TIMEOUT): 3.0
+    env(BEFFROI_TEST_SECTOR_IDENTIFIER_MAX_SIZE): 65536
+    env(BEFFROI_TEST_STATEMENT_MAX_LIFETIME): 300
+    env(BEFFROI_TEST_STATEMENT_LEEWAY): 30
+    env(BEFFROI_TEST_LOGIN_HINT): sub
+    env(BEFFROI_TEST_CIBA_LOGIN_HINT): sub
+    env(BEFFROI_TEST_KMS_DSN): 'sodium://?keys[signing]=PGI3BsLfSoNqJ2bNkhFrG4rqZoHn1dzo7OM52jV5lZw'
+    env(BEFFROI_TEST_KMS_KEY_ID): signing
+    # A second KMS client, which only the rewrap of the data keys needs: moving them from one client to
+    # another is a run with both configured, and a kernel with one client could not play it at all. It
+    # seals nothing of this kernel; what names it is a "--to" on the command line.
+    env(BEFFROI_TEST_KMS_DSN_SECOND): 'sodium://?keys[signing]=JljzXfMKE58dH-7b6wAhvJN9MYRDHOt9mtCvlyCP-6A'
+    # What authorises a registration on the tenant of the tests (decision 0009): a tenant that registers
+    # nobody is one the variable is emptied for, which is the closed default of any deployment.
+    env(BEFFROI_TEST_REGISTRATION_MODE): initial_access_token
+    # Decision 0017: the named exception a registration policy may carry, off for every test but the one
+    # that plays a tenant carrying it, as the conformance tenant will.
+    env(BEFFROI_TEST_REGISTRATION_PKCE_EXEMPTION): 'false'
+    # RFC 7591 §2: what a registration that names no scope is registered with here. Empty is none, which is
+    # what a tenant that writes none gets, and a test that wants one names it before it boots a kernel.
+    env(BEFFROI_TEST_REGISTRATION_DEFAULT_SCOPE): ''
+    # Issue #920: the scopes of the APIs the tenant protects, which its deployment declares, a JSON list (decision
+    # 0030). None, which is what a deployment that declares none gets, and a test that wants some names them before
+    # it boots a kernel.
+    env(BEFFROI_TEST_TENANT_SCOPES): '[]'
+    # Issue #282: the identifier of the application of this kernel, the default of the section, and the secret it
+    # authenticates with, which the section reads from the environment and nowhere else; a test that plays another
+    # names it before it boots a kernel.
+    env(BEFFROI_TEST_APPLICATION_CLIENT_ID): app
+    env(BEFFROI_TEST_APPLICATION_SECRET): 'the-secret-of-the-host-application-of-this-kernel'
+    # RFC 7591 §2.3: the keys the authority below is pinned by, which the test that plays the attested mode
+    # replaces with the ones it signs with. The default is a key no test signs anything with: the anchor is
+    # declared for every test because YAML cannot declare it only for one, and an anchor nothing verifies
+    # against is exactly a tenant that accepts no statement.
+    env(BEFFROI_TEST_STATEMENT_JWKS): 'eyJrZXlzIjpbeyJraWQiOiJ1bnVzZWQtYnktYW55LXRlc3QiLCJ1c2UiOiJzaWciLCJhbGciOiJFUzI1NiIsImt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoibnZmeUxHQ2g0QnhheXFwNHJwUWlnSlJoQ0lhb2ZvQlpLZGRua2pJaWhpVSIsInkiOiJaY01YMVFsT3NnY3dzMWFZNnlURlBkVTl3Q3A2WndndEtRRWFqUzVpV1prIn1dfQ=='
+    # RFC 7523 §2.1: the keys of the issuer the tenant of the tests trusts the assertions of, which the test
+    # that plays the grant replaces with the ones it signs with. The default is the key no test signs
+    # anything with, for the reason the authority above has it: an issuer nothing verifies against is a
+    # tenant that accepts no assertion.
+    env(BEFFROI_TEST_TRUSTED_ISSUER_JWKS): 'eyJrZXlzIjpbeyJraWQiOiJ1bnVzZWQtYnktYW55LXRlc3QiLCJ1c2UiOiJzaWciLCJhbGciOiJFUzI1NiIsImt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoibnZmeUxHQ2g0QnhheXFwNHJwUWlnSlJoQ0lhb2ZvQlpLZGRua2pJaWhpVSIsInkiOiJaY01YMVFsT3NnY3dzMWFZNnlURlBkVTl3Q3A2WndndEtRRWFqUzVpV1prIn1dfQ=='
 
-heidi:
+# The KMS clients of an application, where every application declares them: the provider seals with the one
+# "beffroi.keys.kms" names and builds none itself. One client here, whose DSN the environment gives, so that
+# the suite runs against sodium, a key file, a Vault or an AWS KMS without a line of it changing. The DSN
+# reaches it through a service of this kernel and not through the "dsn" of the client, which refuses an
+# environment variable (the node cannot be empty and is validated, which Config\VariableNode denies a
+# placeholder for); the application deploys the same way, for the same reason.
+key_management:
+    clients:
+        test: 'service://beffroi_test.kms'
+        second: 'service://beffroi_test.kms.second'
+
+beffroi:
     tenant:
         issuer: 'https://op.test'
+        slug: '%env(BEFFROI_TEST_TENANT_SLUG)%'
+        # Two of the claims a person may say of themselves (issue #452), so that both ends of the rule are
+        # played: what this tenant opens is written, and what it does not is refused on the server.
+        self_served_claims: ['nickname', 'zoneinfo', 'locale', 'birthdate']
+        scopes: '%env(json:BEFFROI_TEST_TENANT_SCOPES)%'
+        # Decision 0038: the administration API of the tenant, reserved to the members of this group, which no test
+        # creates unless it plays an administrator (AdministrationApiFlowTest)
+        administrators: ['administrators']
+        administration_resource: 'https://admin.op.test'
+    load:
+        origin:
+            limit: '%env(int:BEFFROI_TEST_ORIGIN_BUDGET)%'
+            interval: '%env(int:BEFFROI_TEST_ORIGIN_INTERVAL)%'
+        client:
+            limit: '%env(int:BEFFROI_TEST_CLIENT_BUDGET)%'
+            interval: '%env(int:BEFFROI_TEST_CLIENT_INTERVAL)%'
     keys:
-        kms: '%env(HEIDI_TEST_KMS_DSN)%'
-        key_id: '%env(HEIDI_TEST_KMS_KEY_ID)%'
+        kms: test
+        key_id: '%env(BEFFROI_TEST_KMS_KEY_ID)%'
         storage: '%kernel.cache_dir%/keys'
         jwks_max_age: 120
+        staging_delay: '%env(BEFFROI_TEST_STAGING_DELAY)%'
+        age: '%env(int:BEFFROI_TEST_KEY_AGE)%'
+    tokens:
+        authorization_code_ttl: '%env(int:BEFFROI_TEST_AUTHORIZATION_CODE_TTL)%'
+        access_token_ttl: '%env(int:BEFFROI_TEST_ACCESS_TOKEN_TTL)%'
+        id_token_ttl: '%env(int:BEFFROI_TEST_ID_TOKEN_TTL)%'
+        refresh_token_ttl: '%env(int:BEFFROI_TEST_REFRESH_TOKEN_TTL)%'
+        refresh_token_absolute_ttl: '%env(int:BEFFROI_TEST_REFRESH_TOKEN_ABSOLUTE_TTL)%'
+        device_code_interval: '%env(int:BEFFROI_TEST_DEVICE_CODE_INTERVAL)%'
+        backchannel_authentication_interval: '%env(int:BEFFROI_TEST_BACKCHANNEL_AUTHENTICATION_INTERVAL)%'
+        backchannel_authentication_max_requested_expiry: '%env(int:BEFFROI_TEST_BACKCHANNEL_AUTHENTICATION_MAX_REQUESTED_EXPIRY)%'
+    dpop:
+        proof_max_age: '%env(int:BEFFROI_TEST_DPOP_PROOF_MAX_AGE)%'
+        leeway: '%env(int:BEFFROI_TEST_DPOP_LEEWAY)%'
+        nonce:
+            required: '%env(bool:BEFFROI_TEST_DPOP_NONCE_REQUIRED)%'
+            ttl: '%env(int:BEFFROI_TEST_DPOP_NONCE_TTL)%'
+    interaction:
+        login_hint: '%env(BEFFROI_TEST_LOGIN_HINT)%'
+    backchannel_authentication:
+        login_hint: '%env(BEFFROI_TEST_CIBA_LOGIN_HINT)%'
+        client_notification_timeout: '%env(float:BEFFROI_TEST_CLIENT_NOTIFICATION_TIMEOUT)%'
+    back_channel_logout:
+        timeout: '%env(float:BEFFROI_TEST_BACK_CHANNEL_LOGOUT_TIMEOUT)%'
+        retries: '%env(int:BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRIES)%'
+        retry_delay: '%env(int:BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_DELAY)%'
+        retry_multiplier: '%env(int:BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_MULTIPLIER)%'
+        retry_max_delay: '%env(int:BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_MAX_DELAY)%'
+    passwords:
+        breached:
+            timeout: '%env(float:BEFFROI_TEST_BREACHED_PASSWORDS_TIMEOUT)%'
+    client_authentication:
+        assertion_max_lifetime: '%env(int:BEFFROI_TEST_CLIENT_ASSERTION_MAX_LIFETIME)%'
+        assertion_leeway: '%env(int:BEFFROI_TEST_CLIENT_ASSERTION_LEEWAY)%'
+        jwks_timeout: '%env(float:BEFFROI_TEST_JWKS_TIMEOUT)%'
+        jwks_max_size: '%env(int:BEFFROI_TEST_JWKS_MAX_SIZE)%'
+        jwks_ttl: '%env(int:BEFFROI_TEST_JWKS_TTL)%'
+        jwks_refetch_cooldown: '%env(int:BEFFROI_TEST_JWKS_REFETCH_COOLDOWN)%'
+    request_objects:
+        max_lifetime: '%env(int:BEFFROI_TEST_REQUEST_OBJECT_MAX_LIFETIME)%'
+        leeway: '%env(int:BEFFROI_TEST_REQUEST_OBJECT_LEEWAY)%'
+        timeout: '%env(float:BEFFROI_TEST_REQUEST_OBJECT_TIMEOUT)%'
+        max_size: '%env(int:BEFFROI_TEST_REQUEST_OBJECT_MAX_SIZE)%'
     webauthn:
         metadata_storage: '%kernel.cache_dir%/webauthn'
+    # Where a test that wants a provenance to say a place writes the databases of addresses (issue #473);
+    # the directory holds nothing unless a test fills it, which is the deployment that never refreshed one.
+    geoip:
+        storage: '%kernel.cache_dir%/geoip'
+    # RFC 7591, decision 0009: the tenant of the tests registers the clients that present an initial
+    # access token it issued. A test that wants a closed tenant empties the variable.
+    client_registration:
+        mode: '%env(BEFFROI_TEST_REGISTRATION_MODE)%'
+        exempt_confidential_clients_from_pkce: '%env(bool:BEFFROI_TEST_REGISTRATION_PKCE_EXEMPTION)%'
+        default_scope: '%env(BEFFROI_TEST_REGISTRATION_DEFAULT_SCOPE)%'
+        keep_a_client_unused_for: '%env(int:BEFFROI_TEST_KEEP_A_CLIENT_UNUSED_FOR)%'
+        keep_a_client_never_used_for: '%env(int:BEFFROI_TEST_KEEP_A_CLIENT_NEVER_USED_FOR)%'
+        sector_identifier_timeout: '%env(float:BEFFROI_TEST_SECTOR_IDENTIFIER_TIMEOUT)%'
+        sector_identifier_max_size: '%env(int:BEFFROI_TEST_SECTOR_IDENTIFIER_MAX_SIZE)%'
+        statement_max_lifetime: '%env(int:BEFFROI_TEST_STATEMENT_MAX_LIFETIME)%'
+        statement_leeway: '%env(int:BEFFROI_TEST_STATEMENT_LEEWAY)%'
+        # The one authority the tenant of the tests pins the software statements of (RFC 7591 §2.3). Only
+        # the attested mode reads it, and a statement is verified against these keys and never against one
+        # it carries itself (RFC 8725 §3.10).
+        statement_issuers:
+            'https://store.example.com':
+                jwks: '%env(json:base64:BEFFROI_TEST_STATEMENT_JWKS)%'
+                signing_algorithms: ['ES256']
+    # RFC 7523 §2.1: the one issuer the tenant of the tests trusts the assertions of, for the two job runners
+    # below and for the identities of its own source (decision 0002).
+    trusted_issuers:
+        'https://workforce.example.com':
+            jwks: '%env(json:base64:BEFFROI_TEST_TRUSTED_ISSUER_JWKS)%'
+            signing_algorithms: ['ES256']
+            clients: ['assertion-app', 'assertion-opaque-app']
+            identity_provider: 'workforce'
+            trusted_scopes: ['invoices.read']
+    # Reaching a user through the push service of a browser they signed in with (RFC 8030): naming a
+    # subject is what wires it, here as in any deployment (architecture §5.6).
+    web_push:
+        subject: '%env(BEFFROI_TEST_WEB_PUSH_SUBJECT)%'
+        timeout: '%env(float:BEFFROI_TEST_WEB_PUSH_TIMEOUT)%'
+    # The tenant of the tests is a SAML identity provider (beffroi/saml, spec/saml.md section 6.1): its key is
+    # drawn by the key commands under SAML-SIGNING, as every key of the tenant, and its metadata is served at
+    # /saml/metadata, WantAuthnRequestsSigned left at its default; the figures of the family of its key and the
+    # cacheDuration of its metadata are read from the environment, as the ones of "keys", under nodes of no role.
+    saml:
+        identity_provider: true
+        keys:
+            staging_delay: '%env(int:BEFFROI_TEST_SAML_STAGING_DELAY)%'
+            age: '%env(int:BEFFROI_TEST_SAML_KEY_AGE)%'
+        metadata:
+            cache_duration: '%env(int:BEFFROI_TEST_SAML_CACHE_DURATION)%'
+    mutual_tls:
+        # The host whose listener asks for a client certificate (RFC 8705 §5): the same application, the
+        # aliases of the discovery document pointing at it.
+        origin: 'https://mtls.op.test'
+    # The application of this kernel, a client of the provider it serves (issue #282): the callback of its
+    # firewall, which the route loader of Symfony declares, and its page to come back to after a logout.
+    self_client:
+        client_id: '%env(BEFFROI_TEST_APPLICATION_CLIENT_ID)%'
+        redirect_route: _oidc_login_callback_application
+        post_logout_route: host_application_user
+        secret: '%env(BEFFROI_TEST_APPLICATION_SECRET)%'
     clients:
         oidc-demo:
-            name: 'Demo application'
+            client_name: 'Demo application'
             secret: 'demo-secret-of-at-least-32-characters-long'
             redirect_uris: ['https://demo.test/login/check']
             post_logout_redirect_uris: ['https://demo.test/']
@@ -137,16 +415,400 @@ heidi:
         native-app:
             redirect_uris: ['http://127.0.0.1/callback']
             token_endpoint_auth_method: none
+        # The one declared client with a logo, and it is served from a host of its own: the consent page
+        # names the origin of that image in the "img-src" of the policy its answer carries, and the origin
+        # of the redirect URI in the "form-action", so the two are read apart from each other
+        # (App\Http\ImageSource, FormTarget). Consent is required of it, which is the default
+        # and what makes the page appear at all.
+        consent-app:
+            client_name: 'Application that asks for consent'
+            logo_uri: 'https://cdn.consent.test/logo.png'
+            redirect_uris: ['https://consent.test/callback']
+            token_endpoint_auth_method: none
         legacy-app:
-            name: 'Legacy application'
+            client_name: 'Legacy application'
             secret: 'legacy-secret-of-at-least-32-characters-long'
             redirect_uris: ['https://legacy.test/callback']
             token_endpoint_auth_method: client_secret_post
             requires_pkce: false
             backchannel_logout_uri: 'https://legacy.test/backchannel-logout'
             frontchannel_logout_uri: 'https://legacy.test/frontchannel-logout?app=1'
+        mtls-app:
+            client_name: 'Application recognised by its certificate'
+            redirect_uris: ['https://mtls.test/callback']
+            token_endpoint_auth_method: tls_client_auth
+            # the subject of the certificate of Beffroi\Oidc\Tests\Fixture\Certificates, as openssl prints it
+            tls_client_auth_subject_dn: 'C=FR,O=Beffroi Test,CN=beffroi mtls client'
+            requires_consent: false
+        mtls-opaque-app:
+            client_name: 'Application recognised by its certificate, with opaque tokens'
+            redirect_uris: ['https://mtls.test/opaque']
+            token_endpoint_auth_method: tls_client_auth
+            tls_client_auth_san_dns: 'client.example.com'
+            requires_consent: false
+            access_token_format: opaque
+        # A client with no credentials at all, binding its tokens to a key of its own (RFC 9449): the
+        # case binding proves the most for, and the one the FAPI 2 plan runs with "sender_constrain=dpop".
+        dpop-app:
+            client_name: 'Application that binds its tokens to a key'
+            redirect_uris: ['https://dpop.test/callback']
+            token_endpoint_auth_method: none
+            requires_consent: false
+        # A public client that asks to keep its access while the person is away (OIDC Core §11): it has no
+        # credentials and binds nothing, so its refresh token is rotated at every use, rotation being the whole of
+        # what tells it from a copy of itself, and a rotated token presented again revokes its family (RFC 9700
+        # §4.13.2).
+        offline-app:
+            client_name: 'Application that keeps its access offline'
+            redirect_uris: ['https://offline.test/callback']
+            token_endpoint_auth_method: none
+            scope: 'openid offline_access'
+            requires_consent: false
+        fapi-app:
+            client_name: 'Application that only pushes its requests'
+            secret: 'fapi-secret-of-at-least-32-characters-long'
+            redirect_uris: ['https://fapi.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            require_pushed_authorization_requests: true
+        # The two ways a request object reaches the provider (RFC 9101 §4): one client signs its objects
+        # with the key it publishes inline, the public half of the EC key of RFC 7515 appendix A.3, and
+        # publishes them at one URL; the other registered "none" and sends them unsigned, the named
+        # exception of decision 0006, which is what lets the Form Post plan of the conformance suite read
+        # the response mode written inside an object (issue #142).
+        jar-app:
+            client_name: 'Application that signs its requests'
+            secret: 'jar-secret-of-at-least-32-characters-long'
+            redirect_uris: ['https://jar.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            request_object_signing_alg: ES256
+            request_uris: ['https://jar.test/request.jwt']
+            jwks:
+                keys:
+                    - kty: EC
+                      crv: P-256
+                      kid: jar-key
+                      x: f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU
+                      y: x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0
+        unsigned-jar-app:
+            client_name: 'Application that signs nothing'
+            secret: 'unsigned-secret-of-at-least-32-characters'
+            redirect_uris: ['https://unsigned.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            request_object_signing_alg: none
+        # JARM §2.1 (issue #163): a client whose answers are a document the tenant signs, in the
+        # algorithm it registered rather than the default one, so that the two are told apart.
+        jarm-app:
+            client_name: 'Application that reads a signed answer'
+            secret: 'jarm-secret-of-at-least-32-characters-long'
+            redirect_uris: ['https://jarm.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            authorization_signed_response_alg: ES256
+        # OIDC Core §3.1.3.7 and §5.3.2 (issue #165): a client the provider writes to in private. Its ID
+        # tokens are signed then encrypted to the key it publishes, and its UserInfo answer is a JWT the
+        # tenant signs and encrypts. The key is the EC key of RFC 7515 appendix A.3, whose private half
+        # the test suite holds.
+        encrypted-app:
+            client_name: 'Application written to in private'
+            secret: 'encrypted-secret-of-at-least-32-characters'
+            redirect_uris: ['https://encrypted.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            id_token_encrypted_response_alg: 'ECDH-ES+A256KW'
+            id_token_encrypted_response_enc: A256GCM
+            userinfo_signed_response_alg: RS256
+            userinfo_encrypted_response_alg: 'ECDH-ES+A256KW'
+            userinfo_encrypted_response_enc: A256GCM
+            jwks:
+                keys:
+                    - kty: EC
+                      crv: P-256
+                      kid: encrypted-app-key
+                      use: enc
+                      x: f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU
+                      y: x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0
+        # RFC 8707 §2 (issue #217): what a client may ask a token for is a closed list on its
+        # registration. The same two resources on both, so that the audience of a self-contained token
+        # and the audience its introspection renders are compared on one flow.
+        resource-app:
+            client_name: 'Application that asks tokens for a resource'
+            secret: 'resource-secret-of-at-least-32-characters'
+            redirect_uris: ['https://resource.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            resources: ['https://cal.example.com/', 'https://contacts.example.com/']
+        # Decision 0038: a client of the administration API of the tenant, which a person who administers the tenant
+        # signs in to with a passkey and which binds its tokens to a key (AdministrationApiFlowTest)
+        administration-app:
+            client_name: 'Administration of the tenant'
+            redirect_uris: ['https://administration.test/callback']
+            token_endpoint_auth_method: none
+            requires_consent: false
+            resources: ['https://admin.op.test']
+        resource-opaque-app:
+            client_name: 'Application that asks opaque tokens for a resource'
+            secret: 'resource-opaque-secret-of-at-least-32-chars'
+            redirect_uris: ['https://resource.test/opaque']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            access_token_format: opaque
+            resources: ['https://cal.example.com/', 'https://contacts.example.com/']
+        # RFC 9396 §2 (issue #225): what a client asks for beyond its scopes. The type is the class the
+        # services section below wires, as a deployment wires the one its own domain asks for; the two
+        # shapes again, so that what a self-contained token carries and what the introspection of an opaque
+        # one renders are compared on one flow. The first requires consent, the page being where the user
+        # reads what they are about to agree to.
+        rar-app:
+            client_name: 'Application that asks for more than a scope'
+            secret: 'rar-secret-of-at-least-32-characters-long'
+            redirect_uris: ['https://rar.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            authorization_details_types: ['account_information']
+        rar-opaque-app:
+            client_name: 'Application that asks for more than a scope, with opaque tokens'
+            secret: 'rar-opaque-secret-of-at-least-32-character'
+            redirect_uris: ['https://rar.test/opaque']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            access_token_format: opaque
+            authorization_details_types: ['account_information']
+        # RFC 6749 §4.4 (issue #218): a service acting for itself. It registers no redirect URI, there being
+        # no browser of anybody's to send anywhere, and the resources its tokens are addressed to; the two
+        # shapes again, so that what a self-contained token says and what the introspection of an opaque one
+        # says are compared on one grant.
+        service-app:
+            client_name: 'Service acting for itself'
+            secret: 'service-secret-of-at-least-32-characters-l'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['client_credentials']
+            scope: 'invoices.read invoices.write'
+            resources: ['https://cal.example.com/', 'https://contacts.example.com/']
+            # RFC 8693 §4.4: who may act for the subject of a token of this service, written on every token
+            # it receives; the gateway below and nobody else
+            may_act: 'gateway-app'
+        # RFC 8693 §2.1 (issue #228): the gateway that exchanges the token of a service to act on its
+        # behalf, and the service that says who may (§4.4). The two share the resources they may ask a
+        # token for, so that the one the resource server answers for and the one it does not are both
+        # reachable by both.
+        # It asks for a token of its own by client_credentials, which is what it presents as the
+        # "actor_token" of the exchange: an "act" names who holds the new token for its subject, and a
+        # client writes nothing into it but a token that names itself (RFC 8693 §2.1, §4.1).
+        gateway-app:
+            client_name: 'Gateway acting for a service'
+            secret: 'gateway-secret-of-at-least-32-characters-l'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['client_credentials', 'urn:ietf:params:oauth:grant-type:token-exchange']
+            scope: 'invoices.read invoices.write'
+            resources: ['https://cal.example.com/', 'https://contacts.example.com/']
+            token_exchange:
+                subject_token_types: ['urn:ietf:params:oauth:token-type:access_token']
+                may_act_for_a_user: false
+        # RFC 8693 §2.1 (issue #593): the gateway that exchanges the token of a person, and the only one of
+        # the test kernel whose exchanged tokens are opaque, so that one can be given back at the
+        # revocation endpoint (RFC 7009 §2.1) and the act of that revocation read in the journal of that
+        # person. It is registered to act for a user, which the gateway above is not.
+        person-gateway-app:
+            client_name: 'Gateway acting for a person'
+            secret: 'person-gateway-secret-of-at-least-32-chara'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['urn:ietf:params:oauth:grant-type:token-exchange']
+            scope: 'openid profile invoices.read'
+            access_token_format: opaque
+            resources: ['https://cal.example.com/']
+            token_exchange:
+                subject_token_types: ['urn:ietf:params:oauth:token-type:access_token']
+                may_act_for_a_user: true
+        # RFC 8693 §2.1 and OIDC Core §8.1 (issues #601 and #641): an exchange between two clients of a
+        # sector each. The "sub" of the token the first holds names its person to that client and to no
+        # other, so what an exchange hands a gateway of another sector carries a name that gateway could
+        # never read back. Each gateway sees its own users under an identifier of the sector the document it
+        # registers names, and neither registers a redirection URI, as no client of this flow does. What
+        # they differ by is the shape of their own tokens: one is given a record this provider keeps the
+        # person on and can be given back, the other a token that carries its own claims, the person among
+        # them and sealed.
+        exchange-pairwise-app:
+            client_name: 'Application of a sector whose token is exchanged'
+            secret: 'exchange-pairwise-secret-of-at-least-32-c'
+            redirect_uris: ['https://exchange-sector.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            subject_type: pairwise
+            scope: 'openid profile invoices.read'
+            resources: ['https://cal.example.com/']
+        exchange-pairwise-gateway:
+            client_name: 'Gateway of another sector acting for a person'
+            secret: 'exchange-gateway-secret-of-at-least-32-ch'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['urn:ietf:params:oauth:grant-type:token-exchange']
+            scope: 'openid profile invoices.read'
+            access_token_format: opaque
+            subject_type: pairwise
+            sector_identifier_uri: 'https://exchange-gateway.test/redirect_uris.json'
+            resources: ['https://cal.example.com/']
+            token_exchange:
+                subject_token_types: ['urn:ietf:params:oauth:token-type:access_token']
+                may_act_for_a_user: true
+        exchange-pairwise-jwt-gateway:
+            client_name: 'Gateway of another sector whose own tokens carry their claims'
+            secret: 'exchange-jwt-gateway-secret-of-at-least-3'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['urn:ietf:params:oauth:grant-type:token-exchange']
+            scope: 'openid profile invoices.read'
+            access_token_format: jwt
+            subject_type: pairwise
+            sector_identifier_uri: 'https://exchange-jwt-gateway.test/redirect_uris.json'
+            resources: ['https://cal.example.com/']
+            token_exchange:
+                subject_token_types: ['urn:ietf:params:oauth:token-type:access_token']
+                may_act_for_a_user: true
+        service-opaque-app:
+            client_name: 'Service acting for itself, with opaque tokens'
+            secret: 'service-opaque-secret-of-at-least-32-chars'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['client_credentials']
+            scope: 'invoices.read invoices.write'
+            access_token_format: opaque
+            resources: ['https://cal.example.com/', 'https://contacts.example.com/']
+        # RFC 7523 §2.1 (issue #831): a job runner that presents the assertions of the trusted issuer, in the
+        # two shapes, so that the person a token of an assertion names is answered for off the record the
+        # provider keeps of the opaque one and off the claim the self-contained one carries sealed. It
+        # registers no redirect URI, nobody's browser coming into this grant.
+        assertion-app:
+            client_name: 'Job runner presenting assertions'
+            secret: 'assertion-secret-of-at-least-32-character'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['urn:ietf:params:oauth:grant-type:jwt-bearer']
+            scope: 'invoices.read'
+            access_token_format: jwt
+            resources: ['https://cal.example.com/']
+        assertion-opaque-app:
+            client_name: 'Job runner presenting assertions, with opaque tokens'
+            secret: 'assertion-opaque-secret-of-at-least-32-ch'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['urn:ietf:params:oauth:grant-type:jwt-bearer']
+            scope: 'invoices.read'
+            access_token_format: opaque
+            resources: ['https://cal.example.com/']
+        # RFC 8628 §3.1 (issue #219): a client with no browser. It registers no redirect URI, there being
+        # nothing of anybody's to send anywhere, and the refresh token grant beside the device one, a
+        # television not being asked to pair again every ten minutes. "appliance-public-app" is the same
+        # client without a secret, which is what a television actually is.
+        appliance-app:
+            client_name: 'Appliance with no keyboard'
+            secret: 'appliance-secret-of-at-least-32-character'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['urn:ietf:params:oauth:grant-type:device_code', 'refresh_token']
+            scope: 'openid profile offline_access'
+            requires_consent: false
+            resources: ['https://cal.example.com/']
+        appliance-public-app:
+            client_name: 'Public appliance with no keyboard'
+            token_endpoint_auth_method: none
+            grant_types: ['urn:ietf:params:oauth:grant-type:device_code']
+            scope: 'openid profile'
+            requires_consent: false
+        # CIBA Core §7 (issues #221, #222): a client that asks for a user it names and waits for them to
+        # approve on a device they already hold. It registers no redirect URI, there being no browser of
+        # its own anywhere in the flow, and a delivery mode, without which it is not a client of this flow
+        # at all. "pinged-terminal" is the same client in the mode where this provider calls it back.
+        terminal-app:
+            client_name: 'Payment terminal at the counter'
+            secret: 'terminal-secret-of-at-least-32-characters'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['urn:openid:params:grant-type:ciba', 'refresh_token']
+            scope: 'openid profile offline_access'
+            requires_consent: false
+            resources: ['https://cal.example.com/']
+            backchannel_token_delivery_mode: poll
+        pinged-terminal:
+            client_name: 'Payment terminal that is called back'
+            secret: 'pinged-secret-of-at-least-32-characters!'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['urn:openid:params:grant-type:ciba']
+            scope: 'openid profile'
+            requires_consent: false
+            backchannel_token_delivery_mode: ping
+            backchannel_client_notification_endpoint: 'https://terminal.test/ciba'
+        # CIBA Core §4 (issue #292): a client of the backchannel flow that sees its users under a "sub" of
+        # its own sector. It registers no redirection URI, as every client of this flow does, so what says
+        # which sector it is of is the host of its jwks_uri.
+        pairwise-terminal:
+            client_name: 'Payment terminal of a sector'
+            secret: 'pairwise-terminal-secret-of-at-least-32-c'
+            token_endpoint_auth_method: client_secret_basic
+            grant_types: ['urn:openid:params:grant-type:ciba']
+            scope: 'openid profile'
+            requires_consent: false
+            backchannel_token_delivery_mode: poll
+            subject_type: pairwise
+            jwks_uri: 'https://terminal-sector.test/jwks.json'
+        # OIDC Core §8.1 (issue #341): three clients and two sectors, said the two ways §8.1 says them. Two
+        # of them belong to the sector their redirection URI is on, which are two hosts and so two sectors;
+        # the third registers the document of the first one's host, so that two clients of two hosts are of
+        # one sector and see one user under one identifier. The document itself is never read here: a
+        # declaration of a deployment claims no sector, the deployment being the authority over what it
+        # declares, and what a client that registers itself has to prove is proved where it registers.
+        pairwise-app:
+            client_name: 'Application of a sector'
+            secret: 'pairwise-secret-of-at-least-32-characters'
+            redirect_uris: ['https://pairwise.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            subject_type: pairwise
+            # so that the fifth document the provider writes for a client, the logout token, is read under
+            # the identifier of its sector too (Back-Channel Logout 1.0 §2.4)
+            backchannel_logout_uri: 'https://pairwise.test/backchannel-logout'
+        pairwise-other-app:
+            client_name: 'Application of another sector'
+            secret: 'pairwise-other-secret-of-at-least-32-char'
+            redirect_uris: ['https://other-pairwise.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            subject_type: pairwise
+            # the other shape, so that the identifier a token carries and the identifier its introspection
+            # renders are read on both (architecture §4.6)
+            access_token_format: opaque
+        pairwise-sector-app:
+            client_name: 'Application that names its sector'
+            secret: 'pairwise-sector-secret-of-at-least-32-cha'
+            redirect_uris: ['https://sector-member.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            subject_type: pairwise
+            sector_identifier_uri: 'https://pairwise.test/redirect_uris.json'
+        # OIDC Core §4 (issue #342): two clients this provider begins a login at. The first sees its users
+        # under the identifier the core keeps, the second under one of its own sector, so that what the
+        # hint of a redirection carries is read on both kinds and is never the stable one for a client
+        # that sees none.
+        launched-app:
+            client_name: 'Application a third party starts'
+            secret: 'launched-secret-of-at-least-32-characters'
+            redirect_uris: ['https://launched.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            initiate_login_uri: 'https://launched.test/start'
+        launched-pairwise-app:
+            client_name: 'Application of a sector a third party starts'
+            secret: 'launched-pairwise-secret-of-at-least-32-c'
+            redirect_uris: ['https://launched-pairwise.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            subject_type: pairwise
+            initiate_login_uri: 'https://launched-pairwise.test/start'
+        # a shape no class of the module knows, wired below: what a deployment adds is two classes and
+        # two tags, and the name it registers here is read from that wiring (issue #239)
+        invented-app:
+            client_name: 'Application with tokens of an invented shape'
+            secret: 'invented-secret-of-at-least-32-characters'
+            redirect_uris: ['https://invented.test/callback']
+            token_endpoint_auth_method: client_secret_basic
+            requires_consent: false
+            access_token_format: invented
         opaque-app:
-            name: 'Application with opaque tokens'
+            client_name: 'Application with opaque tokens'
             secret: 'opaque-secret-of-at-least-32-characters-long'
             redirect_uris: ['https://opaque.test/callback']
             token_endpoint_auth_method: client_secret_basic
@@ -161,167 +823,607 @@ services:
     logger:
         class: Psr\Log\NullLogger
 
-    # The Vault and AWS bridges are development dependencies of the monorepo (the bundle stays
+    # The two budgets that bound a load (decision 0014) count in the memory of the process here, and not
+    # in a cache pool: the reboot the browser does between two requests then starts from an empty
+    # window, where this suite sends from one address, in one minute, what no deployment does and what a
+    # count kept in a file would make it refuse itself for. A test of a refusal keeps one kernel
+    # (disableReboot) and names its own numbers through the environment.
+    beffroi.load.storage:
+        class: Symfony\Component\RateLimiter\Storage\InMemoryStorage
+
+    # RFC 9396 §2 (issue #225): one class per type of authorization detail, tagged, which is the whole of
+    # what a deployment adds to serve one. The provider wires none, no type of detail being universal, so
+    # this kernel is the deployment that wires one; the type of the test fixtures is that class.
+    Beffroi\Oidc\Tests\Fixture\InventedAuthorizationDetailType:
+        tags: ['beffroi.oidc.authorization_detail_type']
+
+    # OIDC Core §5.1 (issue #278): a claims provider is a class and a line here, and the provider wires the
+    # standard claims as one of them. This kernel is the deployment that adds a second, serving a scope of
+    # its own that the document announces beside the four of §5.4. Behind the standard one, so that the
+    # document reads the scopes of §5.4 first, as a deployment that adds a claim of its own would want.
+    Beffroi\Oidc\Tests\Fixture\InventedClaimsProvider:
+        tags:
+            - { name: beffroi.oidc.claims_provider, priority: -10 }
+
+    # RFC 7591 §2: the keys a client of the tests publishes behind its "jwks_uri", answered without a
+    # request. Nothing of this kernel reaches a host, so the fetcher that makes one is replaced rather than
+    # pointed somewhere: it has its own unit test, and what a functional test needs is the client whose keys
+    # are read back rather than the reading. Every URI but the one the fixture names is unavailable.
+    Beffroi\Oidc\Tests\Fixture\ClientKeysBehindAJwksUri: ~
+    Beffroi\Oidc\Port\ClientJwksFetcherInterface:
+        alias: Beffroi\Oidc\Tests\Fixture\ClientKeysBehindAJwksUri
+
+    # NIST SP 800-63B §3.1.1.2 (issue #552): the list of compromised passwords a password posed here is
+    # compared against. Nothing of this kernel reaches a host, so the bridge that would is replaced rather
+    # than pointed somewhere: it has its own unit test, and what a functional test needs is the rule that
+    # reads the answer rather than the reading.
+    #
+    # It names no list until a test names one, which is the deployment every other test of this suite runs
+    # as: a password is posed on the rules of the core alone and nobody is asked. A test that wants the rule
+    # arms the fixture through "test.beffroi.breached_passwords", and keeps it for the whole test, one
+    # kernel being what a browser of this suite holds (disableReboot).
+    Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord:
+        arguments:
+            $looksUp: false
+    Beffroi\Core\Port\BreachedPasswordsInterface:
+        alias: Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord
+
+    # Issue #282: the HTTP client of the firewall of the application. What it asks the provider is handled by
+    # this kernel, the provider it serves, as a request of its own: nothing of this kernel reaches a host.
+    beffroi_test.provider_of_this_kernel:
+        class: Symfony\Component\HttpClient\MockHttpClient
+        arguments: ['@App\Tests\Symfony\Functional\Security\RequestsToThisKernel', 'https://op.test']
+    App\Tests\Symfony\Functional\Security\RequestsToThisKernel:
+        arguments: ['@kernel']
+
+    # The KMS client of this kernel, built from the DSN of the environment and named by the client above.
+    beffroi_test.kms:
+        class: Symfony\Component\KeyManagement\EncrypterInterface
+        factory: ['@key_management.factory', 'fromString']
+        arguments: ['%env(BEFFROI_TEST_KMS_DSN)%']
+
+    # The second one, which the rewrap of the data keys moves them to and which seals nothing otherwise.
+    beffroi_test.kms.second:
+        class: Symfony\Component\KeyManagement\EncrypterInterface
+        factory: ['@key_management.factory', 'fromString']
+        arguments: ['%env(BEFFROI_TEST_KMS_DSN_SECOND)%']
+
+    # The Vault and AWS bridges are development dependencies of the monorepo (the provider stays
     # backend-agnostic, the application requires the bridges it deploys with), and KeyManagementBundle
     # registers a factory only for a bridge the root package requires outside of "require-dev"
     # (ContainerBuilder::willBeAvailable()): this kernel registers them itself, for the runs where
-    # HEIDI_TEST_KMS_DSN names a Vault or an AWS KMS (Floci on the development stack).
+    # BEFFROI_TEST_KMS_DSN names a Vault or an AWS KMS (Floci on the development stack).
     Symfony\Component\KeyManagement\Bridge\HashiCorpVault\TransitKmsFactory:
         tags: ['key_management.factory']
     Symfony\Component\KeyManagement\Bridge\AwsKms\AwsKmsFactory:
         tags: ['key_management.factory']
 
-    # Reachable from the tests: the use cases and ports the bundle wires in full today. A private service
+    # Reachable from the tests: the use cases and ports the provider wires in full today. A private service
     # nothing references is removed from the container, which is what these aliases prevent.
-    test.heidi.tenant_provider:
-        alias: Heidi\Bundle\Doctrine\TenantProvider
+    test.beffroi.tenant_provider:
+        alias: App\Doctrine\TenantProvider
         public: true
-    test.heidi.clients:
-        alias: Heidi\Oidc\Port\ClientRepositoryInterface
+    test.beffroi.geoip_databases:
+        alias: App\Geo\GeoLite2Databases
         public: true
-    test.heidi.client_authenticator:
-        alias: Heidi\Oidc\Application\Client\ClientAuthenticator
+    test.beffroi.breached_passwords:
+        alias: Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord
         public: true
-    test.heidi.password_hasher:
-        alias: Heidi\Core\Port\PasswordHasherInterface
+    test.beffroi.clients:
+        alias: Beffroi\Oidc\Port\ClientRepositoryInterface
         public: true
-    test.heidi.password_hasher_factory:
+    test.beffroi.client_store:
+        alias: Beffroi\Oidc\Port\ClientStoreInterface
+        public: true
+    test.beffroi.self_client:
+        alias: beffroi.self_client
+        public: true
+    test.beffroi.client_authenticator:
+        alias: Beffroi\Oidc\Application\Client\ClientAuthenticator
+        public: true
+    test.beffroi.initial_access_tokens:
+        alias: Beffroi\Oidc\Port\InitialAccessTokenRepositoryInterface
+        public: true
+    test.beffroi.pairwise_subjects:
+        alias: Beffroi\Oidc\Port\PairwiseSubjectRepositoryInterface
+        public: true
+    test.beffroi.sector_identifiers:
+        alias: Beffroi\Oidc\Port\SectorIdentifiersInterface
+        public: true
+    test.beffroi.flow_pictures:
+        alias: Beffroi\Oidc\Port\FlowPicturesInterface
+        public: true
+    test.beffroi.password_hasher:
+        alias: Beffroi\Core\Port\PasswordHasherInterface
+        public: true
+    test.beffroi.core_password_hasher:
+        alias: App\Security\CorePasswordHasher
+        public: true
+    test.beffroi.password_hasher_factory:
         alias: security.password_hasher_factory
         public: true
-    test.heidi.key_rotator:
-        alias: Heidi\Core\Application\Key\SigningKeyRotator
+    # The four steps of the life of a key (coeur.md §3.3), each the counterpart of the others.
+    test.beffroi.key_staging:
+        alias: Beffroi\Core\Application\Key\KeyStaging
         public: true
-    test.heidi.keys:
-        alias: Heidi\Core\Port\SigningKeyRepositoryInterface
+    test.beffroi.key_take_over:
+        alias: Beffroi\Core\Application\Key\KeyTakeOver
+        public: true
+    test.beffroi.key_retirement:
+        alias: Beffroi\Core\Application\Key\KeyRetirement
+        public: true
+    test.beffroi.keys:
+        alias: Beffroi\Core\Port\TenantKeyRepositoryInterface
         public: true
     # The KMS the sealers share, for the tests that take it down between two requests (KmsOutage).
-    test.heidi.kms:
-        alias: heidi.kms
+    test.beffroi.kms:
+        alias: beffroi.kms
         public: true
-    test.heidi.key_sealer:
-        alias: Heidi\Core\Port\KeySealerInterface
+    # The index key of a tenant and what derives a tag under it (decisions 0011 and 0018): reachable so
+    # that a test can stand a second tenant up, which no configuration of one tenant can show.
+    test.beffroi.data_keys_index:
+        alias: beffroi.data_keys.index
         public: true
-    test.heidi.secret_sealer:
-        alias: Heidi\Core\Port\SecretSealerInterface
+    test.beffroi.blind_indexes:
+        alias: App\Doctrine\PersonalData\TenantBlindIndexes
         public: true
-    test.heidi.code_attempts:
-        alias: Heidi\Core\Port\CodeAttemptLimiterInterface
+    test.beffroi.key_sealer:
+        alias: Beffroi\Core\Port\KeySealerInterface
         public: true
-    test.heidi.kms_unavailable_listener:
-        alias: Heidi\Bundle\Key\KmsUnavailableListener
+    test.beffroi.secret_sealer:
+        alias: Beffroi\Core\Port\SecretSealerInterface
         public: true
-    test.heidi.totp_enrolment:
-        alias: Heidi\Core\Application\Totp\TotpEnrolment
+    test.beffroi.code_attempts:
+        alias: Beffroi\Core\Port\CodeAttemptLimiterInterface
         public: true
-    test.heidi.totp_authentication:
-        alias: Heidi\Core\Application\Totp\TotpAuthentication
+    test.beffroi.kms_unavailable_listener:
+        alias: App\Key\KmsUnavailableListener
         public: true
-    test.heidi.totp_algorithm:
-        alias: Heidi\Core\Port\TotpAlgorithmInterface
+    test.beffroi.totp_enrolment:
+        alias: Beffroi\Core\Application\Totp\TotpEnrolment
         public: true
-    test.heidi.key_pair_generator:
-        alias: Heidi\Core\Port\KeyPairGeneratorInterface
+    test.beffroi.totp_authentication:
+        alias: Beffroi\Core\Application\Totp\TotpAuthentication
         public: true
-    test.heidi.jws_signer:
-        alias: Heidi\Core\Port\JwsSignerInterface
+    test.beffroi.totp_algorithm:
+        alias: Beffroi\Core\Port\TotpAlgorithmInterface
         public: true
-    test.heidi.key_provider:
-        alias: Heidi\Core\Port\SigningKeyProviderInterface
+    test.beffroi.key_pair_generator:
+        alias: Beffroi\Core\Port\KeyPairGeneratorInterface
         public: true
-    test.heidi.jwks:
-        alias: Heidi\Oidc\Application\Discovery\JwksHandler
+    test.beffroi.jws_signer:
+        alias: Beffroi\Core\Port\JwsSignerInterface
         public: true
-    test.heidi.access_tokens:
-        alias: Heidi\Oidc\Port\AccessTokenIssuerInterface
+    test.beffroi.key_provider:
+        alias: Beffroi\Core\Port\SigningKeyProviderInterface
         public: true
-    test.heidi.id_tokens:
-        alias: Heidi\Oidc\Port\IdTokenIssuerInterface
+    # what the provider holds open: reachable so that a test can see the material of a key that stopped
+    # being the answer opened anew, which is what it means for it to have left the memory of the worker
+    test.beffroi.opened_keys:
+        alias: Beffroi\Core\Bridge\Key\OpenedKeys
         public: true
-    test.heidi.access_token_verifier:
-        alias: Heidi\Oidc\Application\Token\AccessTokenVerifier
+    # what every transport encodes with, read through the alias of the component and not through the
+    # service of the provider: what is asserted is the wiring and not the class (decision 0020)
+    test.beffroi.messenger_serializer:
+        alias: messenger.default_serializer
         public: true
-    test.heidi.id_token_hints:
-        alias: Heidi\Oidc\Application\Authorization\IdTokenHintVerifier
+    test.beffroi.message_sealing_algorithms:
+        alias: Beffroi\Core\Port\MessageSealingAlgorithmsInterface
         public: true
-    test.heidi.authorization_request_parser:
-        alias: Heidi\Oidc\Application\Authorization\AuthorizationRequestParser
+    test.beffroi.public_keys:
+        alias: Beffroi\Core\Port\PublicKeySetProviderInterface
         public: true
-    test.heidi.end_session_request_parser:
-        alias: Heidi\Oidc\Application\EndSession\EndSessionRequestParser
+    test.beffroi.decryption_keys:
+        alias: Beffroi\Core\Port\DecryptionKeyProviderInterface
         public: true
-    test.heidi.event_bus_dispatcher:
-        alias: Heidi\Bundle\Messenger\EventBusDispatcher
+    test.beffroi.jwe_decrypter:
+        alias: Beffroi\Core\Port\JweDecrypterInterface
         public: true
-    test.heidi.command_bus:
+    test.beffroi.jwks:
+        alias: Beffroi\Oidc\Application\Discovery\JwksHandler
+        public: true
+    test.beffroi.access_tokens:
+        alias: Beffroi\Oidc\Port\AccessTokenIssuerInterface
+        public: true
+    test.beffroi.id_tokens:
+        alias: Beffroi\Oidc\Port\IdTokenIssuerInterface
+        public: true
+    test.beffroi.access_token_verifier:
+        alias: Beffroi\Oidc\Application\Token\AccessTokenVerifier
+        public: true
+    test.beffroi.id_token_hints:
+        alias: Beffroi\Oidc\Application\Authorization\IdTokenHintVerifier
+        public: true
+    test.beffroi.authorization_request_parser:
+        alias: Beffroi\Oidc\Application\Authorization\AuthorizationRequestParser
+        public: true
+    test.beffroi.end_session_request_parser:
+        alias: Beffroi\Oidc\Application\EndSession\EndSessionRequestParser
+        public: true
+    test.beffroi.event_bus_dispatcher:
+        alias: App\Messenger\EventBusDispatcher
+        public: true
+    test.beffroi.command_bus:
         alias: command.bus
         public: true
-    test.heidi.schedule:
-        alias: Heidi\Bundle\Scheduler\HeidiSchedule
+    # The write path the asynchronous enrichment of a provenance will take: a handler of the bus, with no
+    # request anywhere. The enrichment does not exist; what this proves is that a sealed column written
+    # from there reaches the scope of its tenant (decision 0018, beffroi#404).
+    App\Tests\Symfony\Fixture\EnrichTheProvenanceHandler:
+        autowire: true
+        tags: ['messenger.message_handler']
+    test.beffroi.schedule:
+        alias: App\Scheduler\BeffroiSchedule
         public: true
-    test.heidi.tenant_synchronizer:
-        alias: Heidi\Bundle\Doctrine\TenantSynchronizer
+    # What a setting the environment carries reaches (issues #911 and #913): the issuers of a code, of an
+    # access token, of an ID token and of a refresh token, what a row an access token still needs is kept
+    # for, the schedule of the JOSE keys, the nonce a DPoP proof is asked for, the handlers of the two flows
+    # that poll, the two budgets, and the sender of web push.
+    test.beffroi.authorization_code_issuer:
+        alias: Beffroi\Oidc\Application\Authorization\AuthorizationCodeIssuer
         public: true
-    test.heidi.users:
-        alias: Heidi\Core\Port\UserRepositoryInterface
+    test.beffroi.jwt_access_token_issuer:
+        alias: Beffroi\Oidc\Application\Token\JwtAccessTokenIssuer
         public: true
-    test.heidi.credentials:
-        alias: Heidi\Core\Port\CredentialRepositoryInterface
+    test.beffroi.jwt_id_token_issuer:
+        alias: Beffroi\Oidc\Application\Token\JwtIdTokenIssuer
         public: true
-    test.heidi.metadata_store:
-        alias: Heidi\Core\Port\MetadataBlobStoreInterface
+    test.beffroi.what_a_token_still_needs:
+        alias: Beffroi\Core\Domain\Record\WhatATokenStillNeeds
         public: true
-    test.heidi.sessions:
-        alias: Heidi\Core\Port\AuthenticationSessionRepositoryInterface
+    test.beffroi.device_authorization_handler:
+        alias: Beffroi\Oidc\Application\Device\DeviceAuthorizationHandler
         public: true
-    test.heidi.interactions:
-        alias: Heidi\Oidc\Port\InteractionRepositoryInterface
+    test.beffroi.backchannel_authentication_handler:
+        alias: Beffroi\Oidc\Application\Ciba\BackchannelAuthenticationHandler
         public: true
-    test.heidi.authorization_codes:
-        alias: Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface
+    test.beffroi.origin_load:
+        alias: beffroi.load.origin
         public: true
-    test.heidi.logged_in_clients:
-        alias: Heidi\Oidc\Port\LoggedInClientsInterface
+    test.beffroi.client_load:
+        alias: beffroi.load.client
+        public: true
+    test.beffroi.web_push_sender:
+        alias: App\Push\WebPushSender
+        public: true
+    test.beffroi.token_issuer:
+        alias: Beffroi\Oidc\Application\Token\TokenIssuer
+        public: true
+    test.beffroi.rotation_schedule:
+        alias: beffroi.keys.rotation_schedule
+        public: true
+    test.beffroi.dpop_nonce:
+        alias: Beffroi\Oidc\Port\DpopNonceInterface
+        public: true
+    # What the figures of issue #915 reach, built when a test asks for one, which is where a figure of the environment
+    # is first a number.
+    test.beffroi.tenant_factory:
+        alias: App\Tenant\TenantFactory
+        public: true
+    test.beffroi.saml_rotation_schedule:
+        alias: beffroi.saml.rotation_schedule
+        public: true
+    test.beffroi.saml_identity_provider_metadata:
+        alias: beffroi.saml.identity_provider.metadata
+        public: true
+    test.beffroi.dpop_proof_validator:
+        alias: Beffroi\Oidc\Application\Dpop\DpopProofValidator
+        public: true
+    test.beffroi.cached_dpop_nonce:
+        alias: App\Dpop\CachedDpopNonce
+        public: true
+    test.beffroi.logout_token_sender:
+        alias: App\Http\LogoutTokenSender
+        public: true
+    test.beffroi.notification_retry_policy:
+        alias: App\Messenger\NotificationRetryPolicy
+        public: true
+    test.beffroi.client_notification_sender:
+        alias: App\Http\ClientNotificationSender
+        public: true
+    test.beffroi.pwned_passwords:
+        alias: App\Security\PwnedPasswords
+        public: true
+    test.beffroi.client_assertion_validator:
+        alias: Beffroi\Oidc\Application\Client\ClientAssertionValidator
+        public: true
+    test.beffroi.issuer_assertion_validator:
+        alias: Beffroi\Oidc\Application\Trust\IssuerAssertionValidator
+        public: true
+    test.beffroi.client_keys_provider:
+        alias: beffroi.oidc.client_keys.provider
+        public: true
+    test.beffroi.client_keys_cache:
+        alias: beffroi.oidc.client_keys.cache
+        public: true
+    test.beffroi.client_jwks_fetcher:
+        alias: App\Client\ClientJwksFetcher
+        public: true
+    test.beffroi.request_object_validator:
+        alias: Beffroi\Oidc\Application\Authorization\RequestObjectValidator
+        public: true
+    test.beffroi.request_object_fetcher:
+        alias: App\Client\RequestObjectFetcher
+        public: true
+    test.beffroi.registration_policy:
+        alias: Beffroi\Oidc\Bridge\Configuration\ConfigurationClientRegistrationPolicy
+        public: true
+    test.beffroi.software_statement_verifier:
+        alias: Beffroi\Oidc\Application\Client\Registration\SoftwareStatementVerifier
+        public: true
+    test.beffroi.sector_identifier_fetcher:
+        alias: App\Client\SectorIdentifierDocumentFetcher
+        public: true
+    test.beffroi.login_hints:
+        alias: Beffroi\Oidc\Application\Hint\LoginHints
+        public: true
+    test.beffroi.user_hints:
+        alias: Beffroi\Oidc\Application\Ciba\UserHints
+        public: true
+    test.beffroi.notifications_lane:
+        alias: App\Doctor\NotificationsLanePatience
+        public: true
+    test.beffroi.tenant_synchronizer:
+        alias: App\Doctrine\TenantSynchronizer
+        public: true
+    test.beffroi.users:
+        alias: Beffroi\Core\Port\UserRepositoryInterface
+        public: true
+    test.beffroi.credentials:
+        alias: Beffroi\Core\Port\CredentialRepositoryInterface
+        public: true
+    test.beffroi.tenant_hardening:
+        alias: Beffroi\Core\Application\Tenant\TenantHardening
+        public: true
+    test.beffroi.enrolment_tickets:
+        alias: Beffroi\Core\Application\Enrolment\EnrolmentTicketIssue
+        public: true
+    test.beffroi.enrolment_ticket_store:
+        alias: Beffroi\Core\Port\EnrolmentTicketRepositoryInterface
+        public: true
+    test.beffroi.password_tickets:
+        alias: Beffroi\Core\Application\Ticket\PasswordTicketIssue
+        public: true
+    test.beffroi.password_ticket_store:
+        alias: Beffroi\Core\Port\PasswordTicketRepositoryInterface
+        public: true
+    test.beffroi.totp_tickets:
+        alias: Beffroi\Core\Application\Ticket\TotpTicketIssue
+        public: true
+    test.beffroi.totp_ticket_store:
+        alias: Beffroi\Core\Port\TotpTicketRepositoryInterface
+        public: true
+    test.beffroi.linked_identities:
+        alias: Beffroi\Core\Port\LinkedIdentityRepositoryInterface
+        public: true
+    test.beffroi.atomic_writes:
+        alias: Beffroi\Core\Port\AtomicWritesInterface
+        public: true
+    test.beffroi.user_provisioner:
+        alias: Beffroi\Core\Application\Identity\UserProvisioner
+        public: true
+    test.beffroi.push_subscriptions:
+        alias: Beffroi\Core\Port\PushSubscriptionRepositoryInterface
+        public: true
+    test.beffroi.metadata_store:
+        alias: Beffroi\Core\Port\MetadataBlobStoreInterface
+        public: true
+    test.beffroi.authenticator_list_store:
+        alias: Beffroi\Core\Port\AuthenticatorListStoreInterface
+        public: true
+    test.beffroi.sessions:
+        alias: Beffroi\Core\Port\AuthenticationSessionRepositoryInterface
+        public: true
+    test.beffroi.subjects_of_sessions:
+        alias: Beffroi\Core\Port\SubjectsOfSessionsInterface
+        public: true
+    test.beffroi.unended_sessions:
+        alias: Beffroi\Core\Port\CanFindUnendedSessionsInterface
+        public: true
+    test.beffroi.journal:
+        alias: Beffroi\Core\Port\JournalInterface
+        public: true
+    test.beffroi.acts:
+        alias: Beffroi\Core\Port\ActsOfAPersonInterface
+        public: true
+    test.beffroi.archives:
+        alias: Beffroi\Core\Port\PersonalArchiveRepositoryInterface
+        public: true
+    test.beffroi.claims:
+        alias: App\Identity\WiredClaims
+        public: true
+    test.beffroi.claim_history:
+        alias: Beffroi\Core\Port\ClaimHistoryInterface
+        public: true
+    test.beffroi.saml_accepted_metadata:
+        alias: Beffroi\Saml\Port\AcceptedMetadataRepositoryInterface
+        public: true
+    test.beffroi.saml_upstream_accepted_metadata:
+        alias: beffroi.saml.identity_providers.accepted_metadata
+        public: true
+    test.beffroi.saml_session_participants:
+        alias: Beffroi\Saml\Port\SessionParticipationRepositoryInterface
+        public: true
+    test.beffroi.changes:
+        alias: Beffroi\Core\Port\ChangesOfAPersonInterface
+        public: true
+    test.beffroi.disclosures:
+        alias: Beffroi\Oidc\Port\DisclosuresInterface
+        public: true
+    test.beffroi.disclosures_of_a_person:
+        alias: Beffroi\Oidc\Port\DisclosuresOfAPersonInterface
+        public: true
+    test.beffroi.groups_of_a_person:
+        alias: Beffroi\Core\Port\GroupsOfAPersonInterface
+        public: true
+    test.beffroi.groups_of_a_tenant:
+        alias: Beffroi\Core\Port\GroupsOfATenantInterface
+        public: true
+    test.beffroi.members_of_a_group:
+        alias: Beffroi\Core\Port\MembersOfAGroupInterface
+        public: true
+    test.beffroi.groups:
+        alias: Beffroi\Core\Port\GroupRepositoryInterface
+        public: true
+    test.beffroi.group_memberships:
+        alias: Beffroi\Core\Port\GroupMembershipRepositoryInterface
+        public: true
+    test.beffroi.upstream_memberships:
+        alias: Beffroi\Core\Application\Group\UpstreamMemberships
+        public: true
+    test.beffroi.archive_request:
+        alias: Beffroi\Core\Application\Archive\ArchiveRequest
+        public: true
+    test.beffroi.interactions:
+        alias: Beffroi\Oidc\Port\InteractionRepositoryInterface
+        public: true
+    test.beffroi.authorization_codes:
+        alias: Beffroi\Oidc\Port\AuthorizationCodeRepositoryInterface
+        public: true
+    test.beffroi.pushed_authorization_requests:
+        alias: Beffroi\Oidc\Port\PushedAuthorizationRecordRepositoryInterface
+        public: true
+    test.beffroi.device_authorization_requests:
+        alias: Beffroi\Oidc\Port\DeviceAuthorizationRecordRepositoryInterface
+        public: true
+    test.beffroi.backchannel_authentication_requests:
+        alias: Beffroi\Oidc\Port\BackchannelAuthenticationRecordRepositoryInterface
+        public: true
+    test.beffroi.logged_in_clients:
+        alias: Beffroi\Oidc\Port\LoggedInClientsInterface
         public: true
     # the delivery of a logout token: the queue it waits in, and the handler called as the worker calls it
-    test.heidi.notification_queue:
-        alias: messenger.transport.notifications
+    test.beffroi.notification_queue:
+        alias: messenger.transport.async_notifications
         public: true
-    test.heidi.logout_token_delivery:
-        alias: Heidi\Bundle\MessageHandler\SendLogoutTokenHandler
+    test.beffroi.logout_token_delivery:
+        alias: App\MessageHandler\SendLogoutTokenHandler
         public: true
-    test.heidi.refresh_tokens:
-        alias: Heidi\Oidc\Port\RefreshTokenRepositoryInterface
+    test.beffroi.refresh_tokens:
+        alias: Beffroi\Oidc\Port\RefreshTokenRepositoryInterface
         public: true
-    test.heidi.access_tokens_store:
-        alias: Heidi\Oidc\Port\AccessTokenRepositoryInterface
+    # the store of the refresh tokens by its class and not by a port: eight stores answer what they may
+    # drop (issue #177), so DeadRecordsInterface is nobody's alias, and what a run with room for one row
+    # leaves is a property of this one
+    test.beffroi.dead_refresh_tokens:
+        alias: App\Doctrine\Repository\DoctrineRefreshTokenRepository
         public: true
-    test.heidi.consents:
-        alias: Heidi\Oidc\Port\ConsentRepositoryInterface
+    test.beffroi.access_tokens_store:
+        alias: Beffroi\Oidc\Port\AccessTokenRepositoryInterface
         public: true
-    test.heidi.browser_session:
-        alias: Heidi\Bundle\Http\BrowserSession
+    test.beffroi.consents:
+        alias: Beffroi\Oidc\Port\ConsentRepositoryInterface
         public: true
-    test.heidi.endpoints:
-        alias: Heidi\Oidc\Port\EndpointLocatorInterface
+    test.beffroi.active_consents:
+        alias: Beffroi\Oidc\Port\ActiveConsentsInterface
         public: true
-    Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler:
+    test.beffroi.recorded_grants:
+        alias: Beffroi\Oidc\Port\RecordedGrantsInterface
+        public: true
+    test.beffroi.grants_of_a_consent:
+        alias: Beffroi\Oidc\Port\CanRevokeGrantsByConsentInterface
+        public: true
+    test.beffroi.refresh_tokens_of_a_consent:
+        alias: Beffroi\Oidc\Port\RefreshTokensOfAConsentInterface
+        public: true
+    test.beffroi.access_tokens_of_a_consent:
+        alias: Beffroi\Oidc\Port\CanRevokeAccessTokensByConsentInterface
+        public: true
+    test.beffroi.browser_session:
+        alias: App\Http\BrowserSession
+        public: true
+    test.beffroi.endpoints:
+        alias: Beffroi\Oidc\Port\EndpointLocatorInterface
+        public: true
+    App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler:
         autoconfigure: true
         public: true
 
+    # A third shape of access token, wired as a deployment wires one: an issuer that names it, a verifier
+    # that answers to the same name, and no line of src edited for the token endpoint to mint it and for
+    # the UserInfo endpoint to read it back (issue #239). Behind the two the provider wires, because the
+    # first wired shape is what a client that registers none takes, and the clients of this kernel that
+    # register none expect the "at+jwt" the provider writes first.
+    App\Tests\Symfony\Functional\Token\InventedAccessTokenIssuer:
+        arguments: ['@Beffroi\Oidc\Application\Token\OpaqueAccessTokenIssuer']
+        tags:
+            - { name: beffroi.oidc.access_token_issuer, priority: -10 }
+    App\Tests\Symfony\Functional\Token\InventedAccessTokenVerifier:
+        arguments: ['@Beffroi\Oidc\Application\Token\OpaqueAccessTokenVerifier']
+        tags:
+            - { name: beffroi.oidc.access_token_verifier, priority: -10 }
+
+    # A fifth way of answering the authorization endpoint, wired as a deployment wires one: it names itself,
+    # and that name is what a request may ask for, what the document announces and what the endpoint answers
+    # in, with no line of src edited (issue #240). Behind the four the provider wires, because the first wired
+    # mode is what a request the provider cannot answer as it asked falls back to, and every other test of
+    # this kernel expects that fallback to be the "query" of RFC 6749 §4.1.2.
+    App\Tests\Symfony\Functional\ResponseMode\InventedResponseModeRenderer:
+        tags:
+            - { name: beffroi.response_mode, priority: -10 }
+
     # A missing translation fails the request rather than showing its key or its English (architecture §5.7).
-    Heidi\Bundle\Tests\Functional\Translation\StrictTranslator:
+    App\Tests\Symfony\Functional\Translation\StrictTranslator:
         decorates: translator
         arguments: ['@.inner']
 
     # The argon2id hashes of the suite at the smallest cost the algorithm accepts, ahead of the native hasher
     # of the core, which keeps its production cost and the hashes of the other algorithms: 400 ms a hash
     # otherwise, paid once per user, ten times per TOTP and once per client authentication after a reboot.
-    Heidi\Bundle\Tests\Functional\Security\CheapArgon2idHasher:
+    App\Tests\Symfony\Functional\Security\CheapArgon2idHasher:
         tags:
-            - { name: heidi.password_hasher, priority: 10 }
+            - { name: beffroi.password_hasher, priority: 10 }
 
-    # The RSA keys of the suite at the 2048 bits RFC 7518 §3.3 requires rather than the 3072 the bundle
+    # The RSA keys of the suite at the 2048 bits RFC 7518 §3.3 requires rather than the 3072 the provider
     # generates: a key pair in 60 ms instead of 300, at every signingKey() and every rotation.
-    Heidi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits:
+    Beffroi\Core\Bridge\JwtLibrary\Algorithm\RsaKeyBits:
         arguments:
             $value: 2048
+
+    # Decisions 0011 and 0018: the third success criterion of the spike is a count of what the KMS was
+    # asked, read in the log of the KMS when it is measured against a running stack ("castor login-cost").
+    # Where there is no KMS on a network, the client the configuration names is decorated with one that
+    # counts: one unwrap per data key and per process, and none per value.
+    App\Tests\Symfony\Functional\Doctrine\PersonalData\CountingKms:
+        decorates: beffroi_test.kms
+        arguments: ['@.inner']
+        public: true
+
+# The service providers of the tenant of the tests, declared for the environment "test" alone (the YAML loader
+# reads "when@<environment>"): an environment of its own that turns the identity provider off, as
+# config_test_without_saml.yml does, adds to this file and cannot take a declaration out of it, and the
+# configuration refuses service providers for a tenant that is no identity provider (spec/saml.md section 5.2).
+when@test:
+    beffroi:
+        saml:
+            # A SimpleSAMLphp service provider (spec/saml.md section 5.2): its metadata read from a file the tests
+            # write in the cache directory of the kernel, the one of their worker, by
+            # "beffroi:saml:service-provider:refresh"; its assertions encrypted, its metadata holding a key for it.
+            service_providers:
+                'https://localhost:8082/simplesaml/module.php/saml/sp/metadata/default-sp':
+                    metadata: '%kernel.cache_dir%/saml/simplesamlphp-sp-metadata.xml'
+                    attributes:
+                        'urn:oid:0.9.2342.19200300.100.1.3':
+                            claim: email
+                            friendly_name: mail
+                    encrypt_assertions: true
+                # The service provider of single sign-on (spec/saml.md section 6.4): its metadata a file of the suite, which
+                # publishes the test key of a service provider of saml2-model, the key its requests are signed with; two
+                # claims of the provider sent under their OID names.
+                'https://sp.example.org/saml':
+                    metadata: '%kernel.project_dir%/../saml/Fixture/metadata/sp-example-org-metadata.xml'
+                    attributes:
+                        'urn:oid:0.9.2342.19200300.100.1.3':
+                            claim: email
+                            friendly_name: mail
+                        'urn:oid:2.16.840.1.113730.3.1.241':
+                            claim: name
+                            friendly_name: displayName
+                # Entra's SAML federation of guests (issue #736, spec/saml.md section 7): its metadata the ones an
+                # administrator writes by hand, no key, its requests unsigned; the one claim it requires.
+                'https://login.microsoftonline.com/aaaabbbb-0000-cccc-1111-dddd2222eeee/':
+                    metadata: '%kernel.project_dir%/../saml/Fixture/metadata/entra-guest-federation-sp.xml'
+                    signs_authn_requests: false
+                    attributes:
+                        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress':
+                            claim: email

@@ -2,21 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Bridge\Password;
+namespace Beffroi\Core\Bridge\Password;
 
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Exception\LogicException;
-use Heidi\Core\Port\AlgorithmPasswordHasherInterface;
-use Heidi\Core\Port\PasswordHasherInterface;
+use Beffroi\Core\Domain\Credential\PasswordAlgorithmInterface;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\LogicException;
+use Beffroi\Core\Port\AlgorithmPasswordHasherInterface;
+use Beffroi\Core\Port\PasswordAlgorithmsInterface;
+use Beffroi\Core\Port\PasswordHasherInterface;
 use SensitiveParameter;
 use function sprintf;
 
-/**
- * Routes each hash to the hasher of its algorithm; new hashes use the default one. The port the use cases
- * see, over the hashers that name their algorithms.
- */
 final readonly class PasswordHasherRegistry implements PasswordHasherInterface
 {
     /**
@@ -29,7 +26,7 @@ final readonly class PasswordHasherRegistry implements PasswordHasherInterface
     /**
      * @param iterable<AlgorithmPasswordHasherInterface> $hashers
      */
-    public function __construct(iterable $hashers, PasswordAlgorithm $defaultAlgorithm = PasswordAlgorithm::Argon2id)
+    public function __construct(iterable $hashers, PasswordAlgorithmsInterface $algorithms)
     {
         $list = [];
         foreach ($hashers as $hasher) {
@@ -39,7 +36,7 @@ final readonly class PasswordHasherRegistry implements PasswordHasherInterface
             throw new InvalidArgumentException('The password hasher registry needs at least one hasher.');
         }
         $this->hashers = $list;
-        $this->default = $this->hasherFor($defaultAlgorithm);
+        $this->default = $this->hasherFor($algorithms->defaultAlgorithm());
     }
 
     public function hash(#[SensitiveParameter] string $plainPassword): PasswordHash
@@ -49,13 +46,9 @@ final readonly class PasswordHasherRegistry implements PasswordHasherInterface
 
     public function verify(PasswordHash $hash, #[SensitiveParameter] string $plainPassword): bool
     {
-        return $this->hasherFor($hash->algorithm)
-            ->verify($hash, $plainPassword);
+        return $this->hasherFor($hash->algorithm)->verify($hash, $plainPassword);
     }
 
-    /**
-     * A hash of another algorithm than the default needs a rehash.
-     */
     public function needsRehash(PasswordHash $hash): bool
     {
         $hasher = $this->hasherFor($hash->algorithm);
@@ -63,7 +56,7 @@ final readonly class PasswordHasherRegistry implements PasswordHasherInterface
         return $hasher !== $this->default || $hasher->needsRehash($hash);
     }
 
-    private function hasherFor(PasswordAlgorithm $algorithm): AlgorithmPasswordHasherInterface
+    private function hasherFor(PasswordAlgorithmInterface $algorithm): AlgorithmPasswordHasherInterface
     {
         foreach ($this->hashers as $hasher) {
             if ($hasher->supports($algorithm)) {
@@ -71,6 +64,6 @@ final readonly class PasswordHasherRegistry implements PasswordHasherInterface
             }
         }
 
-        throw new LogicException(sprintf('No password hasher handles the "%s" algorithm.', $algorithm->value));
+        throw new LogicException(sprintf('No password hasher handles the "%s" algorithm.', $algorithm->name()));
     }
 }

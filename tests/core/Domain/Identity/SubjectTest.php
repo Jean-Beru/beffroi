@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Domain\Identity;
+namespace Beffroi\Core\Tests\Domain\Identity;
 
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -35,7 +35,7 @@ final class SubjectTest extends TestCase
     }
 
     /**
-     * OIDC Core §2: "sub" is case sensitive.
+     * OIDC Core §2
      */
     #[Test]
     public function itComparesCaseSensitively(): void
@@ -48,7 +48,7 @@ final class SubjectTest extends TestCase
     }
 
     /**
-     * OIDC Core §2: "sub" MUST NOT exceed 255 ASCII characters.
+     * OIDC Core §2
      */
     #[Test]
     public function itMayBe255CharactersLong(): void
@@ -80,5 +80,6 @@ final class SubjectTest extends TestCase
         yield 'longer than 255' => [str_repeat('x', 256)];
         yield 'space' => ['alice smith'];
         yield 'non ASCII' => ['alicé'];
+        yield 'a line feed behind a subject that would pass' => ["alice\n"];
     }
 }

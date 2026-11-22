@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Messenger;
+namespace App\Tests\Symfony\Unit\Messenger;
 
-use Heidi\Bundle\Message\AdvanceKeyLifecycle;
-use Heidi\Bundle\Message\SendLogoutToken;
-use Heidi\Bundle\Messenger\LogoutTokenGivenUpListener;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Oidc\Domain\Event\LogoutTokenGivenUp;
+use App\Message\AdvanceKeyLifecycle;
+use App\Message\SendLogoutToken;
+use App\Messenger\LogoutTokenGivenUpListener;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Oidc\Domain\Event\LogoutTokenGivenUp;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -19,7 +19,7 @@ use Symfony\Component\Messenger\Event\WorkerMessageFailedEvent;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Back-Channel Logout 1.0 §2.8: the end of the retries of a logout token is an event, not a silence.
+ * Back-Channel Logout 1.0 §2.8
  */
 final class LogoutTokenGivenUpListenerTest extends TestCase
 {
@@ -35,10 +35,6 @@ final class LogoutTokenGivenUpListenerTest extends TestCase
         $this->listener = new LogoutTokenGivenUpListener($this->events, new MockClock(Fixtures::now()));
     }
 
-    /**
-     * The transport has brought the message back as many times as its policy allows: the provider says
-     * which client was left believing its user is signed in, and why.
-     */
     #[Test]
     public function aLogoutTokenTheTransportGivesUpOnIsAnnounced(): void
     {
@@ -53,10 +49,6 @@ final class LogoutTokenGivenUpListenerTest extends TestCase
         static::assertSame(Fixtures::now()->getTimestamp(), $givenUp->occurredAt->getTimestamp());
     }
 
-    /**
-     * A failure the transport will bring back is not a giving up: nothing is announced while the client
-     * may still take the token.
-     */
     #[Test]
     public function aFailureThatWillBeTriedAgainIsNotAnnounced(): void
     {
@@ -67,9 +59,6 @@ final class LogoutTokenGivenUpListenerTest extends TestCase
         static::assertSame([], $this->events->of(LogoutTokenGivenUp::class));
     }
 
-    /**
-     * Another message that runs out of retries is another matter; this listener answers for one kind.
-     */
     #[Test]
     public function aMessageOfAnotherKindIsNotAnnouncedAsALogout(): void
     {
@@ -82,7 +71,15 @@ final class LogoutTokenGivenUpListenerTest extends TestCase
 
     private static function message(): SendLogoutToken
     {
-        return new SendLogoutToken(Fixtures::tenant(), 'oidc-demo', 'https://demo.test/backchannel-logout', 'a.logout.token', Uuid::fromString(self::SESSION), Fixtures::context());
+        return new SendLogoutToken(
+            Fixtures::tenant(),
+            'oidc-demo',
+            'https://demo.test/backchannel-logout',
+            'a.logout.token',
+            Uuid::fromString(self::SESSION),
+            Fixtures::user()->subject,
+            Fixtures::context(),
+        );
     }
 
     private static function failure(object $message, bool $willRetry): WorkerMessageFailedEvent

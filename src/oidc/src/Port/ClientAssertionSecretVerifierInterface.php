@@ -2,22 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Port;
+namespace Beffroi\Oidc\Port;
 
-use Heidi\Oidc\Domain\Client\ClientAssertion;
-use Heidi\Oidc\Domain\Client\SharedClientSecret;
-use Heidi\Oidc\Exception\InvalidClientAssertionException;
+use Beffroi\Oidc\Domain\Client\SharedClientSecret;
+use Beffroi\Oidc\Domain\Token\UnverifiedJwt;
+use Beffroi\Oidc\Exception\InvalidJwtException;
 
 /**
- * Verifies the MAC of a client assertion against the secret the client registered (OIDC Core §9,
- * "client_secret_jwt").
+ * OIDC Core §9
  */
 interface ClientAssertionSecretVerifierInterface
 {
     /**
-     * @param non-empty-list<non-empty-string> $algorithms the "alg" the MAC may carry
+     * @param non-empty-list<non-empty-string> $algorithms
      *
-     * @throws InvalidClientAssertionException when the algorithm is not one of those or the MAC does not verify
+     * @throws InvalidJwtException
      */
-    public function verify(ClientAssertion $assertion, SharedClientSecret $secret, array $algorithms): void;
+    public function verify(UnverifiedJwt $assertion, SharedClientSecret $secret, array $algorithms): void;
 }

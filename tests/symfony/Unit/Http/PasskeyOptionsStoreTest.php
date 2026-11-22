@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Http;
+namespace App\Tests\Symfony\Unit\Http;
 
-use Heidi\Bundle\Http\PasskeyOptionsStore;
+use App\Http\PasskeyOptionsStore;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function str_repeat;
@@ -17,8 +17,7 @@ use Webauthn\PublicKeyCredentialRpEntity;
 use Webauthn\PublicKeyCredentialUserEntity;
 
 /**
- * Architecture §5.2: the options of a ceremony live in the HTTP session between the two requests it
- * takes, and are read once.
+ * Architecture §5.2
  */
 final class PasskeyOptionsStoreTest extends TestCase
 {
@@ -112,6 +111,10 @@ final class PasskeyOptionsStoreTest extends TestCase
 
     private static function creationOptions(): PublicKeyCredentialCreationOptions
     {
-        return PublicKeyCredentialCreationOptions::create(PublicKeyCredentialRpEntity::create('op.test', 'op.test'), PublicKeyCredentialUserEntity::create('alice', str_repeat('h', 64), 'alice'), str_repeat('c', 32));
+        return PublicKeyCredentialCreationOptions::create(
+            PublicKeyCredentialRpEntity::create('op.test', 'op.test'),
+            PublicKeyCredentialUserEntity::create('alice', str_repeat('h', 64), 'alice'),
+            str_repeat('c', 32),
+        );
     }
 }

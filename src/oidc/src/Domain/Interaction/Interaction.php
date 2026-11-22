@@ -2,37 +2,29 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Interaction;
+namespace Beffroi\Oidc\Domain\Interaction;
 
-use function base64_encode;
+use Beffroi\Core\Domain\PersonalData\ClassifiedFieldsInterface;
+use Beffroi\Core\Domain\PersonalData\FieldClassificationInterface;
+use Beffroi\Core\Domain\PersonalData\NoPersonalDatum;
+use Beffroi\Core\Domain\PersonalData\Reason;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
-use Heidi\Oidc\Domain\Consent\Consent;
-use Heidi\Oidc\Exception\InteractionCompletedException;
-use Heidi\Oidc\Exception\InteractionExpiredException;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Exception\LogicException;
-use function preg_match;
-use function random_bytes;
-use function rtrim;
-use function strtr;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationRequest;
+use Beffroi\Oidc\Domain\Client\ResolvesItsClientInterface;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Exception\InteractionCompletedException;
+use Beffroi\Oidc\Exception\InteractionExpiredException;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Exception\LogicException;
 
 /**
- * An authorization request parked while the user logs in and consents (architecture §4.3). The identifier
- * is 256 random bits and the bundle binds it to the browser session; an interaction is completed once.
+ * An authorization request parked while the user logs in and consents.
  */
-final class Interaction
+final class Interaction implements ResolvesItsClientInterface, ClassifiedFieldsInterface
 {
-    /**
-     * 256 bits, base64url without padding.
-     */
-    private const string ID_PATTERN = '/^[A-Za-z0-9_-]{43}$/';
-
-    /**
-     * What a store keeps; the object is what the client repository resolved for it.
-     */
     public readonly string $clientId;
 
     public private(set) ?AuthenticationSession $session = null;
@@ -41,19 +33,17 @@ final class Interaction
 
     public private(set) ?DateTimeImmutable $completedAt = null;
 
-    /**
-     * @param string|null $locale the language of the pages of this interaction (architecture §5.7)
-     */
     public function __construct(
         public readonly string $id,
         public readonly Tenant $tenant,
         public readonly AuthorizationRequest $request,
-        public readonly ?string $locale,
+        public private(set) ?string $locale,
         public readonly DateTimeImmutable $createdAt,
         public readonly DateTimeImmutable $expiresAt,
+        public readonly ?string $requestUriHash = null,
     ) {
-        if (preg_match(self::ID_PATTERN, $id) !== 1) {
-            throw new InvalidArgumentException('An interaction identifier is 256 bits in base64url, see generateId().');
+        if (! DrawnSecret::isValue($id)) {
+            throw new InvalidArgumentException('An interaction identifier is 256 bits in base64url, as every value this provider draws.');
         }
         if (! $request->client->belongsTo($tenant)) {
             throw new InvalidArgumentException('An interaction serves a client of its own tenant.');
@@ -64,12 +54,18 @@ final class Interaction
         if ($expiresAt <= $createdAt) {
             throw new InvalidArgumentException('An interaction expires after it was created.');
         }
-        $this->clientId = $request->client->clientId;
+        $this->clientId = $request->client->registration->clientId;
     }
 
-    public static function generateId(): string
+    /**
+     * @throws InvalidArgumentException if the locale is empty
+     */
+    public function readIn(string $locale): void
     {
-        return rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+        if ($locale === '') {
+            throw new InvalidArgumentException('The locale of an interaction is either absent or non-empty.');
+        }
+        $this->locale = $locale;
     }
 
     /**
@@ -99,8 +95,11 @@ final class Interaction
         if (! $consent->isFor($this->session->user, $this->request->client)) {
             throw new InvalidArgumentException('A consent is recorded for the user of the session and the client of the request.');
         }
-        if (! $consent->covers($this->request->scopes)) {
+        if (! $consent->scopes->covers($this->request->scopes)) {
             throw new InvalidArgumentException('A consent recorded on an interaction covers every scope of the request.');
+        }
+        if (! $consent->coversAuthorizationDetails($this->request->authorizationDetails)) {
+            throw new InvalidArgumentException('A consent recorded on an interaction covers every authorization detail of the request (RFC 9396 section 7).');
         }
         $this->consent = $consent;
     }
@@ -122,6 +121,14 @@ final class Interaction
     }
 
     /**
+     * Whether the latest proof of the session was given at or after the instant this interaction began.
+     */
+    public function sawTheLoginOf(AuthenticationSession $session): bool
+    {
+        return $session->authenticatedAt() >= $this->createdAt;
+    }
+
+    /**
      * @throws InteractionCompletedException
      * @throws InteractionExpiredException
      */
@@ -133,5 +140,29 @@ final class Interaction
         if ($this->isExpired($now)) {
             throw new InteractionExpiredException($this->id);
         }
+    }
+
+    public function clientHolder(): object
+    {
+        return $this->request;
+    }
+
+    /**
+     * @return array<string, FieldClassificationInterface>
+     */
+    public static function classifiedFields(): array
+    {
+        return [
+            'clientId' => new NoPersonalDatum(Reason::A_CLIENT),
+            'locale' => new NoPersonalDatum(Reason::THE_LANGUAGE_ASKED_FOR),
+            'createdAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'expiresAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'completedAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'requestUriHash' => new NoPersonalDatum(Reason::HASHED),
+            'id' => new NoPersonalDatum(Reason::DRAWN_AT_RANDOM),
+            'tenant' => new NoPersonalDatum(Reason::THE_TENANT),
+            'session' => new NoPersonalDatum(Reason::DRAWN_AT_RANDOM),
+            'consent' => new NoPersonalDatum(Reason::DRAWN_AT_RANDOM),
+        ];
     }
 }

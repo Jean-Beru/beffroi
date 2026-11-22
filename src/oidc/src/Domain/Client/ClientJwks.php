@@ -2,18 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Client;
+namespace Beffroi\Oidc\Domain\Client;
 
 use function array_any;
 use function array_find;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use function hash_equals;
+use Beffroi\Core\Domain\Key\KeyEncryptionAlgorithmInterface;
+use Beffroi\Core\Domain\Key\KeyUse;
+use Beffroi\Oidc\Domain\Client\Certificate\ClientCertificate;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use function is_array;
 use function is_string;
 
 /**
- * The public keys a client publishes (RFC 7517 §5, RFC 7591 §2), inline in its registration or read back
- * from its "jwks_uri". Public keys only: a set is read as it is given, and a symmetric key is refused
- * (RFC 8725 §3.5), because a client that signs with a shared secret registers a secret, not a key.
+ * RFC 7517 §5, RFC 7591 §2
+ *
+ * Public keys only: a client that signs with a shared secret registers a secret, not a key (RFC 8725 §3.5).
  */
 final readonly class ClientJwks
 {
@@ -43,8 +47,6 @@ final readonly class ClientJwks
     }
 
     /**
-     * The document as JSON gives it, read strictly: "keys" is a list of objects and nothing else is read.
-     *
      * @param array<mixed> $document
      */
     public static function fromDocument(array $document): self
@@ -76,5 +78,65 @@ final readonly class ClientJwks
     public function holds(string $keyId): bool
     {
         return array_any($this->keys, static fn (array $key): bool => ($key['kid'] ?? null) === $keyId);
+    }
+
+    /**
+     * RFC 7517 §4.2, §4.4
+     *
+     * A key that names the algorithm wins over one that says it encrypts, which wins over one that says
+     * neither; the first published wins a tie.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function encryptionKeyFor(KeyEncryptionAlgorithmInterface $algorithm): ?array
+    {
+        $named = null;
+        $forEncryption = null;
+        $unmarked = null;
+        foreach ($this->keys as $key) {
+            if (($key['kty'] ?? null) !== $algorithm->keyType()) {
+                continue;
+            }
+            $use = $key['use'] ?? null;
+            if ($use !== null && $use !== KeyUse::Encryption->value) {
+                continue;
+            }
+            $registered = $key['alg'] ?? null;
+            if ($registered !== null) {
+                if ($registered === $algorithm->name()) {
+                    $named ??= $key;
+                }
+
+                continue;
+            }
+            if ($use === KeyUse::Encryption->value) {
+                $forEncryption ??= $key;
+
+                continue;
+            }
+            $unmarked ??= $key;
+        }
+
+        return $named ?? $forEncryption ?? $unmarked;
+    }
+
+    /**
+     * RFC 8705 §2.2
+     *
+     * The certificate is compared, not its key: one reissued on the same key binds tokens to another thumbprint.
+     */
+    public function publishes(ClientCertificate $certificate): bool
+    {
+        return array_any($this->keys, static function (array $key) use ($certificate): bool {
+            $thumbprint = $key['x5t#S256'] ?? null;
+            if (is_string($thumbprint) && hash_equals($certificate->x5tS256(), $thumbprint)) {
+                return true;
+            }
+            $chain = $key['x5c'] ?? null;
+            $leaf = is_array($chain) ? $chain[0] ?? null : null;
+            $published = is_string($leaf) ? ClientCertificate::fromBase64($leaf) : null;
+
+            return $published !== null && $published->isSameAs($certificate);
+        });
     }
 }

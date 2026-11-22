@@ -2,17 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Authorization;
+namespace Beffroi\Oidc\Domain\Authorization;
 
-use Heidi\Core\Domain\Tenant\Issuer;
-use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Exception\LogicException;
-use Heidi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Oidc\Domain\Client\RedirectUri;
+use Beffroi\Oidc\Exception\LogicException;
+use Beffroi\Oidc\Exception\OAuth2Exception;
 use function sprintf;
 
 /**
- * An error sent back to the client (RFC 6749 §4.1.2.1), always with "iss" (RFC 9207 §2). Built only from
- * a redirectable error (RFC 9700 §4.1).
+ * RFC 6749 §4.1.2.1, RFC 9207 §2
  */
 final readonly class AuthorizationErrorResponse
 {
@@ -31,7 +30,10 @@ final readonly class AuthorizationErrorResponse
     public static function fromException(RedirectTarget $target, OAuth2Exception $exception): self
     {
         if (! $exception->redirectable) {
-            throw new LogicException(sprintf('The error "%s" is not redirectable: it is shown to the user, never sent to the client (RFC 6749 §4.1.2.1).', $exception->error));
+            throw new LogicException(sprintf(
+                'The error "%s" is not redirectable: it is shown to the user, never sent to the client (RFC 6749 §4.1.2.1).',
+                $exception->error,
+            ));
         }
 
         return new self($target->client->tenant->issuer, $target->redirectUri, $target->state, $exception->error, $exception->errorDescription);

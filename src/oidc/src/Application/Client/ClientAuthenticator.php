@@ -2,64 +2,79 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Application\Client;
+namespace Beffroi\Oidc\Application\Client;
 
 use function array_filter;
 use function array_map;
+use function array_unique;
 use function array_values;
 use function count;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Application\Client\Method\AuthenticationMethodInterface;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
-use Heidi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
-use Heidi\Oidc\Exception\InvalidClientException;
-use Heidi\Oidc\Exception\InvalidRequestException;
-use Heidi\Oidc\Exception\OAuth2Exception;
-use Heidi\Oidc\Port\ClientRepositoryInterface;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\LoadBudgetSpentException;
+use Beffroi\Oidc\Application\Client\Method\AuthenticationMethodInterface;
+use Beffroi\Oidc\Application\Client\Method\ConfirmingMethodInterface;
+use Beffroi\Oidc\Domain\Client\Certificate\ClientCertificate;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailed;
+use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
+use Beffroi\Oidc\Domain\Token\CertificateConfirmation;
+use Beffroi\Oidc\Domain\Token\ConfirmationInterface;
+use Beffroi\Oidc\Exception\InvalidClientException;
+use Beffroi\Oidc\Exception\InvalidRequestException;
+use Beffroi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Oidc\Port\ClientLoadBudgetInterface;
+use Beffroi\Oidc\Port\ClientRepositoryInterface;
 use function implode;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use function sprintf;
 
 /**
- * Authenticates the client of a request at every endpoint that authenticates one (RFC 6749 §2.3, §3.2.1,
- * RFC 7662 §2.1, RFC 7009 §2.1). It knows no method: the wired methods say which of them the request
- * presents, the client says which one it registered, and the authenticator is what picks the one and
- * refuses the other. A refusal costs what an acceptance costs, the method paying it against the decoy of
- * the core (issue #124), and reads the same whatever the cause, so that the answer and the time taken
- * say nothing about who is registered (decision 0006).
+ * RFC 6749 §2.3, §3.2.1, RFC 7662 §2.1, RFC 7009 §2.1
+ *
+ * Only a proven client spends its load budget: counting a merely named one would let anyone exhaust it.
  */
 final readonly class ClientAuthenticator
 {
-    /**
-     * @param ClientAuthenticationMethods $methods the wired methods, which is what a registration reads
-     *                                             and what the discovery document announces (issue #98)
-     */
     public function __construct(
         private ClientRepositoryInterface $clients,
         private ClientAuthenticationMethods $methods,
+        private ClientAuthenticationRequestParser $requests,
         private ClockInterface $clock,
         private EventDispatcherInterface $events,
+        private ClientLoadBudgetInterface $budget,
     ) {
     }
 
     /**
-     * @param string $endpoint the absolute URL of the endpoint that received the request, which an
-     *                         assertion may name as its audience (RFC 7523 §3)
-     * @param array<string, mixed> $parameters the form parameters of the request body
+     * @param string $endpoint absolute URL
+     * @param array<string, mixed> $parameters
      *
      * @throws OAuth2Exception
+     * @throws LoadBudgetSpentException
      */
-    public function authenticate(Tenant $tenant, string $endpoint, ?string $authorizationHeader, array $parameters, RequestContext $context): Client
-    {
+    public function authenticate(
+        Tenant $tenant,
+        string $endpoint,
+        ?string $authorizationHeader,
+        array $parameters,
+        RequestContext $context,
+        ?ClientCertificate $certificate = null,
+    ): AuthenticatedClient {
         try {
-            $request = new ClientAuthenticationRequest($tenant, $endpoint, $authorizationHeader, $parameters, $context);
-            [$method, $clientId] = $this->presentedIn($request);
+            $request = $this->requests->read($tenant, $endpoint, $authorizationHeader, $parameters, $context, $certificate);
+            $presented = $this->presentedIn($request);
+            $clientId = $presented->clientId();
+            $method = $presented->first();
             $named = $request->clientId();
             if ($named !== null && $named !== $clientId) {
-                throw ClientAuthenticationFailure::malformedRequest(ClientAuthenticationFailureReason::MismatchedClientId, $clientId, $method->name(), 'The client_id parameter does not match the credentials presented.');
+                throw ClientAuthenticationFailure::malformedRequest(
+                    ClientAuthenticationFailureReason::MismatchedClientId,
+                    $clientId,
+                    $method->name(),
+                    'The client_id parameter does not match the credentials presented.',
+                );
             }
             $client = $this->clients->findByClientId($tenant, $clientId);
             if ($client === null) {
@@ -67,58 +82,91 @@ final readonly class ClientAuthenticator
 
                 throw ClientAuthenticationFailure::refused(ClientAuthenticationFailureReason::UnknownClient, $clientId, $method->name());
             }
-            if ($client->authenticationMethod->name() !== $method->name()) {
+            $registered = $presented->registeredBy($client);
+            if ($registered === null) {
                 $method->payRefusal($request);
 
                 throw ClientAuthenticationFailure::refused(ClientAuthenticationFailureReason::UnexpectedMethod, $clientId, $method->name());
             }
-            $method->verify($request, $client);
+            $registered->verify($request, $client);
+            if ($registered->authenticatesClient()) {
+                $this->budget->consume($tenant, $clientId);
+            }
 
-            return $client;
+            return new AuthenticatedClient($client, self::proven($registered, $request, $client));
         } catch (ClientAuthenticationFailure $failure) {
             throw $this->announce($tenant, $context, $authorizationHeader, $failure);
         }
     }
 
     /**
-     * Which method the request presents. Two methods that authenticate the client are two mechanisms,
-     * which RFC 6749 §2.3 refuses before anything is verified. An Authorization header no method could
-     * read is refused whatever the body carries beside it, so that a header the provider does not
-     * understand is never silently dropped. A method that authenticates nothing comes last: a public
-     * client names itself and carries no credential.
+     * RFC 6749 §2.3, RFC 8705 §2
+     *
+     * A certificate the listener asked for is no second mechanism beside a credential of the request.
      *
      * @throws ClientAuthenticationFailure
-     * @return array{AuthenticationMethodInterface, string}
      */
-    private function presentedIn(ClientAuthenticationRequest $request): array
+    private function presentedIn(ClientAuthenticationRequest $request): PresentedCredentials
     {
         $presented = [];
         foreach ($this->methods->clientAuthenticationMethods() as $method) {
             $clientId = $method->presentedBy($request);
             if ($clientId !== null) {
-                $presented[] = [$method, $clientId];
+                $presented[] = new PresentedMethod($method, $clientId);
             }
         }
-        $proving = array_values(array_filter($presented, static fn (array $claim): bool => $claim[0]->authenticatesClient()));
-        if (count($proving) > 1) {
-            throw ClientAuthenticationFailure::malformedRequest(ClientAuthenticationFailureReason::MultipleMechanisms, $proving[0][1], null, sprintf('The client must not use more than one authentication method in a request (RFC 6749 section 2.3); this one uses %s.', implode(' and ', array_map(static fn (array $claim): string => $claim[0]->name(), $proving))));
-        }
+        $proving = array_values(array_filter($presented, static fn (PresentedMethod $claim): bool => $claim->authenticatesClient()));
+        $chosen = array_values(array_filter($proving, static fn (PresentedMethod $claim): bool => ! $claim->bindsACertificate()));
+        $proving = $chosen === [] ? $proving : $chosen;
         if ($proving !== []) {
-            return $proving[0];
+            $mechanisms = array_unique(array_map(static fn (PresentedMethod $claim): string => $claim->mechanism(), $proving));
+            if (count($mechanisms) > 1) {
+                throw ClientAuthenticationFailure::malformedRequest(
+                    ClientAuthenticationFailureReason::MultipleMechanisms,
+                    $proving[0]->clientId,
+                    null,
+                    sprintf('The client must not use more than one authentication method in a request (RFC 6749 section 2.3); this one uses %s.', implode(' and ', array_map(
+                        static fn (PresentedMethod $claim): string => $claim->name(),
+                        $proving,
+                    ))),
+                );
+            }
+
+            return new PresentedCredentials($proving);
         }
         if ($request->authorizationHeader !== null) {
-            throw ClientAuthenticationFailure::unauthenticated(ClientAuthenticationFailureReason::UnsupportedScheme, 'The Authorization header carries no authentication scheme this provider takes.');
+            throw ClientAuthenticationFailure::unauthenticated(
+                ClientAuthenticationFailureReason::UnsupportedScheme,
+                'The Authorization header carries no authentication scheme this provider takes.',
+            );
         }
         if ($presented !== []) {
-            return $presented[0];
+            return new PresentedCredentials([$presented[0]]);
         }
 
         throw ClientAuthenticationFailure::unauthenticated(ClientAuthenticationFailureReason::NoCredentials, 'The request carries no client authentication.');
     }
 
     /**
-     * The audit trail gets the reason, the client reads the error of RFC 6749 §5.2. The challenge is
-     * offered to a client that tried the Authorization header and to no other (RFC 7235 §4.1).
+     * RFC 8705 §3, §3.4, RFC 7800 §3.1
+     *
+     * A certificate presented because the listener asked binds only a client registered for certificate-bound
+     * tokens: binding another would break the resource server it calls.
+     */
+    private static function proven(AuthenticationMethodInterface $method, ClientAuthenticationRequest $request, Client $client): ?ConfirmationInterface
+    {
+        if ($method instanceof ConfirmingMethodInterface) {
+            return $method->confirmationOf($request);
+        }
+        $certificate = $request->certificate;
+
+        return $certificate !== null && $client->registration->requiresCertificateBoundTokens
+            ? CertificateConfirmation::ofCertificate($certificate)
+            : null;
+    }
+
+    /**
+     * RFC 6749 §5.2, RFC 7235 §4.1
      */
     private function announce(Tenant $tenant, RequestContext $context, ?string $authorizationHeader, ClientAuthenticationFailure $failure): OAuth2Exception
     {

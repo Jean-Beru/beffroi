@@ -1,0 +1,39 @@
+{
+    "name": "beffroi/xml-security",
+    "description": "XML security for PHP, in one package and three namespaces: Core, a safe DOM for XML about to be signed, verified, encrypted or decrypted (hardened loading, one ID space per document, canonicalization that never hashes nothing, faithful serialization); Dsig, XML Signature; Enc, XML Encryption.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "xml",
+        "dom",
+        "libxml",
+        "canonicalization",
+        "c14n",
+        "xml-security",
+        "xmldsig",
+        "xml-signature",
+        "xml-encryption",
+        "saml"
+    ],
+    "authors": [
+        {
+            "name": "All contributors"
+        }
+    ],
+    "require": {
+        "php": ">=8.4",
+        "ext-dom": "*",
+        "ext-libxml": "*",
+        "ext-openssl": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Beffroi\\Xml\\": "src/"
+        }
+    },
+    "extra": {
+        "thanks": {
+            "name": "beffroi/framework"
+        }
+    }
+}

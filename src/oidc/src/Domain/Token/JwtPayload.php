@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Token;
+namespace Beffroi\Oidc\Domain\Token;
 
 use function json_encode;
 use const JSON_PRESERVE_ZERO_FRACTION;
@@ -11,7 +11,7 @@ use const JSON_UNESCAPED_SLASHES;
 use const JSON_UNESCAPED_UNICODE;
 
 /**
- * A claims set as the payload of a JWT (RFC 7519 §3): UTF-8 and slashes as they are, a float kept a float.
+ * RFC 7519 §3
  */
 final readonly class JwtPayload
 {

@@ -2,36 +2,30 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Application\EndSession;
+namespace Beffroi\Oidc\Application\EndSession;
 
 use DateTimeImmutable;
-use Heidi\Core\Application\Authentication\SessionTerminator;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Session\SessionEnd;
-use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
-use Heidi\Oidc\Domain\EndSession\EndSessionDecision;
-use Heidi\Oidc\Domain\EndSession\EndSessionRequest;
-use Heidi\Oidc\Domain\EndSession\LoggedOut;
-use Heidi\Oidc\Domain\EndSession\LogoutConfirmationReason;
-use Heidi\Oidc\Domain\EndSession\LogoutConfirmationRequired;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
-use Heidi\Oidc\Port\CanRevokeAccessTokensBySessionInterface;
+use Beffroi\Core\Application\Authentication\SessionTerminator;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Oidc\Domain\EndSession\EndSessionDecision;
+use Beffroi\Oidc\Domain\EndSession\EndSessionRequest;
+use Beffroi\Oidc\Domain\EndSession\LoggedOut;
+use Beffroi\Oidc\Domain\EndSession\LogoutConfirmationReason;
+use Beffroi\Oidc\Domain\EndSession\LogoutConfirmationRequired;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Port\PresentedSubjectReaderInterface;
 use Psr\Clock\ClockInterface;
 
 /**
- * Decides what a logout request does to the session the browser holds (RP-Initiated Logout §2,
- * architecture §4.9): ends it without a question when the hint proves the request is about it, asks the
- * user otherwise (§2, §6), honours the request as is when there is no session (§4). Ending a session
- * goes through the SessionTerminator and revokes the tokens issued in it (decision 0006).
+ * RP-Initiated Logout §2, §4, §6
  */
 final readonly class EndSessionHandler
 {
     public function __construct(
         private SessionTerminator $sessions,
-        private RefreshTokenRevocation $refreshTokens,
-        private AccessTokenRepositoryInterface $accessTokens,
+        private PresentedSubjectReaderInterface $subjects,
         private ClockInterface $clock,
     ) {
     }
@@ -43,17 +37,14 @@ final readonly class EndSessionHandler
         if ($session === null) {
             return new LoggedOut($request, null, $request->redirect());
         }
-        $reason = self::confirmationReason($request, $session);
+        $reason = $this->confirmationReason($request, $session);
         if ($reason !== null) {
             return new LogoutConfirmationRequired($request, $session, $reason);
         }
 
-        return $this->end($request, $session, $context, $now);
+        return $this->end($request, $session, $context);
     }
 
-    /**
-     * After the confirmation page, when the user said yes: the session ends whatever the hint said (§2).
-     */
     public function confirm(EndSessionRequest $request, ?AuthenticationSession $session, RequestContext $context): LoggedOut
     {
         $now = $this->clock->now();
@@ -62,19 +53,22 @@ final readonly class EndSessionHandler
             return new LoggedOut($request, null, $request->redirect());
         }
 
-        return $this->end($request, $session, $context, $now);
+        return $this->end($request, $session, $context);
     }
 
     /**
-     * §2: no hint, an unverifiable one, or one that does not belong to the current session and user.
+     * RP-Initiated Logout §2
+     *
+     * The hint's "sub" is read back for its client (OIDC Core §8): a pairwise one is not the core's subject.
      */
-    private static function confirmationReason(EndSessionRequest $request, AuthenticationSession $session): ?LogoutConfirmationReason
+    private function confirmationReason(EndSessionRequest $request, AuthenticationSession $session): ?LogoutConfirmationReason
     {
         $hint = $request->idTokenHint;
         if ($hint === null) {
             return $request->invalidIdTokenHint ? LogoutConfirmationReason::InvalidHint : LogoutConfirmationReason::NoHint;
         }
-        if (! $session->user->subject->equals($hint->subject)) {
+        $named = $request->client === null ? null : $this->subjects->findUser($request->client, $hint->subject);
+        if ($named === null || ! $named->id->equals($session->user->id)) {
             return LogoutConfirmationReason::DifferentUser;
         }
         if ($hint->sessionId === null || ! $hint->sessionId->equals($session->id)) {
@@ -96,12 +90,8 @@ final readonly class EndSessionHandler
         return $session->isActive($now) ? $session : null;
     }
 
-    private function end(EndSessionRequest $request, AuthenticationSession $session, RequestContext $context, DateTimeImmutable $now): LoggedOut
+    private function end(EndSessionRequest $request, AuthenticationSession $session, RequestContext $context): LoggedOut
     {
-        $this->refreshTokens->revokeBySession($session->id, $now);
-        if ($this->accessTokens instanceof CanRevokeAccessTokensBySessionInterface) {
-            $this->accessTokens->revokeBySession($session->id);
-        }
         $this->sessions->end($session, SessionEnd::RelyingParty, $context);
 
         return new LoggedOut($request, $session, $request->redirect());

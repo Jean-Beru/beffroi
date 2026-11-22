@@ -2,17 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Bridge\Webauthn;
+namespace Beffroi\Core\Bridge\Webauthn;
 
-use Cose\Algorithm\Manager;
-use Cose\Algorithm\Signature\ECDSA\ES256;
-use Cose\Algorithm\Signature\RSA\RS256;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\PasskeyCeremonyFailedException;
+use function array_map;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\PasskeyCeremonyFailedException;
 use Psr\Clock\ClockInterface;
 use function sprintf;
-use function strlen;
-use function substr;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -22,79 +18,70 @@ use Webauthn\AttestationStatement\AppleAttestationStatementSupport;
 use Webauthn\AttestationStatement\AttestationStatementSupportManager;
 use Webauthn\AttestationStatement\FidoU2FAttestationStatementSupport;
 use Webauthn\AttestationStatement\PackedAttestationStatementSupport;
-use Webauthn\AttestationStatement\TPMAttestationStatementSupport;
 use Webauthn\AuthenticatorAssertionResponseValidator;
+use Webauthn\AuthenticatorAttestationResponse;
 use Webauthn\AuthenticatorAttestationResponseValidator;
 use Webauthn\CeremonyStep\CeremonyStepManagerFactory;
+use Webauthn\CredentialRecord;
 use Webauthn\Denormalizer\WebauthnSerializerFactory;
 use Webauthn\MetadataService\CertificateChain\CertificateChainValidator;
 use Webauthn\MetadataService\MetadataStatementRepository;
 use Webauthn\MetadataService\StatusReportRepository;
 use Webauthn\PublicKeyCredential;
+use Webauthn\PublicKeyCredentialCreationOptions;
 use Webauthn\PublicKeyCredentialOptions;
 use Webauthn\PublicKeyCredentialParameters;
 
-/**
- * What the two ceremonies of WebAuthn Level 3 share, on webauthn-lib (docs/09-briques.md): the relying
- * party is the tenant (its identifier the host of the issuer, §5.4.2, the one origin allowed the origin of
- * the issuer, §13.4.9, plain HTTP on a loopback host only because the issuer is), the algorithms are those
- * the provider verifies, the attestation formats those the library verifies (the statement of a format it
- * does not know is a refusal, never a pass), the FIDO metadata those of the store (§7.1 step 22: consulted
- * by the library when the options asked for an attestation, which the provider's own enrolment never does,
- * §5.4.7, and which a ceremony asking for one gets: a compromised authenticator refused on its status
- * reports, a full attestation checked up to the root its statement names, an unknown AAGUID refused on a
- * full attestation and passed on a self attestation), and the sign count is left to the core
- * (PasskeyCredential::signCountRegresses()), which tells a regression instead of refusing it.
- */
 final readonly class WebauthnCeremonies
 {
     /**
-     * COSE algorithm identifiers (RFC 9053 §2.1, §2.2, RFC 8812 §2): what a platform authenticator and a
-     * hardware key create, in the order the provider prefers.
+     * WebAuthn Level 3 §13.4.3
      */
-    private const array ALGORITHMS = [-7, -257];
+    public const int CHALLENGE_LENGTH = 32;
 
     private SerializerInterface $serializer;
 
     public function __construct(
+        private PasskeyAlgorithms $algorithms,
         private ClockInterface $clock,
         private MetadataStatementRepository $statements,
         private StatusReportRepository $statusReports,
         private CertificateChainValidator $chains,
     ) {
-        $this->serializer = new WebauthnSerializerFactory($this->attestationFormats())
-            ->create();
+        $this->serializer = new WebauthnSerializerFactory($this->attestationFormats())->create();
     }
 
     /**
-     * @return non-empty-list<PublicKeyCredentialParameters>
+     * @return non-empty-list<PublicKeyCredentialParameters> in the order of preference
      */
-    public static function parameters(): array
+    public function parameters(): array
     {
-        return [PublicKeyCredentialParameters::createPk(self::ALGORITHMS[0]), PublicKeyCredentialParameters::createPk(self::ALGORITHMS[1])];
+        return $this->algorithms->parameters();
     }
 
     /**
-     * The relying party identifier of the tenant (WebAuthn Level 3 §5.4.2).
+     * WebAuthn Level 3 §5.4.2
      */
     public static function relyingPartyId(Tenant $tenant): string
     {
         return $tenant->issuer->host;
     }
 
-    /**
-     * The one origin a ceremony of the tenant accepts (§13.4.9): the issuer without its path.
-     */
-    public static function origin(Tenant $tenant): string
-    {
-        $issuer = $tenant->issuer->value;
-
-        return substr($issuer, 0, strlen($issuer) - strlen($tenant->issuer->path));
-    }
-
     public function attestationValidator(Tenant $tenant): AuthenticatorAttestationResponseValidator
     {
         return AuthenticatorAttestationResponseValidator::create($this->factory($tenant)->creationCeremony());
+    }
+
+    /**
+     * WebAuthn Level 3 §7.1 steps 19 to 22
+     */
+    public function attestation(
+        Tenant $tenant,
+        AuthenticatorAttestationResponse $response,
+        CredentialRecord $record,
+        PublicKeyCredentialCreationOptions $options,
+    ): WebauthnAttestation {
+        return new WebauthnAttestation($response, $record, $options, self::relyingPartyId($tenant), $this->statements, $this->statusReports, $this->chains);
     }
 
     public function assertionValidator(Tenant $tenant): AuthenticatorAssertionResponseValidator
@@ -103,28 +90,24 @@ final readonly class WebauthnCeremonies
     }
 
     /**
-     * The options in the JSON form the browser parses (§5.1.8, parseCreationOptionsFromJSON and
-     * parseRequestOptionsFromJSON): the byte strings in base64url, nothing null.
+     * WebAuthn Level 3 §5.1.8
      */
     public function optionsToJson(PublicKeyCredentialOptions $options): string
     {
-        return $this->serializer
-            ->serialize($options, JsonEncoder::FORMAT, [
-                AbstractObjectNormalizer::SKIP_NULL_VALUES => true,
-            ]);
+        return $this->serializer->serialize($options, JsonEncoder::FORMAT, [
+            AbstractObjectNormalizer::SKIP_NULL_VALUES => true,
+        ]);
     }
 
     /**
-     * The credential the browser serialised (§5.1, toJSON), of either ceremony; anything the library
-     * cannot read is a failure of the ceremony, whatever it says.
+     * WebAuthn Level 3 §5.1
      *
      * @throws PasskeyCeremonyFailedException
      */
     public function credentialFromJson(string $json): PublicKeyCredential
     {
         try {
-            return $this->serializer
-                ->deserialize($json, PublicKeyCredential::class, JsonEncoder::FORMAT);
+            return $this->serializer->deserialize($json, PublicKeyCredential::class, JsonEncoder::FORMAT);
         } catch (Throwable $exception) {
             throw new PasskeyCeremonyFailedException(sprintf('The response of the browser cannot be read: %s', $exception->getMessage()), previous: $exception);
         }
@@ -132,38 +115,25 @@ final readonly class WebauthnCeremonies
 
     private function factory(Tenant $tenant): CeremonyStepManagerFactory
     {
-        // the factory verifies ES256 and RS256 by default, the two the options offer (ALGORITHMS)
         $factory = new CeremonyStepManagerFactory();
+        $factory->setAlgorithmManager($this->algorithms->verifiers());
         $factory->setAttestationStatementSupportManager($this->attestationFormats());
-        // the whole origin, scheme and port included: what lets a loopback issuer be plain HTTP, as the Issuer does
-        $factory->setAllowedOrigins([self::origin($tenant)]);
+        // The whole origin, scheme and port included: it is what lets a loopback issuer be plain HTTP.
+        $factory->setAllowedOrigins([$tenant->issuer->origin()]);
         $factory->setCounterChecker(new IgnoredCounterChecker());
-        // read when a ceremony asked for an attestation; the chains of an attestation are checked with the
-        // same validator as the chain of a blob, up to the roots the statement of the authenticator names
         $factory->enableMetadataStatementSupport($this->statements, $this->statusReports, $this->chains);
 
         return $factory;
     }
 
-    private static function algorithms(): Manager
-    {
-        return Manager::create()
-            ->add(ES256::create(), RS256::create());
-    }
-
-    /**
-     * Verified when the authenticator sends one, never required (the spike README): "none" is what the
-     * provider asks for, and what the manager always knows; the others are what an authenticator may send
-     * anyway, and what a ceremony that asks for an attestation receives.
-     */
     private function attestationFormats(): AttestationStatementSupportManager
     {
-        return new AttestationStatementSupportManager([
-            PackedAttestationStatementSupport::create(self::algorithms()),
+        return new AttestationStatementSupportManager(array_map($this->algorithms->attestation(...), [
+            PackedAttestationStatementSupport::create($this->algorithms->verifiers()),
             FidoU2FAttestationStatementSupport::create(),
             AndroidKeyAttestationStatementSupport::create(),
-            TPMAttestationStatementSupport::create($this->clock),
+            $this->algorithms->tpm($this->clock),
             AppleAttestationStatementSupport::create(),
-        ]);
+        ]));
     }
 }

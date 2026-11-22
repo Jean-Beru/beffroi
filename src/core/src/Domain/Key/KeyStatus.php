@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Domain\Key;
+namespace Beffroi\Core\Domain\Key;
 
 /**
- * The life of a signing key (architecture §3.3, OIDC Core §10.1.1): published before it signs, published
- * after it stopped while a JWS it signed can be alive, then out of the JWK Set.
+ * OIDC Core §10.1.1
+ *
+ * A status says nothing of publication: a key the tenant keeps is never published, whatever its status.
  */
 enum KeyStatus: string
 {
@@ -15,7 +16,7 @@ enum KeyStatus: string
     case Retiring = 'retiring';
     case Retired = 'retired';
 
-    public function isPublished(): bool
+    public function isInService(): bool
     {
         return $this !== self::Retired;
     }

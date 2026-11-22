@@ -2,31 +2,32 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Client\Method;
+namespace Beffroi\Oidc\Tests\Application\Client\Method;
 
 use function count;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Oidc\Application\Client\ClientAuthenticator;
-use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
-use Heidi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
-use Heidi\Oidc\Exception\InvalidClientException;
-use Heidi\Oidc\Exception\OAuth2Exception;
-use Heidi\Oidc\Tests\Fixture\ClientAssertions;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\Methods;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Oidc\Application\Client\AuthenticatedClient;
+use Beffroi\Oidc\Application\Client\ClientAuthenticator;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailed;
+use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
+use Beffroi\Oidc\Exception\InvalidClientException;
+use Beffroi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\FakeClientLoadBudget;
+use Beffroi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * "client_secret_jwt" (OIDC Core §9): the same assertion as "private_key_jwt", signed with the secret the
- * client registered, HS256 and nothing else.
+ * OIDC Core §9
  */
 final class ClientSecretJwtTest extends TestCase
 {
@@ -63,12 +64,9 @@ final class ClientSecretJwtTest extends TestCase
         $client = $this->authenticate($this->assertion());
 
         // Then
-        static::assertSame($this->client, $client);
+        static::assertSame($this->client, $client->client);
     }
 
-    /**
-     * The secret is what signs, so the hasher is never asked anything.
-     */
     #[Test]
     public function itVerifiesNothingAgainstAHash(): void
     {
@@ -83,7 +81,10 @@ final class ClientSecretJwtTest extends TestCase
     public function itRefusesAMacMadeWithAnotherSecret(): void
     {
         // Given
-        $assertion = ClientAssertions::signedWithSecret(ClientAssertions::claims($this->client->clientId, self::ENDPOINT, $this->context->receivedAt), 'not ' . Clients::SECRET);
+        $assertion = ClientAssertions::signedWithSecret(
+            ClientAssertions::claims($this->client->registration->clientId, $this->tenant->issuer->value, $this->context->receivedAt),
+            'not ' . Clients::SECRET,
+        );
 
         // When
         $exception = $this->failToAuthenticate($assertion);
@@ -95,7 +96,7 @@ final class ClientSecretJwtTest extends TestCase
     }
 
     /**
-     * RFC 7523 §4: an assertion authenticates once, whatever signs it.
+     * RFC 7523 §4
      */
     #[Test]
     public function itRefusesAnAssertionReplayedInsideItsValidity(): void
@@ -112,23 +113,22 @@ final class ClientSecretJwtTest extends TestCase
         $this->assertRefused(ClientAuthenticationFailureReason::ReplayedAssertion);
     }
 
-    /**
-     * The two assertion methods are told apart by what signs the assertion: a client registered for one
-     * and sending the other is refused like a client sending a secret it did not register.
-     */
     #[Test]
     public function aClientRegisteredForPrivateKeyJwtCannotSignWithASecretInstead(): void
     {
         // Given
         $keyClient = Clients::withKeys($this->tenant);
-        $assertion = ClientAssertions::signedWithSecret(ClientAssertions::claims($keyClient->clientId, self::ENDPOINT, $this->context->receivedAt), Clients::SECRET);
+        $assertion = ClientAssertions::signedWithSecret(
+            ClientAssertions::claims($keyClient->registration->clientId, self::ENDPOINT, $this->context->receivedAt),
+            Clients::SECRET,
+        );
 
         // When
         $exception = $this->failToAuthenticate($assertion);
 
         // Then
         static::assertInstanceOf(InvalidClientException::class, $exception);
-        $this->assertRefused(ClientAuthenticationFailureReason::UnexpectedMethod, $keyClient->clientId);
+        $this->assertRefused(ClientAuthenticationFailureReason::UnexpectedMethod, $keyClient->registration->clientId);
     }
 
     /**
@@ -136,18 +136,27 @@ final class ClientSecretJwtTest extends TestCase
      */
     private function assertion(array $overrides = []): string
     {
-        return ClientAssertions::signedWithSecret(ClientAssertions::claims($this->client->clientId, self::ENDPOINT, $this->context->receivedAt, $overrides), Clients::SECRET);
+        return ClientAssertions::signedWithSecret(
+            ClientAssertions::claims($this->client->registration->clientId, $this->tenant->issuer->value, $this->context->receivedAt, $overrides),
+            Clients::SECRET,
+        );
     }
 
     private function authenticator(): ClientAuthenticator
     {
-        return new ClientAuthenticator($this->clients, Methods::all($this->hasher), new MockClock('2026-09-15T10:00:00+00:00'), $this->events);
+        return new ClientAuthenticator(
+            $this->clients,
+            Methods::all($this->hasher),
+            Methods::requestParser(),
+            new MockClock('2026-09-15T10:00:00+00:00'),
+            $this->events,
+            new FakeClientLoadBudget(),
+        );
     }
 
-    private function authenticate(string $assertion): Client
+    private function authenticate(string $assertion): AuthenticatedClient
     {
-        return $this->authenticator()
-            ->authenticate($this->tenant, self::ENDPOINT, null, ClientAssertions::parameters($assertion), $this->context);
+        return $this->authenticator()->authenticate($this->tenant, self::ENDPOINT, null, ClientAssertions::parameters($assertion), $this->context);
     }
 
     private function failToAuthenticate(string $assertion, ?ClientAuthenticator $authenticator = null): OAuth2Exception
@@ -167,7 +176,7 @@ final class ClientSecretJwtTest extends TestCase
         $events = $this->events->of(ClientAuthenticationFailed::class);
         $last = $events[count($events) - 1];
         static::assertSame($reason, $last->reason);
-        static::assertSame($clientId ?? $this->client->clientId, $last->clientId);
+        static::assertSame($clientId ?? $this->client->registration->clientId, $last->clientId);
         static::assertSame('client_secret_jwt', $last->method);
     }
 }

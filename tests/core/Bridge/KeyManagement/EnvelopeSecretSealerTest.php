@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Bridge\KeyManagement;
+namespace Beffroi\Core\Tests\Bridge\KeyManagement;
 
-use Heidi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\KmsUnavailableException;
-use Heidi\Core\Exception\RuntimeException;
-use Heidi\Core\Tests\Fixture\EnvelopesThatThrow;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Keys;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\KmsUnavailableException;
+use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Core\Tests\Fixture\EnvelopesThatThrow;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Keys;
+use Beffroi\Core\Tests\Fixture\Totps;
 use JsonException;
 use ParagonIE\ConstantTime\Base32;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -31,8 +31,7 @@ use Symfony\Component\KeyManagement\Local\SodiumKms;
 use Throwable;
 
 /**
- * Architecture §3.3: the shared secrets of the users sealed under the KMS of the tenant like the signing
- * keys, in an envelope of their own use.
+ * Architecture §3.3
  */
 final class EnvelopeSecretSealerTest extends TestCase
 {
@@ -72,9 +71,6 @@ final class EnvelopeSecretSealerTest extends TestCase
         static::assertNotSame(Totps::sealer()->seal($this->tenant, Totps::SEED), Totps::sealer()->seal($this->tenant, Totps::SEED));
     }
 
-    /**
-     * The envelope is bound to its tenant: under the same KMS key, it does not open for another one.
-     */
     #[Test]
     public function aSecretSealedForOneTenantDoesNotOpenForAnother(): void
     {
@@ -89,12 +85,8 @@ final class EnvelopeSecretSealerTest extends TestCase
         Totps::sealer()->unseal(Fixtures::tenant('globex', 'https://id.globex.example'), $sealed);
     }
 
-    /**
-     * The envelope is bound to its use: under the same KMS key and for the same tenant, the envelope of a
-     * signing key is not a secret, and a secret is not a signing key.
-     */
     #[Test]
-    public function theEnvelopeOfASigningKeyDoesNotOpenAsASecret(): void
+    public function theEnvelopeOfATenantKeyDoesNotOpenAsASecret(): void
     {
         // Given
         $sealedKey = Keys::sealer()->seal($this->tenant, Keys::pair()->privateJwk);
@@ -106,10 +98,6 @@ final class EnvelopeSecretSealerTest extends TestCase
         Totps::sealer()->unseal($this->tenant, $sealedKey);
     }
 
-    /**
-     * The use is in the authenticated data, not the tenant alone: an envelope bound to the slug only,
-     * whatever wrote it, is not a secret of the provider.
-     */
     #[Test]
     public function anEnvelopeBoundToTheTenantAloneDoesNotOpenAsASecret(): void
     {
@@ -124,7 +112,7 @@ final class EnvelopeSecretSealerTest extends TestCase
     }
 
     #[Test]
-    public function theEnvelopeOfASecretDoesNotOpenAsASigningKey(): void
+    public function theEnvelopeOfASecretDoesNotOpenAsATenantKey(): void
     {
         // Given
         $sealedSecret = Totps::sealer()->seal($this->tenant, Totps::SEED);
@@ -136,9 +124,6 @@ final class EnvelopeSecretSealerTest extends TestCase
         Keys::sealer()->unseal($this->tenant, $sealedSecret);
     }
 
-    /**
-     * "{tenant}" in the KMS key identifier names one master key per tenant, as for the signing keys.
-     */
     #[Test]
     public function theKmsKeyIsNamedFromTheTenant(): void
     {
@@ -155,10 +140,6 @@ final class EnvelopeSecretSealerTest extends TestCase
         static::assertSame(Totps::SEED, $sealer->unseal($this->tenant, $sealed));
     }
 
-    /**
-     * A KMS that holds no master key for the tenant serves nothing of it: an outage of the tenant, until an
-     * operator gives the KMS its key, not a wrong input.
-     */
     #[Test]
     public function aTenantWithoutItsKmsKeyCannotSeal(): void
     {
@@ -169,7 +150,7 @@ final class EnvelopeSecretSealerTest extends TestCase
 
         // Then
         $this->expectException(KmsUnavailableException::class);
-        $this->expectExceptionMessageIs('A secret of tenant "globex" could not be sealed under the KMS key "secrets-globex".');
+        $this->expectExceptionMessageIs('The secret of tenant "globex" could not be sealed under the KMS key "secrets-globex".');
 
         // When
         $sealer->seal(Fixtures::tenant('globex', 'https://id.globex.example'), Totps::SEED);
@@ -186,11 +167,6 @@ final class EnvelopeSecretSealerTest extends TestCase
         Totps::sealer()->unseal($this->tenant, 'not an envelope');
     }
 
-    /**
-     * Issue #128: a KMS that does not answer or refuses to serve is an outage, told from an envelope it
-     * refuses; what the bridges of symfony/key-management throw when they cannot reach the KMS, when it
-     * answers an error, or when it does not hold the master key.
-     */
     #[Test]
     #[DataProvider('provideOutagesOfTheKms')]
     public function aKmsThatDoesNotAnswerAtOpeningIsAnOutage(Throwable $whatTheKmsThrew): void
@@ -232,15 +208,11 @@ final class EnvelopeSecretSealerTest extends TestCase
             static::fail('The secret should not have been sealed.');
         } catch (KmsUnavailableException $exception) {
             // Then
-            static::assertSame('A secret of tenant "acme" could not be sealed under the KMS key "signing-keys".', $exception->getMessage());
+            static::assertSame('The secret of tenant "acme" could not be sealed under the KMS key "signing-keys".', $exception->getMessage());
             static::assertSame($whatTheKmsThrew, $exception->getPrevious());
         }
     }
 
-    /**
-     * What the component refuses as an envelope, or cannot do by configuration, is no outage: a bug or an
-     * attack, as before issue #128; so is a failure that is not the component's.
-     */
     #[Test]
     #[DataProvider('provideRefusalsThatAreNoOutage')]
     public function whatTheKmsRefusesAsAnEnvelopeIsNoOutage(Throwable $whatTheKmsThrew): void
@@ -266,7 +238,8 @@ final class EnvelopeSecretSealerTest extends TestCase
     {
         yield 'an envelope invalid, tampered, foreign, or under a key the KMS does not know' => [new DecryptionFailedException()];
         yield 'a stored data key the store no longer holds' => [new DataKeyNotFoundException('reference')];
-        yield 'what the backend cannot do by configuration' => [new UnsupportedOperationException('Vault Transit silently ignores the context parameter on non-derived keys.')];
+        yield 'what the backend cannot do by configuration' =>
+            [new UnsupportedOperationException('Vault Transit silently ignores the context parameter on non-derived keys.')];
         yield 'a format the decrypter cannot resolve' => [new KeyManagementLogicException('The envelope refers to a stored data key.')];
         yield 'a failure that is not the component\'s' => [new JsonException('Syntax error')];
     }

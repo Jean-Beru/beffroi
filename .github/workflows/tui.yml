@@ -1,0 +1,308 @@
+name: TUI
+
+# The terminal client of the administration of an instance, apps/tui, released for whoever administers one without
+# installing PHP or Composer: beffroi-tui.phar for a PHP 8.4 or later, and an executable that carries its own PHP for
+# each of Linux x86_64, Linux arm64 and macOS arm64, beffroi-tui-linux-x86_64, beffroi-tui-linux-aarch64 and
+# beffroi-tui-macos-aarch64. There is no Windows build: symfony/tui drives the terminal through stty.
+#
+# It is built at every release published and on demand, from the Actions tab or with
+# "gh workflow run tui.yml --ref <ref>". From a release tag A.B.C, by the release or by a dispatch on the tag, the four
+# files are uploaded to that release with SHA256SUMS, their digests, and SHA256SUMS.asc, the detached signature of
+# that file by the key that signs the release tags; a file the release carries already is replaced. From any other
+# ref the four files are built, each one is run once, and they are kept as artifacts of the run for three days;
+# nothing is published. No pull request builds them.
+#
+# A release starts it when it is published, as it starts image.yml, and not when its tag is pushed:
+# release-on-milestone-closed.yml pushes the tag under GITHUB_TOKEN, whose pushes start no workflow, and publishes the
+# release under ORGANIZATION_ADMIN_TOKEN, which does.
+#
+# The PHAR is compiled by Box (apps/tui/box.json) from the dependencies of apps/tui/composer.lock, installed without
+# the development ones and with an authoritative class map. The requirement checker Box puts in front of it refuses a
+# PHP that lacks an extension the client or one of its dependencies requires, before a line of the client runs.
+#
+# An executable is that same PHAR behind the "micro" SAPI of static-php-cli: a PHP linked statically with the
+# extensions of MICRO_EXTENSIONS and nothing else, read from the code of the client and of its dependencies, whose
+# composer.json declare only part of them. mbstring, openssl and sodium are the client's own. intl is the
+# MessageFormatter of symfony/translation, which formats every string of translations/, written in the ICU message
+# format; dom and simplexml read those XLIFF files. iconv is required by bacon/bacon-qr-code, filter by league/uri and
+# amphp/dns. pcntl and posix are what symfony/tui and the event loop read the signals of the terminal through, and
+# what amphp/process starts the browser with. phar and zlib run the PHAR, whose files Box compresses. Left out:
+# ctype, which symfony/polyfill-ctype provides; tokenizer, which symfony/console reads only for an option that takes
+# a list, which no command of the client has; curl, the client going through AmpHttpClient; bcmath and gmp, without
+# which brick/math computes in PHP; gd, imagick and xmlwriter, the renderers of bacon/bacon-qr-code the client does
+# not draw with.
+#
+# A micro takes minutes to build, so it is kept in the cache of this repository, one entry per version of
+# static-php-cli, patch version of PHP, list of extensions and platform. The patch version is read from php.net at
+# each run and the source of that version is what is built, so a release of PHP is what builds a new micro, and the
+# three platforms of a run carry the same PHP. GitHub lets a run read the entries of its own ref and of the default
+# branch: a release reads the micro a dispatch from the default branch left there.
+#
+# The two Linux executables are built natively on a runner of their architecture, X64 on kloude, ARM64 on the Swarm
+# runners, in Alpine, where the C library static-php-cli links statically is the system's. It is Alpine 3.22, whose GCC
+# is 14: the GCC 15 of Alpine 3.24 builds an ICU whose first call crashes the PHP it is linked into. Alpine is pulled
+# from Docker Hub under the account of the secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN and not against the address of
+# the runner, which the pool shares (gitsplit.yml). The macOS executable is built on a runner GitHub hosts, the only
+# macOS this organisation runs on, with the tools static-php-cli installs there through Homebrew.
+#
+# Provenance attestations of the files are written once this repository is public: GitHub keeps them for a private
+# repository on GitHub Enterprise Cloud only, which is not the plan of this organisation. Until then the step is
+# skipped.
+
+on:
+  workflow_dispatch: ~
+  release:
+    types: [published]
+
+# A newer run on a branch carries newer files, so it cancels the one before it. A release is built to the end.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+permissions:
+  contents: read
+
+env:
+  PHP_VERSION: "8.5"
+  BOX_VERSION: "4.7.1"
+  BOX_SHA256: "aedabb38bad96a90868603f118956c3faa662b545c06be66df1b145aba703c0a"
+  SPC_VERSION: "2.8.5"
+  MICRO_EXTENSIONS: "dom,filter,iconv,intl,mbstring,openssl,pcntl,phar,posix,simplexml,sodium,zlib"
+  ALPINE_IMAGE: "alpine:3.22"
+
+jobs:
+  prepare:
+    name: "What is built, and where it goes"
+    runs-on: [self-hosted, kloude-light]
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      retention: ${{ steps.release.outputs.retention }}
+      php: ${{ steps.php.outputs.version }}
+    steps:
+      # The files of a release are artifacts only on their way to the release, for a day; the files of any other run
+      # are what somebody reads, for three. The storage of artifacts is counted for the whole organisation and capped.
+      - name: "The release"
+        id: release
+        run: |
+          if [[ "${GITHUB_REF}" =~ ^refs/tags/([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            tag="${BASH_REMATCH[1]}"
+            echo "The files are uploaded to the release ${tag}." >> "${GITHUB_STEP_SUMMARY}"
+            { echo "tag=${tag}"; echo "retention=1"; } >> "${GITHUB_OUTPUT}"
+          else
+            echo "${GITHUB_REF} is not a release tag: the files are built and kept as artifacts of this run, and nothing is published." >> "${GITHUB_STEP_SUMMARY}"
+            { echo "tag="; echo "retention=3"; } >> "${GITHUB_OUTPUT}"
+          fi
+      - name: "The patch version of PHP"
+        id: php
+        run: |
+          set -o pipefail
+          version=$(curl -fsSL --retry 3 "https://www.php.net/releases/?json&version=${PHP_VERSION}" | grep -oE '"version": *"[0-9]+\.[0-9]+\.[0-9]+"' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          if [[ "${version}" != "${PHP_VERSION}".* ]]; then
+            echo "::error title=No patch version of PHP ${PHP_VERSION}::php.net answered '${version}'."
+            exit 1
+          fi
+          echo "PHP ${version}, static-php-cli ${SPC_VERSION}, Box ${BOX_VERSION}." >> "${GITHUB_STEP_SUMMARY}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+  phar:
+    name: "The PHAR"
+    needs: prepare
+    runs-on: [self-hosted, kloude-light]
+    container:
+      image: ghcr.io/spomky-labs/phpqa:8.5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: "The dependencies of the client, from its lock"
+        working-directory: apps/tui
+        run: composer install --no-dev --classmap-authoritative --no-interaction --no-progress
+      # The QA image carries no Box: its release PHAR is fetched and held to the digest of the version pinned above.
+      - name: "Box"
+        run: |
+          curl -fsSL --retry 3 -o "${RUNNER_TEMP}/box.phar" "https://github.com/box-project/box/releases/download/${BOX_VERSION}/box.phar"
+          echo "${BOX_SHA256}  ${RUNNER_TEMP}/box.phar" | sha256sum --check --strict
+      - name: "Compile"
+        working-directory: apps/tui
+        run: php -d phar.readonly=0 "${RUNNER_TEMP}/box.phar" compile --no-interaction
+      - name: "Run it once"
+        working-directory: apps/tui
+        run: php beffroi-tui.phar --help
+      - uses: actions/upload-artifact@v7
+        with:
+          name: beffroi-tui.phar
+          path: apps/tui/beffroi-tui.phar
+          if-no-files-found: error
+          retention-days: ${{ fromJSON(needs.prepare.outputs.retention) }}
+
+  executable:
+    name: "The executable for ${{ matrix.platform }}"
+    needs: [prepare, phar]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            runs-on: [self-hosted, X64]
+            spc: spc-linux-x86_64.tar.gz
+            spc-sha256: 523ba4279c54c7a377156c0dd3a36adf92ee64b01e9a7f5e9e2ec084b8e458e5
+          - platform: linux-aarch64
+            runs-on: [self-hosted, ARM64]
+            spc: spc-linux-aarch64.tar.gz
+            spc-sha256: 675a3840dcdc4ed041fe20eaa54310ce019a9984c1c03951df9ec66df5795213
+          - platform: macos-aarch64
+            runs-on: macos-15
+            spc: spc-macos-aarch64.tar.gz
+            spc-sha256: acf2f25d56d0cbf8e65aa82e5054fef555f7be7c5c38046c6e0819f266d83225
+    runs-on: ${{ matrix.runs-on }}
+    env:
+      ASSET: beffroi-tui-${{ matrix.platform }}
+      PHP_PATCH: ${{ needs.prepare.outputs.php }}
+      SPC_ARCHIVE: ${{ matrix.spc }}
+      SPC_SHA256: ${{ matrix.spc-sha256 }}
+    steps:
+      # A key of the cache takes no comma.
+      - name: "The key of the micro"
+        id: key
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: echo "key=tui-micro-spc${SPC_VERSION}-php${PHP_PATCH}-${MICRO_EXTENSIONS//,/+}-${PLATFORM}" >> "${GITHUB_OUTPUT}"
+      - name: "The micro of this platform, from the cache"
+        id: micro
+        uses: actions/cache/restore@v6
+        with:
+          path: micro.sfx
+          key: ${{ steps.key.outputs.key }}
+      - name: "Docker Hub, under the account of the repository"
+        if: steps.micro.outputs.cache-hit != 'true' && runner.os == 'Linux'
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # The container runs as root, which apk needs, so what it leaves is handed back to the user the runner runs as,
+      # which empties its temporary directory when the job ends. The sources static-php-cli downloaded and built, more
+      # than a gigabyte, are deleted inside the container first.
+      - name: "Build the micro, in Alpine"
+        if: steps.micro.outputs.cache-hit != 'true' && runner.os == 'Linux'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "${RUNNER_TEMP}/spc"
+          docker run --rm \
+            -e SPC_VERSION -e SPC_ARCHIVE -e SPC_SHA256 -e PHP_VERSION -e PHP_PATCH -e MICRO_EXTENSIONS -e GITHUB_TOKEN \
+            -e OWNER="$(id -u):$(id -g)" \
+            -v "${RUNNER_TEMP}/spc:/work" -v "${GITHUB_WORKSPACE}:/out" -w /work \
+            "${ALPINE_IMAGE}" sh -euc '
+              trap "rm -rf /work/downloads /work/source /work/buildroot /work/pkgroot; chown -R \"${OWNER}\" /work; chown \"${OWNER}\" /out/micro.sfx || true" EXIT
+              apk add --no-cache bash curl > /dev/null
+              curl -fsSL --retry 3 -o "${SPC_ARCHIVE}" "https://github.com/crazywhalecc/static-php-cli/releases/download/${SPC_VERSION}/${SPC_ARCHIVE}"
+              echo "${SPC_SHA256}  ${SPC_ARCHIVE}" | sha256sum -c
+              tar -xzf "${SPC_ARCHIVE}"
+              ./spc doctor --auto-fix --no-motd
+              ./spc download --with-php="${PHP_VERSION}" --for-extensions="${MICRO_EXTENSIONS}" --custom-url="php-src:https://www.php.net/distributions/php-${PHP_PATCH}.tar.gz" --retry=3 --no-motd
+              ./spc build "${MICRO_EXTENSIONS}" --build-micro --no-motd
+              cp buildroot/bin/micro.sfx /out/micro.sfx
+            '
+      - name: "Build the micro, on macOS"
+        if: steps.micro.outputs.cache-hit != 'true' && runner.os == 'macOS'
+        working-directory: ${{ runner.temp }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          curl -fsSL --retry 3 -o "${SPC_ARCHIVE}" "https://github.com/crazywhalecc/static-php-cli/releases/download/${SPC_VERSION}/${SPC_ARCHIVE}"
+          echo "${SPC_SHA256}  ${SPC_ARCHIVE}" | shasum -a 256 -c
+          tar -xzf "${SPC_ARCHIVE}"
+          ./spc doctor --auto-fix --no-motd
+          ./spc download --with-php="${PHP_VERSION}" --for-extensions="${MICRO_EXTENSIONS}" --custom-url="php-src:https://www.php.net/distributions/php-${PHP_PATCH}.tar.gz" --retry=3 --no-motd
+          ./spc build "${MICRO_EXTENSIONS}" --build-micro --no-motd
+          cp buildroot/bin/micro.sfx "${GITHUB_WORKSPACE}/micro.sfx"
+      - name: "Keep the micro in the cache"
+        if: steps.micro.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: micro.sfx
+          key: ${{ steps.micro.outputs.cache-primary-key }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: beffroi-tui.phar
+      # Without an INI to set, what "spc micro:combine" writes is the micro followed by the PHAR, byte for byte.
+      - name: "The micro followed by the PHAR"
+        run: |
+          cat micro.sfx beffroi-tui.phar > "${ASSET}"
+          chmod +x "${ASSET}"
+      # The oldest macOS an executable starts on is the one its build names, read here and written in the summary.
+      - name: "Run it once"
+        run: |
+          "./${ASSET}" --help
+          echo "${ASSET}: $(wc -c < "${ASSET}") bytes, PHP ${PHP_PATCH}." >> "${GITHUB_STEP_SUMMARY}"
+          if [ "${RUNNER_OS}" = macOS ]; then
+            echo "${ASSET} starts on macOS $(otool -l "${ASSET}" | awk '/LC_BUILD_VERSION/ { found = 1 } found && $1 == "minos" { print $2; exit }') and later." >> "${GITHUB_STEP_SUMMARY}"
+          fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.ASSET }}
+          path: ${{ env.ASSET }}
+          if-no-files-found: error
+          retention-days: ${{ fromJSON(needs.prepare.outputs.retention) }}
+
+  publish:
+    name: "The assets of the release"
+    needs: [prepare, phar, executable]
+    if: needs.prepare.outputs.tag != ''
+    runs-on: [self-hosted, kloude-light]
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: beffroi-tui*
+          path: dist
+          merge-multiple: true
+      - name: "SHA256SUMS"
+        working-directory: dist
+        run: sha256sum beffroi-tui.phar beffroi-tui-linux-x86_64 beffroi-tui-linux-aarch64 beffroi-tui-macos-aarch64 > SHA256SUMS
+      - name: "Docker Hub, under the account of the repository"
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # GnuPG in a container of its own, whatever the runner carries: the key is imported into a home that exists
+      # inside that container alone and goes with it, and the signature is verified before anything is uploaded.
+      - name: "SHA256SUMS.asc"
+        env:
+          SIGNING_SECRET_KEY: ${{ secrets.SIGNING_SECRET_KEY }}
+        run: |
+          fingerprint=$(docker run --rm -e SIGNING_SECRET_KEY -e OWNER="$(id -u):$(id -g)" -v "${PWD}/dist:/dist" -w /dist "${ALPINE_IMAGE}" sh -euc '
+            trap "chown \"${OWNER}\" SHA256SUMS.asc" EXIT
+            apk add --no-cache gnupg > /dev/null
+            export GNUPGHOME="$(mktemp -d)"
+            printf "%s" "${SIGNING_SECRET_KEY}" | gpg --batch --quiet --import
+            gpg --batch --yes --armor --detach-sign --output SHA256SUMS.asc SHA256SUMS
+            gpg --batch --verify SHA256SUMS.asc SHA256SUMS
+            gpg --batch --with-colons --list-secret-keys | awk -F: "/^fpr/ { print \$10; exit }"
+          ')
+          echo "SHA256SUMS is signed by the key ${fingerprint}." >> "${GITHUB_STEP_SUMMARY}"
+      - name: "Upload them to the release"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${TAG}" -R "${GITHUB_REPOSITORY}" --clobber \
+            dist/beffroi-tui.phar dist/beffroi-tui-linux-x86_64 dist/beffroi-tui-linux-aarch64 dist/beffroi-tui-macos-aarch64 \
+            dist/SHA256SUMS dist/SHA256SUMS.asc
+          {
+            echo ""
+            echo '```'
+            cat dist/SHA256SUMS
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
+      # actions/attest, which actions/attest-build-provenance wraps from its version 4 on, with the digests just signed.
+      - name: "Their provenance"
+        if: github.event.repository.visibility == 'public'
+        uses: actions/attest@v4
+        with:
+          subject-checksums: dist/SHA256SUMS

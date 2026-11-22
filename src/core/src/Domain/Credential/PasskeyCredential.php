@@ -2,14 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Domain\Credential;
+namespace Beffroi\Core\Domain\Credential;
 
+use Beffroi\Core\Domain\Credential\Attestation\AttestationEvidence;
+use Beffroi\Core\Domain\Credential\Attestation\ModelProof;
+use Beffroi\Core\Domain\Credential\Attestation\VerifiedRegistration;
+use Beffroi\Core\Domain\PersonalData\FieldClassificationInterface;
+use Beffroi\Core\Domain\PersonalData\NoPersonalDatum;
+use Beffroi\Core\Domain\PersonalData\Reason;
+use Beffroi\Core\Domain\PersonalData\Sealed;
 use function array_values;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Exception\LogicException;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use function mb_strlen;
 use function sprintf;
 use Symfony\Component\Uid\Uuid;
@@ -20,48 +26,55 @@ use Webauthn\PublicKeyCredentialDescriptor;
 use Webauthn\TrustPath\EmptyTrustPath;
 
 /**
- * A passkey (WebAuthn Level 3 §4, a discoverable credential): the credential record of §6.1.4, with the
- * name the user gave it and its revocation, which keeps the row for the audit trail. Several per user.
- * The provider holds the public key only: the private key never leaves the authenticator, and a passkey
- * has no member the provider could leak.
+ * WebAuthn Level 3 §4, §6.1.4
  */
-final class PasskeyCredential extends Credential implements RevocableCredentialInterface, ExternallyIdentifiedCredentialInterface, ProvingCredentialInterface
+final class PasskeyCredential extends RevocableCredential implements
+    ExternallyIdentifiedCredentialInterface,
+    ModelDeclaringCredentialInterface,
+    NameableCredentialInterface,
+    ProvingCredentialInterface
 {
     public const int NAME_MAX_LENGTH = 255;
 
-    /**
-     * The one type of WebAuthn Level 3 §5.8.2.
-     */
     private const string TYPE = PublicKeyCredentialDescriptor::CREDENTIAL_TYPE_PUBLIC_KEY;
 
     public private(set) string $name;
 
     public private(set) int $signCount;
 
-    public private(set) bool $backupEligible;
+    public readonly bool $backupEligible;
 
     public private(set) bool $backedUp;
 
-    public private(set) ?DateTimeImmutable $revokedAt = null;
-
-    /**
-     * The credential ID (WebAuthn Level 3 §6.3.2), as the authenticator issued it: what a party presents
-     * before anything is verified, unique in the tenant (§7.1, step 26), stored under this name whatever the
-     * kind that is presented by one.
-     */
     public readonly string $externalId;
 
+    public readonly ModelProof $modelProof;
+
     /**
-     * The credential ID by the name WebAuthn gives it.
+     * WebAuthn Level 3 §8.2.2, in lowercase hexadecimal
      */
+    public readonly ?string $serialNumber;
+
+    /**
+     * FIDO Metadata Service v3.1.1 §3.1.4.2, at the enrolment
+     */
+    public readonly bool $underSecurityAlert;
+
     public string $credentialId {
         get => $this->externalId;
     }
 
     /**
-     * @param string $credentialId the credential ID (WebAuthn Level 3 §6.3.2), as the authenticator issued it
-     * @param string $publicKey the public key as a COSE_Key (RFC 9052 §7), as the authenticator encoded it
-     * @param list<string> $transports the transports the authenticator declared (§5.8.4), hints for the next ceremony
+     * @var list<AuthenticatorTransport>
+     */
+    public array $reachedThrough {
+        get => AuthenticatorTransport::definedIn($this->transports);
+    }
+
+    /**
+     * @param string $credentialId as the authenticator issued it
+     * @param string $publicKey a COSE_Key (RFC 9052 §7)
+     * @param list<string> $transports as declared, unknown values kept (WebAuthn Level 3 §5.2.1)
      */
     public function __construct(
         Uuid $id,
@@ -76,6 +89,7 @@ final class PasskeyCredential extends Credential implements RevocableCredentialI
         public readonly Uuid $aaguid,
         public readonly PasskeyUserHandle $userHandle,
         DateTimeImmutable $createdAt,
+        AttestationEvidence $evidence = new AttestationEvidence(ModelProof::Declared),
     ) {
         parent::__construct($id, $user, $createdAt);
         $this->name = self::normalizeName($name);
@@ -95,14 +109,17 @@ final class PasskeyCredential extends Credential implements RevocableCredentialI
         $this->signCount = $signCount;
         $this->backupEligible = $backupEligible;
         $this->backedUp = $backedUp;
+        $this->modelProof = $evidence->model;
+        $this->serialNumber = $evidence->serialNumber;
+        $this->underSecurityAlert = $evidence->underSecurityAlert;
     }
 
     /**
-     * From the record the registration ceremony of webauthn-lib returns (WebAuthn Level 3 §7.1, step 26):
-     * the backup flags are those of the authenticator data, never assumed.
+     * WebAuthn Level 3 §7.1, step 26
      */
-    public static function fromRecord(Uuid $id, User $user, string $name, CredentialRecord $record, DateTimeImmutable $createdAt): self
+    public static function fromRecord(Uuid $id, User $user, string $name, VerifiedRegistration $registration, DateTimeImmutable $createdAt): self
     {
+        $record = $registration->record;
         if ($record->backupEligible === null || $record->backupStatus === null) {
             throw new InvalidArgumentException('A passkey is enrolled with the backup flags of its authenticator data (WebAuthn Level 3 §6.1.3).');
         }
@@ -123,12 +140,12 @@ final class PasskeyCredential extends Credential implements RevocableCredentialI
             $record->aaguid,
             new PasskeyUserHandle($record->userHandle),
             $createdAt,
+            $registration->evidence,
         );
     }
 
     /**
-     * The record the authentication ceremony of webauthn-lib verifies an assertion against (§7.2). The
-     * attestation is not kept: verified when present at enrolment, never required, no policy reads it later.
+     * The attestation statement is not kept, hence "none": what it proved at the enrolment is the model proof.
      */
     public function record(): CredentialRecord
     {
@@ -153,43 +170,36 @@ final class PasskeyCredential extends Credential implements RevocableCredentialI
         return 'passkey';
     }
 
+    public function rename(string $name): void
+    {
+        $this->name = self::normalizeName($name);
+    }
+
     public function label(): string
     {
         return $this->name;
     }
 
     /**
-     * What an assertion of this passkey may prove (architecture §4.3): the key as its backup eligibility
-     * says, "swk" for a synced passkey and "hwk" for one bound to its authenticator, and "user", the
-     * presence WebAuthn Level 3 §7.2 requires of every assertion (step 16). Not "mfa": the provider asks
-     * the authenticator to verify the user when it can (userVerification "preferred") and learns whether
-     * it did from the flags of the assertion, so it promises nothing of it ahead. Nothing for a revoked passkey.
+     * Not "mfa": user verification is only preferred, so it is read from an assertion and never promised ahead.
      */
     public function provableMethods(): array
     {
-        if ($this->revokedAt !== null) {
+        if ($this->isRevoked()) {
             return [];
         }
 
-        return [
-            new AuthenticationMethod($this->backupEligible ? AuthenticationMethod::SOFTWARE_KEY : AuthenticationMethod::HARDWARE_KEY),
-            new AuthenticationMethod(AuthenticationMethod::USER_PRESENCE),
-        ];
+        return [$this->keyMethod(), new AuthenticationMethod(AuthenticationMethod::USER_PRESENCE)];
     }
 
     /**
-     * What an assertion proves, as "amr" values (RFC 8176 §2), read from the flags of its authenticator
-     * data (WebAuthn Level 3 §6.1): "hwk" for a key bound to its authenticator (the BE flag clear, §6.1.3),
-     * "swk" for a synced passkey (the flag set: the key lives wherever the provider of the user copies it);
-     * "user" when the authenticator tested that a user is present (UP, §6.2.4); "mfa" when it verified the
-     * user (UV, §6.2.3): the key was unlocked by a PIN or a biometric the authenticator does not name, the
-     * multi-factor cryptographic device of NIST SP 800-63B §5.1.9.
+     * RFC 8176 §2, WebAuthn Level 3 §6.1, NIST SP 800-63B §3.1.7.1
      *
      * @return non-empty-list<AuthenticationMethod>
      */
     public function methods(AuthenticatorData $data): array
     {
-        $methods = [new AuthenticationMethod($data->isBackupEligible() ? AuthenticationMethod::SOFTWARE_KEY : AuthenticationMethod::HARDWARE_KEY)];
+        $methods = [$this->keyMethod()];
         if ($data->isUserPresent()) {
             $methods[] = new AuthenticationMethod(AuthenticationMethod::USER_PRESENCE);
         }
@@ -201,9 +211,7 @@ final class PasskeyCredential extends Credential implements RevocableCredentialI
     }
 
     /**
-     * The check of webauthn-lib (the CheckCounter step, Counter\ThrowExceptionIfInvalid), made a question:
-     * when either count is non-zero, a count that did not grow means a cloned authenticator or a replay
-     * (WebAuthn Level 3 §6.1.1); a synced passkey keeps it at zero, so the answer is an event, not a refusal.
+     * WebAuthn Level 3 §6.1.1
      */
     public function signCountRegresses(AuthenticatorData $data): bool
     {
@@ -211,36 +219,33 @@ final class PasskeyCredential extends Credential implements RevocableCredentialI
     }
 
     /**
-     * WebAuthn Level 3 §7.2, step 26: the sign count and the backup state of the assertion replace the stored ones.
+     * WebAuthn Level 3 §6.1.3
+     */
+    public function backupEligibilityChanged(AuthenticatorData $data): bool
+    {
+        return $data->isBackupEligible() !== $this->backupEligible;
+    }
+
+    /**
+     * WebAuthn Level 3 §7.2, step 26
      */
     public function recordUse(AuthenticatorData $data, DateTimeImmutable $now): void
     {
-        if ($this->revokedAt !== null) {
-            throw new LogicException('A revoked passkey never authenticates again.');
+        $this->refuseIfRevoked();
+        if ($this->backupEligibilityChanged($data)) {
+            throw new InvalidArgumentException('The backup eligibility of a passkey is the one it was enrolled with and never changes (WebAuthn Level 3 §6.1.3).');
         }
         if ($data->isBackedUp() && ! $data->isBackupEligible()) {
             throw new InvalidArgumentException('A passkey that is not eligible for backup cannot be backed up (WebAuthn Level 3 §6.1.3).');
         }
         $this->signCount = $data->signCount;
-        $this->backupEligible = $data->isBackupEligible();
         $this->backedUp = $data->isBackedUp();
         $this->markUsed($now);
     }
 
-    /**
-     * The row stays for the audit trail.
-     */
-    public function revoke(DateTimeImmutable $now): void
+    private function keyMethod(): AuthenticationMethod
     {
-        if ($this->revokedAt !== null) {
-            return;
-        }
-        $this->revokedAt = $now;
-    }
-
-    public function isRevoked(): bool
-    {
-        return $this->revokedAt !== null;
+        return new AuthenticationMethod($this->backupEligible ? AuthenticationMethod::SOFTWARE_KEY : AuthenticationMethod::HARDWARE_KEY);
     }
 
     private static function normalizeName(string $name): string
@@ -251,5 +256,29 @@ final class PasskeyCredential extends Credential implements RevocableCredentialI
         }
 
         return $name;
+    }
+
+    /**
+     * @return array<string, FieldClassificationInterface>
+     */
+    public static function classifiedFields(): array
+    {
+        return [
+            ...parent::classifiedFields(),
+            'name' => new Sealed('passkey_credential'),
+            'externalId' => new NoPersonalDatum(Reason::PUBLIC_BY_CONSTRUCTION),
+            'publicKey' => new NoPersonalDatum(Reason::PUBLIC_BY_CONSTRUCTION),
+            'signCount' => new NoPersonalDatum(Reason::PUBLIC_BY_CONSTRUCTION),
+            'transports' => new NoPersonalDatum(Reason::PUBLIC_BY_CONSTRUCTION),
+            'backupEligible' => new NoPersonalDatum(Reason::PUBLIC_BY_CONSTRUCTION),
+            'backedUp' => new NoPersonalDatum(Reason::PUBLIC_BY_CONSTRUCTION),
+            'aaguid' => new NoPersonalDatum(Reason::PUBLIC_BY_CONSTRUCTION),
+            'modelProof' =>
+                new NoPersonalDatum('what the enrolment proved of the model of the authenticator, declared, verified or attested for the organisation, which every authenticator of that model would prove alike'),
+            'serialNumber' => new Sealed('passkey_credential'),
+            'underSecurityAlert' =>
+                new NoPersonalDatum('whether the model of the authenticator was under a security alert of the FIDO metadata, which the tenant admitted, when the passkey was enrolled'),
+            'userHandle' => new NoPersonalDatum(Reason::DRAWN_AT_RANDOM),
+        ];
     }
 }

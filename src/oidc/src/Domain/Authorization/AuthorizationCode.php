@@ -2,55 +2,38 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Authorization;
+namespace Beffroi\Oidc\Domain\Authorization;
 
-use function base64_encode;
+use Beffroi\Core\Domain\PersonalData\FieldClassificationInterface;
+use Beffroi\Core\Domain\PersonalData\NoPersonalDatum;
+use Beffroi\Core\Domain\PersonalData\Reason;
 use DateTimeImmutable;
-use function hash;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Exception\LogicException;
-use function preg_match;
-use function random_bytes;
-use function rtrim;
-use SensitiveParameter;
-use function strtr;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\RedirectUri;
+use Beffroi\Oidc\Domain\Client\ResolvesItsClientInterface;
+use Beffroi\Oidc\Domain\Grant\GrantRecord;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Domain\Token\KeyConfirmation;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * An authorization code (RFC 6749 §4.1.2, architecture §4.4) as the provider keeps it: the SHA-256 of the
- * value, and everything the token endpoint needs, what the session had proven, frozen in an
- * AuthenticationSnapshot at issuance. The record is also the grant the tokens descend from, named by "grantId".
+ * RFC 6749 §4.1.2
  */
-final class AuthorizationCode
+final class AuthorizationCode extends GrantRecord implements ResolvesItsClientInterface
 {
-    public const string HASH_PATTERN = '/^[0-9a-f]{64}$/';
-
     public readonly Tenant $tenant;
 
-    /**
-     * What a store keeps; the object is what the client repository resolved for it.
-     */
     public readonly string $clientId;
 
     /**
-     * @var non-empty-list<Scope>
-     */
-    public readonly array $scopes;
-
-    public private(set) ?DateTimeImmutable $usedAt = null;
-
-    public private(set) ?DateTimeImmutable $revokedAt = null;
-
-    /**
-     * @param string $codeHash see hash()
-     * @param list<Scope> $scopes at least one
-     * @param CodeChallenge|null $codeChallenge null only for a client that does not require PKCE (decision 0008)
-     * @param AuthenticationSnapshot $authentication what the session had proven, frozen for every token of the grant
+     * @param string $codeHash the hex SHA-256 of the code
+     * @param CodeChallenge|null $codeChallenge null only for a client that does not require PKCE
      */
     public function __construct(
         public readonly string $codeHash,
@@ -58,84 +41,68 @@ final class AuthorizationCode
         public readonly Client $client,
         public readonly AuthenticationSession $session,
         public readonly RedirectUri $redirectUri,
-        array $scopes,
+        public readonly Scopes $scopes,
+        public readonly ?ResourceIndicators $resources,
+        public readonly ?AuthorizationDetails $authorizationDetails,
         public readonly ?string $nonce,
         public readonly ?CodeChallenge $codeChallenge,
+        public readonly ?KeyConfirmation $dpopKey,
         public readonly ?ClaimsRequest $claimsRequest,
         public readonly AuthenticationSnapshot $authentication,
         public readonly DateTimeImmutable $issuedAt,
         public readonly DateTimeImmutable $expiresAt,
     ) {
-        if (preg_match(self::HASH_PATTERN, $codeHash) !== 1) {
+        if (! DrawnSecret::isDigest($codeHash)) {
             throw new InvalidArgumentException('An authorization code is stored as its hex SHA-256.');
         }
         if (! $session->tenant->equals($client->tenant)) {
             throw new InvalidArgumentException('An authorization code binds a session and a client of the same tenant.');
         }
-        if ($scopes === []) {
-            throw new InvalidArgumentException('An authorization code grants at least one scope.');
-        }
         if ($expiresAt <= $issuedAt) {
             throw new InvalidArgumentException('An authorization code expires after it was issued.');
         }
         $this->tenant = $client->tenant;
-        $this->clientId = $client->clientId;
-        $this->scopes = $scopes;
+        $this->clientId = $client->registration->clientId;
+    }
+
+    protected function nameOfRecord(): string
+    {
+        return 'An authorization code';
+    }
+
+    protected function readerThatChecks(): string
+    {
+        return 'the grant';
+    }
+
+    public function clientHolder(): object
+    {
+        return $this;
     }
 
     /**
-     * 256 bits, base64url without padding.
+     * @return array<string, FieldClassificationInterface>
      */
-    public static function generate(): string
+    public static function classifiedFields(): array
     {
-        return rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
-    }
-
-    public static function hash(#[SensitiveParameter] string $code): string
-    {
-        return hash('sha256', $code);
-    }
-
-    /**
-     * RFC 6749 §4.1.2. The repository claims the record atomically and calls this on the winner; called
-     * twice is a programming error, not a replay.
-     */
-    public function consume(DateTimeImmutable $now): void
-    {
-        if ($this->usedAt !== null) {
-            throw new LogicException('An authorization code is consumed once; the grant checks isUsed() first.');
-        }
-        $this->usedAt = $now;
-    }
-
-    /**
-     * For a repository whose claim was lost: the instant the store holds.
-     */
-    public function recordConsumption(DateTimeImmutable $usedAt): void
-    {
-        $this->usedAt = $usedAt;
-    }
-
-    public function isUsed(): bool
-    {
-        return $this->usedAt !== null;
-    }
-
-    /**
-     * RFC 6749 §4.1.2: the replay of a code revokes what was issued from it.
-     */
-    public function revoke(DateTimeImmutable $now): void
-    {
-        $this->revokedAt ??= $now;
-    }
-
-    public function isRevoked(): bool
-    {
-        return $this->revokedAt !== null;
-    }
-
-    public function isExpired(DateTimeImmutable $now): bool
-    {
-        return $now >= $this->expiresAt;
+        return [
+            ...parent::classifiedFields(),
+            'grantId' => new NoPersonalDatum(Reason::DRAWN_AT_RANDOM),
+            'clientId' => new NoPersonalDatum(Reason::A_CLIENT),
+            'redirectUri' => new NoPersonalDatum(Reason::WHAT_THE_REQUEST_ASKED),
+            'scopes' => new NoPersonalDatum(Reason::WHAT_THE_REQUEST_ASKED),
+            'resources' => new NoPersonalDatum(Reason::WHAT_THE_REQUEST_ASKED),
+            'authorizationDetails' => new NoPersonalDatum(Reason::WHAT_THE_REQUEST_ASKED),
+            'nonce' => new NoPersonalDatum(Reason::DRAWN_BY_THE_CLIENT),
+            'codeChallenge' => new NoPersonalDatum(Reason::WHAT_THE_REQUEST_ASKED),
+            'dpopKey' => new NoPersonalDatum(Reason::WHAT_A_TOKEN_IS_BOUND_TO),
+            'claimsRequest' => new NoPersonalDatum(Reason::WHAT_THE_REQUEST_ASKED),
+            'authentication' => new NoPersonalDatum(Reason::WHAT_THE_SESSION_PROVED),
+            'issuedAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'expiresAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'codeHash' => new NoPersonalDatum(Reason::HASHED),
+            'tenant' => new NoPersonalDatum(Reason::THE_TENANT),
+            'session' => new NoPersonalDatum(Reason::DRAWN_AT_RANDOM),
+        ];
     }
 }

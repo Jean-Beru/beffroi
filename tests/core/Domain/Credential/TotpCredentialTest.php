@@ -2,22 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Domain\Credential;
+namespace Beffroi\Core\Tests\Domain\Credential;
 
 use function array_filter;
 use function array_map;
 use function array_slice;
 use function array_values;
-use Heidi\Core\Domain\Credential\BackupCode;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Domain\Credential\TotpCredential;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Exception\LogicException;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Core\Domain\Credential\BackupCode;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Domain\Credential\TotpCredential;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\LogicException;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Totps;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -28,8 +28,7 @@ use function strtolower;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §3.1: the TOTP next to the password and the passkey in the identity model of decision
- * 0002, the secret sealed, a code accepted once (RFC 6238 §5.2).
+ * Architecture §3.1, Decision 0002, RFC 6238 §5.2
  */
 final class TotpCredentialTest extends TestCase
 {
@@ -74,7 +73,7 @@ final class TotpCredentialTest extends TestCase
     }
 
     /**
-     * RFC 8176 §2: "otp", for a code of the authenticator and for a backup code alike.
+     * RFC 8176 §2
      */
     #[Test]
     public function aCodeProvesAOneTimePassword(): void
@@ -84,8 +83,7 @@ final class TotpCredentialTest extends TestCase
     }
 
     /**
-     * Architecture §4.3: what an authentication with this credential may prove, "otp"; the password it
-     * follows is the password's to declare.
+     * Architecture §4.3
      */
     #[Test]
     public function anAuthenticationWithItMayProveAOneTimePassword(): void
@@ -97,9 +95,6 @@ final class TotpCredentialTest extends TestCase
         static::assertSame(['otp'], array_map(static fn (AuthenticationMethod $method): string => $method->value, $totp->provableMethods()));
     }
 
-    /**
-     * A revoked credential authenticates nobody: it may prove nothing, and a step-up does not count on it.
-     */
     #[Test]
     public function aRevokedOneMayProveNothing(): void
     {
@@ -111,10 +106,6 @@ final class TotpCredentialTest extends TestCase
         static::assertSame([], $totp->provableMethods());
     }
 
-    /**
-     * The secret is held sealed and under no other name: no property of the class, public or not, holds
-     * it in clear.
-     */
     #[Test]
     public function itHoldsTheSecretSealedAndNothingElseOfIt(): void
     {
@@ -137,7 +128,14 @@ final class TotpCredentialTest extends TestCase
         $this->expectExceptionMessageIs('A TOTP credential holds its secret sealed.');
 
         // When
-        new TotpCredential(Uuid::v7(), Fixtures::user(), '', array_map(static fn (string $code): BackupCode => new BackupCode(new PasswordHash(PasswordAlgorithm::Argon2id, $code)), Totps::BACKUP_CODES), 0, Fixtures::now());
+        new TotpCredential(
+            Uuid::v7(),
+            Fixtures::user(),
+            '',
+            array_map(static fn (string $code): BackupCode => new BackupCode(new PasswordHash(new Argon2id(), $code)), Totps::BACKUP_CODES),
+            0,
+            Fixtures::now(),
+        );
     }
 
     #[Test]
@@ -163,7 +161,7 @@ final class TotpCredentialTest extends TestCase
     }
 
     /**
-     * RFC 6238 §5.2: the accepted step moves forward, never back; the same step is not accepted twice.
+     * RFC 6238 §5.2
      */
     #[Test]
     #[DataProvider('provideSteps')]
@@ -225,7 +223,7 @@ final class TotpCredentialTest extends TestCase
 
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessageIs('A revoked TOTP credential never authenticates again.');
+        $this->expectExceptionMessageIs('A revoked totp never authenticates again.');
 
         // When
         $totp->recordUse(1, Fixtures::now());
@@ -286,7 +284,7 @@ final class TotpCredentialTest extends TestCase
 
         // Then
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessageIs('A revoked TOTP credential never authenticates again.');
+        $this->expectExceptionMessageIs('A revoked totp never authenticates again.');
 
         // When
         $totp->spendBackupCode(0, Fixtures::now());

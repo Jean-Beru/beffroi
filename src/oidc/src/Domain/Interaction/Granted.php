@@ -2,14 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Interaction;
+namespace Beffroi\Oidc\Domain\Interaction;
 
-use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
-use Heidi\Oidc\Domain\Authorization\AuthorizationResponse;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationCode;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationResponse;
 
-/**
- * The code is issued and the user agent goes back to the client.
- */
 final readonly class Granted implements AuthorizationDecision
 {
     public function __construct(
@@ -17,5 +14,10 @@ final readonly class Granted implements AuthorizationDecision
         public AuthorizationCode $code,
         public AuthorizationResponse $response,
     ) {
+    }
+
+    public function name(): string
+    {
+        return 'granted';
     }
 }

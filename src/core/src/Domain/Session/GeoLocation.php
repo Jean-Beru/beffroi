@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Domain\Session;
+namespace Beffroi\Core\Domain\Session;
 
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Domain\Encoding\Document;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use function preg_match;
 use function sprintf;
 
@@ -22,7 +23,7 @@ final readonly class GeoLocation
         public ?float $latitude = null,
         public ?float $longitude = null,
     ) {
-        if ($countryCode !== null && preg_match('/^[A-Z]{2}$/', $countryCode) !== 1) {
+        if ($countryCode !== null && preg_match('/^[A-Z]{2}$/D', $countryCode) !== 1) {
             throw new InvalidArgumentException(sprintf('The country code "%s" must be two uppercase letters (ISO 3166-1 alpha-2).', $countryCode));
         }
         if (($latitude === null) !== ($longitude === null)) {
@@ -31,5 +32,41 @@ final readonly class GeoLocation
         if ($latitude !== null && ($latitude < -90 || $latitude > 90 || $longitude < -180 || $longitude > 180)) {
             throw new InvalidArgumentException('Coordinates are out of range.');
         }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toDocument(): array
+    {
+        return [
+            'country_code' => $this->countryCode,
+            'region' => $this->region,
+            'city' => $this->city,
+            'asn' => $this->autonomousSystemNumber,
+            'as_organization' => $this->autonomousSystemOrganization,
+            'latitude' => $this->latitude,
+            'longitude' => $this->longitude,
+        ];
+    }
+
+    /**
+     * @param array<array-key, mixed> $document
+     *
+     * @throws InvalidArgumentException
+     */
+    public static function fromDocument(array $document): self
+    {
+        $members = new Document($document);
+
+        return new self(
+            $members->nullableString('country_code'),
+            $members->nullableString('region'),
+            $members->nullableString('city'),
+            $members->nullableInt('asn'),
+            $members->nullableString('as_organization'),
+            $members->nullableFloat('latitude'),
+            $members->nullableFloat('longitude'),
+        );
     }
 }

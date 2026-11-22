@@ -2,20 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Port;
+namespace Beffroi\Oidc\Port;
 
-use Heidi\Oidc\Domain\Authorization\ResponseMode;
-
-/**
- * The response modes the authorization endpoint can actually answer in (OAuth 2.0 Multiple Response Type
- * Encoding Practices §2.1); the integration wires one way of answering per mode, so it says. What the
- * discovery document announces and what the parser accepts read this one source, so that the document
- * and the endpoint cannot disagree (issue #98).
- */
 interface ServedResponseModesInterface
 {
     /**
-     * @return non-empty-list<ResponseMode>
+     * @return non-empty-list<string> the first is the fallback of a request that cannot be answered as it asked
      */
     public function servedResponseModes(): array;
+
+    /**
+     * Resolves the alias of JARM §2.1 against what the wiring serves.
+     */
+    public function responseModeNamed(string $requested): ?string;
+
+    public function signsAnyAnswer(): bool;
 }

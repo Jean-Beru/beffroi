@@ -2,18 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Domain\Session;
+namespace Beffroi\Core\Tests\Domain\Session;
 
-use Heidi\Core\Domain\Session\AuthenticationFactor;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Domain\Session\AuthenticationFactor;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function sprintf;
+use function str_repeat;
 
 final class AuthenticationMethodTest extends TestCase
 {
     /**
-     * RFC 8176 §2: each registered method proves something the user knows, has or is.
+     * RFC 8176 §2
      */
     #[Test]
     #[DataProvider('provideMethodsAndTheirFactor')]
@@ -46,8 +49,7 @@ final class AuthenticationMethodTest extends TestCase
     }
 
     /**
-     * RFC 8176 §2: a presence check, a location, a risk score, a channel or a provider's own value
-     * describes a proof without being a factor.
+     * RFC 8176 §2
      */
     #[Test]
     #[DataProvider('provideMethodsWithoutAFactor')]
@@ -72,7 +74,7 @@ final class AuthenticationMethodTest extends TestCase
     }
 
     /**
-     * RFC 8176 §2 "mfa": several factors asserted without naming each.
+     * RFC 8176 §2
      */
     #[Test]
     public function mfaAssertsMultipleFactors(): void
@@ -80,5 +82,29 @@ final class AuthenticationMethodTest extends TestCase
         // When / Then
         static::assertTrue(new AuthenticationMethod('mfa')->isMultipleFactors());
         static::assertFalse(AuthenticationMethod::password()->isMultipleFactors());
+    }
+
+    #[Test]
+    #[DataProvider('provideValuesThatAreNotWellFormed')]
+    public function aValueThatIsNotWellFormedIsRefused(string $value): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs(sprintf('"%s" is not a well-formed authentication method reference.', $value));
+
+        // When
+        new AuthenticationMethod($value);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideValuesThatAreNotWellFormed(): iterable
+    {
+        yield 'empty' => [''];
+        yield 'a leading dot' => ['.pwd'];
+        yield 'a space' => ['p wd'];
+        yield 'longer than sixty-four characters' => [str_repeat('a', 65)];
+        yield 'a line feed behind a value that would pass' => ["pwd\n"];
     }
 }

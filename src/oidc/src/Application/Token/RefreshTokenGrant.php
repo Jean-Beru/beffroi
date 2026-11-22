@@ -2,56 +2,65 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Application\Token;
+namespace Beffroi\Oidc\Application\Token;
 
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Core\Port\SubjectsOfSessionsInterface;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\GrantType;
-use Heidi\Oidc\Domain\Event\RefreshTokenReuseDetected;
-use Heidi\Oidc\Domain\Event\RefreshTokenRotated;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
-use Heidi\Oidc\Domain\Token\IssuedTokens;
-use Heidi\Oidc\Domain\Token\RefreshToken;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Exception\InvalidGrantException;
-use Heidi\Oidc\Exception\InvalidScopeException;
-use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Application\Client\AuthenticatedClient;
+use Beffroi\Oidc\Application\Request\RequestParameters;
+use Beffroi\Oidc\Domain\Client\GrantTypeName;
+use Beffroi\Oidc\Domain\Event\RefreshTokenOutlivedItsSession;
+use Beffroi\Oidc\Domain\Event\RefreshTokenReuseDetected;
+use Beffroi\Oidc\Domain\Event\RefreshTokenRotated;
+use Beffroi\Oidc\Domain\Token\UserAuthorization;
+use Beffroi\Oidc\Domain\Token\IssuedTokens;
+use Beffroi\Oidc\Domain\Token\RefreshToken;
+use Beffroi\Oidc\Domain\Token\RevokedTokenHashes;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Exception\InvalidGrantException;
+use Beffroi\Oidc\Exception\InvalidScopeException;
+use Beffroi\Oidc\Port\RefreshTokenRepositoryInterface;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
- * RFC 6749 §6, RFC 9700 §4.13 (architecture §4.5): the token is rotated on every use, its successor in
- * the same family with the same scopes; a rotated token presented again revokes the family (§4.13.2).
- * The session may have expired, not have been ended (architecture §4.9).
+ * RFC 6749 §6, RFC 9700 §4.13
+ *
+ * Only a token protected by neither client authentication nor a binding is rotated: rotating another would lock
+ * out a client that lost the answer (FAPI 2.0 Security Profile §5.3.2.1-9). What the KMS opens is read before the
+ * token is rotated, so a KMS that does not answer leaves the token as it was.
  */
-final readonly class RefreshTokenGrant implements GrantInterface
+final readonly class RefreshTokenGrant implements SpendsRefreshTokensInterface
 {
     private const string INVALID = 'The refresh token is invalid.';
 
     public function __construct(
         private RefreshTokenRepositoryInterface $refreshTokens,
         private RefreshTokenRevocation $revocation,
+        private SubjectsOfSessionsInterface $subjects,
         private TokenIssuer $issuer,
+        private RequestedAuthorizationDetails $authorizationDetails,
         private ClockInterface $clock,
         private EventDispatcherInterface $events,
     ) {
     }
 
-    public function grantType(): GrantType
+    public function grantType(): GrantTypeName
     {
-        return GrantType::RefreshToken;
+        return new GrantTypeName('refresh_token');
     }
 
-    public function grant(Client $client, TokenRequest $request, RequestContext $context): IssuedTokens
+    public function grant(AuthenticatedClient $client, RequestParameters $request, RequestContext $context): IssuedTokens
     {
         $now = $this->clock->now();
         $value = $request->required('refresh_token');
         $scopes = self::scopes($request->optional('scope'));
 
-        $token = $this->refreshTokens->findByTokenHash(RefreshToken::hash($value));
-        if ($token === null || ! $token->client->equals($client) || $token->isRevoked()) {
+        $token = $this->refreshTokens->findByTokenHash(DrawnSecret::digestOf($value));
+        if ($token === null || ! $token->client->equals($client->client) || $token->isRevoked()) {
             throw new InvalidGrantException(self::INVALID);
         }
         if ($token->isRotated()) {
@@ -59,45 +68,92 @@ final readonly class RefreshTokenGrant implements GrantInterface
 
             throw new InvalidGrantException(self::INVALID);
         }
-        if ($token->isExpired($now) || $token->session->hasEnded()) {
+        $sessionEndedAt = $token->session->endedAt;
+        if ($sessionEndedAt !== null) {
+            $this->events->dispatch(new RefreshTokenOutlivedItsSession(
+                $now,
+                $token->tenant,
+                $token->clientId,
+                $token->session->user->subject,
+                $token->session->id,
+                $sessionEndedAt,
+                $context,
+            ));
+
             throw new InvalidGrantException(self::INVALID);
         }
-        if ($scopes !== null && ! $token->covers($scopes)) {
+        if ($token->isExpired($now) || ! $token->isRefreshedBy($client->confirmation) || ! $token->session->user->isEnabled()) {
+            throw new InvalidGrantException(self::INVALID);
+        }
+        if ($scopes !== null && ! $token->scopes->covers($scopes)) {
             throw new InvalidScopeException('The requested scope exceeds the scope granted to the refresh token (RFC 6749 section 6).');
         }
 
+        $authorization = UserAuthorization::fromRefreshToken(
+            $this->grantType(),
+            $token,
+            $scopes,
+            $client->confirmation,
+            RequestedResources::of($request, $token->resources),
+            $this->authorizationDetails->of($request, $token->authorizationDetails),
+        );
+        $addressed = $this->issuer->address($authorization->client, $authorization->scopes);
+        $person = $authorization->person();
+        if (! $token->rotatesOnUse()) {
+            return $this->issuer->issue($authorization, null, $context, $now, $addressed);
+        }
         $token->rotate($now);
         $this->refreshTokens->save($token);
-        $authorization = GrantedAuthorization::fromRefreshToken($token, $scopes);
         $successor = $this->issuer->refreshToken($token->family, $authorization, $now);
-        $this->events->dispatch(new RefreshTokenRotated($token, $successor->token, $context));
+        $this->events->dispatch(new RefreshTokenRotated(
+            $successor->token->issuedAt,
+            $successor->token->tenant,
+            $successor->token->clientId,
+            $person,
+            $successor->token->family->id,
+            $token->tokenHash,
+            $successor->token->tokenHash,
+            $successor->token->expiresAt,
+            $context,
+        ));
 
-        return $this->issuer->issue($authorization, $successor, $context, $now);
+        return $this->issuer->issue($authorization, $successor, $context, $now, $addressed);
     }
 
     /**
-     * RFC 6749 §3.3, without repeats.
+     * RFC 6749 §3.3
      *
-     * @return non-empty-list<Scope>|null null when the client did not narrow the scope
+     * @throws InvalidScopeException
      */
-    private static function scopes(?string $scope): ?array
+    private static function scopes(?string $scope): ?Scopes
     {
         if ($scope === null) {
             return null;
         }
         try {
-            return Scope::parseList($scope);
+            return Scopes::parse($scope);
         } catch (InvalidArgumentException $exception) {
-            throw new InvalidScopeException('The scope parameter is not a space-separated list of scope tokens (RFC 6749 section 3.3).', previous: $exception);
+            throw InvalidScopeException::notASpaceSeparatedList(previous: $exception);
         }
     }
 
     /**
-     * RFC 9700 §4.13.2.
+     * RFC 9700 §4.13.2
+     *
+     * The person is named by the subject the store of sessions keeps in the clear, so the KMS need not answer.
      */
     private function reused(RefreshToken $presented, RequestContext $context, DateTimeImmutable $now): void
     {
         $revoked = $this->revocation->revokeFamily($presented->family->id, $now);
-        $this->events->dispatch(new RefreshTokenReuseDetected($now, $presented, $revoked, $context));
+        $this->events->dispatch(new RefreshTokenReuseDetected(
+            $now,
+            $presented->tenant,
+            $presented->clientId,
+            $this->subjects->of($presented->session->id),
+            $presented->family->id,
+            $presented->tokenHash,
+            RevokedTokenHashes::of($revoked),
+            $context,
+        ));
     }
 }

@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Http;
+namespace App\Tests\Symfony\Unit\Http;
 
 use DateTimeImmutable;
-use Heidi\Bundle\Http\TotpProvisioningSealer;
-use Heidi\Bundle\Http\TotpProvisioningStore;
-use Heidi\Core\Domain\Credential\TotpProvisioning;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Exception\KmsUnavailableException;
-use Heidi\Core\Port\SecretSealerInterface;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Totps;
+use App\Http\TotpProvisioningSealer;
+use App\Http\TotpProvisioningStore;
+use Beffroi\Core\Domain\Credential\TotpProvisioning;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Exception\KmsUnavailableException;
+use Beffroi\Core\Port\SecretSealerInterface;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Totps;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function serialize;
@@ -20,8 +20,7 @@ use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 
 /**
- * Architecture §5.2, §3.3: the provisioning of an enrolment lives sealed in the HTTP session, for the
- * user it was drawn for, read again on a wrong code, until it is confirmed or expires.
+ * Architecture §5.2, §3.3
  */
 final class TotpProvisioningStoreTest extends TestCase
 {
@@ -78,8 +77,7 @@ final class TotpProvisioningStoreTest extends TestCase
     }
 
     /**
-     * Architecture §3.3: neither the secret, nor its base32 in the URI, nor the backup codes are in the
-     * session as they are.
+     * Architecture §3.3
      */
     #[Test]
     public function whatTheSessionKeepsIsSealed(): void
@@ -134,8 +132,7 @@ final class TotpProvisioningStoreTest extends TestCase
         static::assertIsArray($stored);
         $this->session->set(TotpProvisioningStore::KEY, [
             'user' => $elsewhere->id->toRfc4122(),
-            'expires_at' => $this->now->modify('+10 minutes')
-                ->getTimestamp(),
+            'expires_at' => $this->now->modify('+10 minutes')->getTimestamp(),
             'sealed' => $stored['sealed'],
         ]);
 
@@ -154,9 +151,6 @@ final class TotpProvisioningStoreTest extends TestCase
         static::assertNull($this->store->provisioning($this->session, $this->alice, $this->now));
     }
 
-    /**
-     * Issue #128: a KMS that does not answer is no reason to forget; the outage goes on as it came.
-     */
     #[Test]
     public function anOutageOfTheKmsGoesOnAsItCame(): void
     {
@@ -167,8 +161,7 @@ final class TotpProvisioningStoreTest extends TestCase
         $this->expectException(KmsUnavailableException::class);
 
         // When
-        $this->storeOnAKmsThatDoesNotAnswer()
-            ->provisioning($this->session, $this->alice, $this->now);
+        $this->storeOnAKmsThatDoesNotAnswer()->provisioning($this->session, $this->alice, $this->now);
     }
 
     #[Test]
@@ -177,8 +170,7 @@ final class TotpProvisioningStoreTest extends TestCase
         // Given
         $this->store->store($this->session, $this->alice, $this->provisioning, $this->now);
         try {
-            $this->storeOnAKmsThatDoesNotAnswer()
-                ->provisioning($this->session, $this->alice, $this->now);
+            $this->storeOnAKmsThatDoesNotAnswer()->provisioning($this->session, $this->alice, $this->now);
         } catch (KmsUnavailableException) {
         }
 
@@ -193,8 +185,7 @@ final class TotpProvisioningStoreTest extends TestCase
     private function storeOnAKmsThatDoesNotAnswer(): TotpProvisioningStore
     {
         $sealer = static::createStub(SecretSealerInterface::class);
-        $sealer->method('unseal')
-            ->willThrowException(new KmsUnavailableException('The sealed secret could not be opened.'));
+        $sealer->method('unseal')->willThrowException(new KmsUnavailableException('The sealed secret could not be opened.'));
 
         return new TotpProvisioningStore(new TotpProvisioningSealer($sealer));
     }

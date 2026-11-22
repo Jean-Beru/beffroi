@@ -2,30 +2,57 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Event;
+namespace Beffroi\Oidc\Domain\Event;
 
 use DateTimeImmutable;
-use Heidi\Core\Domain\Event\DomainEventInterface;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
-use Heidi\Oidc\Domain\Token\RefreshToken;
+use Beffroi\Core\Domain\Event\ConcernsAPersonInterface;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
+use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
+use Beffroi\Oidc\Domain\Client\GrantTypeName;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Token\ConfirmationInterface;
+use Symfony\Component\Uid\Uuid;
 
 /**
- * The token endpoint answered a client: what was authorized and which tokens left, never their values.
+ * Never carries the value of a token.
  */
-final readonly class TokensIssued implements DomainEventInterface
+final readonly class TokensIssued implements ClientInUseInterface, ConcernsAPersonInterface
 {
-    public Tenant $tenant;
+    public const string NAME = 'tokens.issued';
 
+    /**
+     * @param Subject|null $subject the subject of the person's account, never the "sub" the client was answered
+     */
     public function __construct(
         public DateTimeImmutable $occurredAt,
-        public GrantedAuthorization $authorization,
+        public Tenant $tenant,
+        public GrantTypeName $grantType,
+        public Uuid $grantId,
+        public string $clientId,
+        public ?Subject $subject,
+        public ?Uuid $sessionId,
+        public Scopes $grantedScopes,
         public DateTimeImmutable $accessTokenExpiresAt,
         public bool $idTokenIssued,
-        public ?RefreshToken $refreshToken,
+        public ?ConfirmationInterface $confirmation,
+        public ?string $refreshTokenHash,
+        public ?ClaimsRequest $claimsRequest,
+        public ?AuthorizationDetails $authorizationDetails,
+        public string $tokenShape,
         public RequestContext $context,
     ) {
-        $this->tenant = $authorization->tenant;
+    }
+
+    public function name(): string
+    {
+        return self::NAME;
+    }
+
+    public function subject(): ?Subject
+    {
+        return $this->subject;
     }
 }

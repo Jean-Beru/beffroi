@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Bridge\InMemory;
+namespace Beffroi\Core\Tests\Bridge\InMemory;
 
-use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
-use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -97,10 +97,17 @@ final class InMemoryRepositoriesTest extends TestCase
     {
         // Given
         $repository = new InMemoryCredentialRepository();
-        $password = new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$x'), Fixtures::now());
+        $password = new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(new Argon2id(), '$argon2id$x'), Fixtures::now());
         $repository->save($password);
         $repository->save(Fixtures::passkey($this->alice));
-        $repository->save(new PasswordCredential(Uuid::v7(), Fixtures::user(username: 'bob', subject: 'bob-subject'), new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$y'), Fixtures::now()));
+        $repository->save(
+            new PasswordCredential(
+                Uuid::v7(),
+                Fixtures::user(username: 'bob', subject: 'bob-subject'),
+                new PasswordHash(new Argon2id(), '$argon2id$y'),
+                Fixtures::now(),
+            ),
+        );
 
         // When / Then
         static::assertSame([$password], $repository->findByUser($this->alice, PasswordCredential::class));
@@ -112,10 +119,17 @@ final class InMemoryRepositoriesTest extends TestCase
         // Given
         $repository = new InMemoryCredentialRepository();
         $passkey = Fixtures::passkey($this->alice, createdAt: Fixtures::now()->modify('-1 day'));
-        $password = new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$x'), Fixtures::now());
+        $password = new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(new Argon2id(), '$argon2id$x'), Fixtures::now());
         $repository->save($password);
         $repository->save($passkey);
-        $repository->save(new PasswordCredential(Uuid::v7(), Fixtures::user(username: 'bob', subject: 'bob-subject'), new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$y'), Fixtures::now()));
+        $repository->save(
+            new PasswordCredential(
+                Uuid::v7(),
+                Fixtures::user(username: 'bob', subject: 'bob-subject'),
+                new PasswordHash(new Argon2id(), '$argon2id$y'),
+                Fixtures::now(),
+            ),
+        );
 
         // When / Then
         static::assertSame([$passkey, $password], $repository->findByUser($this->alice));
@@ -152,7 +166,7 @@ final class InMemoryRepositoriesTest extends TestCase
     {
         // Given
         $repository = new InMemoryCredentialRepository();
-        $repository->save(new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$x'), Fixtures::now()));
+        $repository->save(new PasswordCredential(Uuid::v7(), $this->alice, new PasswordHash(new Argon2id(), '$argon2id$x'), Fixtures::now()));
 
         // When / Then
         static::assertNull($repository->findByExternalId($this->tenant, PasswordCredential::class, '$argon2id$x'));

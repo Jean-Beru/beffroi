@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Fixture;
+namespace Beffroi\Core\Tests\Fixture;
 
 use CBOR\ByteStringObject;
+use CBOR\ListObject;
 use CBOR\MapItem;
 use CBOR\MapObject;
 use CBOR\NegativeIntegerObject;
 use CBOR\TextStringObject;
-use CBOR\UnsignedIntegerObject;
 use function chr;
 use function hash;
 use function is_array;
@@ -18,27 +18,15 @@ use function json_decode;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
 use LogicException;
-use const OPENSSL_ALGO_SHA256;
-use const OPENSSL_KEYTYPE_EC;
-use function openssl_pkey_get_details;
-use function openssl_pkey_new;
-use function openssl_sign;
-use OpenSSLAsymmetricKey;
 use function pack;
 use ParagonIE\ConstantTime\Base64UrlSafe;
 use function random_bytes;
-use function str_pad;
-use const STR_PAD_LEFT;
 use function str_repeat;
 use function strlen;
 use Webauthn\AuthenticatorData;
 
 /**
- * A FIDO2 authenticator in software, for the tests (WebAuthn Level 3 §6): one P-256 key pair, one
- * credential, the flags chosen by the test. It answers the options as a browser hands them to it
- * (§5.1.8, the JSON of parseCreationOptionsFromJSON and parseRequestOptionsFromJSON) with the JSON a
- * browser hands back (§5.1, toJSON): an attestation object of format "none" at creation, a signed
- * assertion afterwards. A hardware key counts its signatures, a synced passkey keeps the count at zero.
+ * WebAuthn Level 3 §6
  */
 final class SoftwareAuthenticator
 {
@@ -47,20 +35,16 @@ final class SoftwareAuthenticator
     public readonly string $aaguid;
 
     /**
-     * @var non-empty-string the user handle the creation options carried, sent back with every assertion (§6.3.2.1)
+     * @var non-empty-string
      */
     public private(set) string $userHandle = '-';
 
     public private(set) int $signCount = 0;
 
-    private OpenSSLAsymmetricKey $key;
-
     /**
-     * @param string $attestation the format of the attestation statement at creation (§8): "none", what a
-     *                            browser sends when the provider asked for none, or "packed" in self
-     *                            attestation (§8.2), what an authenticator may send anyway
-     * @param bool $forgesAttestation a packed statement whose signature does not hold: the test of a
-     *                                statement verified rather than skipped
+     * @param string $attestation "none" or "packed"
+     * @param string|null $aaguid sixteen bytes
+     * @param AttestationCertificate|null $attestedBy the certificate a "packed" attestation is signed with, self attestation without one
      */
     public function __construct(
         private string $origin,
@@ -71,22 +55,14 @@ final class SoftwareAuthenticator
         private bool $backedUp = false,
         private string $attestation = 'none',
         private bool $forgesAttestation = false,
+        private SoftwareCredentialKey $credentialKey = new Es256SoftwareKey(),
+        ?string $aaguid = null,
+        private ?AttestationCertificate $attestedBy = null,
     ) {
         $this->credentialId = random_bytes(32);
-        $this->aaguid = random_bytes(16);
-        $key = openssl_pkey_new([
-            'curve_name' => 'prime256v1',
-            'private_key_type' => OPENSSL_KEYTYPE_EC,
-        ]);
-        if ($key === false) {
-            throw new LogicException('OpenSSL could not generate a P-256 key.');
-        }
-        $this->key = $key;
+        $this->aaguid = $aaguid ?? random_bytes(16);
     }
 
-    /**
-     * The same credential presented from another origin: the test of a phished assertion.
-     */
     public function atOrigin(string $origin): self
     {
         $clone = clone $this;
@@ -95,9 +71,6 @@ final class SoftwareAuthenticator
         return $clone;
     }
 
-    /**
-     * The same credential scoped to another relying party: the test of a wrong rpId.
-     */
     public function forRelyingParty(string $relyingPartyId): self
     {
         $clone = clone $this;
@@ -107,7 +80,19 @@ final class SoftwareAuthenticator
     }
 
     /**
-     * A later assertion with a count that did not grow: a cloned authenticator or a replay (§6.1.1).
+     * WebAuthn Level 3 §6.1.3
+     */
+    public function withoutBackupEligibility(): self
+    {
+        $clone = clone $this;
+        $clone->backupEligible = false;
+        $clone->backedUp = false;
+
+        return $clone;
+    }
+
+    /**
+     * WebAuthn Level 3 §6.1.1
      */
     public function withSignCount(int $signCount): self
     {
@@ -118,10 +103,7 @@ final class SoftwareAuthenticator
     }
 
     /**
-     * The registration ceremony on the authenticator's side (§6.3.2): the attestation object with the new
-     * credential, of format "none".
-     *
-     * @param string $creationOptions the JSON the provider gave the browser
+     * WebAuthn Level 3 §6.3.2
      */
     public function create(string $creationOptions): string
     {
@@ -133,7 +115,9 @@ final class SoftwareAuthenticator
             throw new LogicException('The creation options name no user.');
         }
         $this->userHandle = $userHandle;
-        $relyingPartyId = $this->relyingPartyId ?? (is_array($rp) && is_string($rp['id'] ?? null) ? $rp['id'] : throw new LogicException('The creation options name no relying party.'));
+        $relyingPartyId =
+            $this->relyingPartyId
+            ?? (is_array($rp) && is_string($rp['id'] ?? null) ? $rp['id'] : throw new LogicException('The creation options name no relying party.'));
         $attestedCredentialData = $this->aaguid . pack('n', strlen($this->credentialId)) . $this->credentialId . $this->cosePublicKey();
         $authenticatorData = $this->authenticatorData($relyingPartyId, AuthenticatorData::FLAG_AT, $attestedCredentialData);
         $clientDataJson = $this->clientDataJson('webauthn.create', self::challenge($options));
@@ -158,21 +142,20 @@ final class SoftwareAuthenticator
     }
 
     /**
-     * The authentication ceremony on the authenticator's side (§6.3.3): the authenticator data and the
-     * signature over them and the hash of the client data.
-     *
-     * @param string $requestOptions the JSON the provider gave the browser
+     * WebAuthn Level 3 §6.3.3
      */
     public function get(string $requestOptions): string
     {
         $options = self::decode($requestOptions);
-        $relyingPartyId = $this->relyingPartyId ?? (is_string($options['rpId'] ?? null) ? $options['rpId'] : throw new LogicException('The request options name no relying party.'));
+        $relyingPartyId =
+            $this->relyingPartyId
+            ?? (is_string($options['rpId'] ?? null) ? $options['rpId'] : throw new LogicException('The request options name no relying party.'));
         if (! $this->backupEligible) {
             ++$this->signCount;
         }
         $clientDataJson = $this->clientDataJson('webauthn.get', self::challenge($options));
         $authenticatorData = $this->authenticatorData($relyingPartyId, 0, '');
-        $signature = $this->sign($authenticatorData . hash('sha256', $clientDataJson, true));
+        $signature = $this->credentialKey->sign($authenticatorData . hash('sha256', $clientDataJson, true));
 
         return json_encode([
             'id' => Base64UrlSafe::encodeUnpadded($this->credentialId),
@@ -189,63 +172,44 @@ final class SoftwareAuthenticator
     }
 
     /**
-     * The COSE_Key (RFC 9053 §7.1) of the public key, as the authenticator encodes it.
+     * RFC 9053 §7
      */
     public function cosePublicKey(): string
     {
-        $details = openssl_pkey_get_details($this->key);
-        $curve = is_array($details) && is_array($details['ec'] ?? null) ? $details['ec'] : [];
-        $x = $curve['x'] ?? null;
-        $y = $curve['y'] ?? null;
-        if (! is_string($x) || ! is_string($y)) {
-            throw new LogicException('OpenSSL could not describe the key.');
-        }
-
-        // RFC 9053 §7.1.1: kty EC2 (1: 2), alg ES256 (3: -7), crv P-256 (-1: 1), x (-2), y (-3)
-        return (string) MapObject::create([
-            MapItem::create(UnsignedIntegerObject::create(1), UnsignedIntegerObject::create(2)),
-            MapItem::create(UnsignedIntegerObject::create(3), NegativeIntegerObject::create(-7)),
-            MapItem::create(NegativeIntegerObject::create(-1), UnsignedIntegerObject::create(1)),
-            MapItem::create(NegativeIntegerObject::create(-2), ByteStringObject::create(str_pad($x, 32, "\0", STR_PAD_LEFT))),
-            MapItem::create(NegativeIntegerObject::create(-3), ByteStringObject::create(str_pad($y, 32, "\0", STR_PAD_LEFT))),
-        ]);
+        return $this->credentialKey->cosePublicKey();
     }
 
     /**
-     * §8.2, packed in self attestation: the signature over the same data as an assertion, with the
-     * credential key itself; nothing for "none" (§8.7).
+     * WebAuthn Level 3 §8.2, §8.7
      */
     private function attestationStatement(string $data): MapObject
     {
         if ($this->attestation !== 'packed') {
             return MapObject::create();
         }
-        $signature = $this->sign($data);
-
-        return MapObject::create([
-            MapItem::create(TextStringObject::create('alg'), NegativeIntegerObject::create(-7)),
-            MapItem::create(TextStringObject::create('sig'), ByteStringObject::create($this->forgesAttestation ? str_repeat("\0", strlen($signature)) : $signature)),
-        ]);
-    }
-
-    /**
-     * ES256 (RFC 9053 §2.1), as an authenticator signs.
-     */
-    private function sign(string $data): string
-    {
-        if (! openssl_sign($data, $signature, $this->key, OPENSSL_ALGO_SHA256) || ! is_string($signature)) {
-            throw new LogicException('OpenSSL could not sign.');
+        $signer = $this->attestedBy ?? $this->credentialKey;
+        $signature = $signer->sign($data);
+        $members = [
+            MapItem::create(TextStringObject::create('alg'), NegativeIntegerObject::create($signer->algorithm())),
+            MapItem::create(
+                TextStringObject::create('sig'),
+                ByteStringObject::create($this->forgesAttestation ? str_repeat("\0", strlen($signature)) : $signature),
+            ),
+        ];
+        if ($this->attestedBy !== null) {
+            $members[] = MapItem::create(TextStringObject::create('x5c'), ListObject::create([ByteStringObject::create($this->attestedBy->der)]));
         }
 
-        return $signature;
+        return MapObject::create($members);
     }
 
     /**
-     * §6.1: rpIdHash, flags, signCount, then what the ceremony appends.
+     * WebAuthn Level 3 §6.1
      */
     private function authenticatorData(string $relyingPartyId, int $flags, string $trailer): string
     {
-        $flags |= ($this->userPresent ? AuthenticatorData::FLAG_UP : 0)
+        $flags |=
+            ($this->userPresent ? AuthenticatorData::FLAG_UP : 0)
             | ($this->userVerified ? AuthenticatorData::FLAG_UV : 0)
             | ($this->backupEligible ? AuthenticatorData::FLAG_BE : 0)
             | ($this->backedUp ? AuthenticatorData::FLAG_BS : 0);
@@ -254,7 +218,7 @@ final class SoftwareAuthenticator
     }
 
     /**
-     * §5.8.1, as the browser writes it.
+     * WebAuthn Level 3 §5.8.1
      */
     private function clientDataJson(string $type, string $challenge): string
     {

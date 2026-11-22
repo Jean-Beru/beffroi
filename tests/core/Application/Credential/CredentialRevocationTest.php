@@ -2,20 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Application\Credential;
+namespace Beffroi\Core\Tests\Application\Credential;
 
-use Heidi\Core\Application\Credential\CredentialRevocation;
-use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Event\CredentialRevoked;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Core\Application\Credential\CredentialRevocation;
+use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Domain\Event\CredentialRevoked;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Architecture §3.4: a credential of any revocable kind leaves use without leaving its row.
+ * Architecture §3.4
  */
 final class CredentialRevocationTest extends TestCase
 {
@@ -54,6 +55,38 @@ final class CredentialRevocationTest extends TestCase
         static::assertCount(1, $events);
         static::assertSame($passkey, $events[0]->credential);
         static::assertSame($context, $events[0]->context);
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function theRevocationAnAdministratorMadeNamesThemInItsAct(): void
+    {
+        // Given
+        $passkey = Fixtures::passkey();
+        $this->credentials->save($passkey);
+        $administrator = new Subject('administrator-subject');
+
+        // When
+        $this->revocation->revokeByAnAdministrator($passkey, $administrator, Fixtures::context());
+
+        // Then
+        static::assertSame([true, $administrator], [$passkey->isRevoked(), $this->events->of(CredentialRevoked::class)[0]->author()]);
+    }
+
+    #[Test]
+    public function theRevocationThePersonMadeNamesNoAuthor(): void
+    {
+        // Given
+        $passkey = Fixtures::passkey();
+        $this->credentials->save($passkey);
+
+        // When
+        $this->revocation->revoke($passkey, Fixtures::context());
+
+        // Then
+        static::assertNull($this->events->of(CredentialRevoked::class)[0]->author());
     }
 
     #[Test]

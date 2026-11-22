@@ -2,30 +2,31 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Bridge\InMemory;
+namespace Beffroi\Oidc\Bridge\InMemory;
 
 use function array_find;
 use function array_values;
 use DateTimeImmutable;
-use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
-use Heidi\Oidc\Port\LoggedInClientsInterface;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationCode;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Port\AuthorizationCodeRepositoryInterface;
+use Beffroi\Oidc\Port\CanRevokeGrantsByConsentInterface;
+use Beffroi\Oidc\Port\LoggedInClientsInterface;
+use Beffroi\Oidc\Port\RecordedGrantsInterface;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * For tests and for the examples: nothing here survives the process.
- */
-final class InMemoryAuthorizationCodeRepository implements AuthorizationCodeRepositoryInterface, LoggedInClientsInterface
+final class InMemoryAuthorizationCodeRepository implements
+    AuthorizationCodeRepositoryInterface,
+    CanRevokeGrantsByConsentInterface,
+    LoggedInClientsInterface,
+    RecordedGrantsInterface
 {
     /**
      * @var array<string, AuthorizationCode> by code hash
      */
     private array $codes = [];
 
-    /**
-     * For tests that must see a write happen on an object they already hold.
-     */
     public private(set) int $saves = 0;
 
     public function findByCodeHash(string $codeHash): ?AuthorizationCode
@@ -63,6 +64,24 @@ final class InMemoryAuthorizationCodeRepository implements AuthorizationCodeRepo
         }
 
         return array_values($clients);
+    }
+
+    /**
+     * @return list<AuthorizationCode>
+     */
+    public function revokeByConsent(Consent $consent, DateTimeImmutable $now): array
+    {
+        $revoked = [];
+        foreach ($this->codes as $code) {
+            if ($code->isRevoked() || ! $consent->covers($code->session, $code->clientId)) {
+                continue;
+            }
+            $code->revoke($now);
+            $this->save($code);
+            $revoked[] = $code;
+        }
+
+        return $revoked;
     }
 
     public function save(AuthorizationCode $code): void

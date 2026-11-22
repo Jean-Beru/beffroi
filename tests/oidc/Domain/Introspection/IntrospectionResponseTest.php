@@ -2,18 +2,23 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Introspection;
+namespace Beffroi\Oidc\Tests\Domain\Introspection;
 
 use DateTimeImmutable;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Tenant\Issuer;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
-use Heidi\Oidc\Domain\Introspection\IntrospectionResponse;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Token\VerifiedAccessToken;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Authorization\AuthenticationSnapshot;
+use Beffroi\Oidc\Domain\Exchange\Actor;
+use Beffroi\Oidc\Domain\Introspection\IntrospectionResponse;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Token\TokenAudience;
+use Beffroi\Oidc\Domain\Token\TokenSignIn;
+use Beffroi\Oidc\Domain\Token\VerifiedAccessToken;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
+use Beffroi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -21,7 +26,7 @@ use Symfony\Component\Uid\Uuid;
 final class IntrospectionResponseTest extends TestCase
 {
     /**
-     * RFC 7662 §2.2: "active" alone, a JSON boolean, when the token is not one to honour.
+     * RFC 7662 §2.2
      */
     #[Test]
     public function anInactiveTokenIsDescribedByActiveFalseAlone(): void
@@ -31,18 +36,19 @@ final class IntrospectionResponseTest extends TestCase
 
         // Then
         static::assertFalse($response->isActive());
-        static::assertSame([
-            'active' => false,
-        ], $response->members);
+        static::assertSame(
+            [
+                'active' => false,
+            ],
+            $response->members,
+        );
         static::assertSame('{"active":false}', $response->body());
         static::assertSame('application/json', $response->contentType());
         static::assertNull($response->jwt);
     }
 
     /**
-     * RFC 7662 §2.2: the members in the order of the section, then the authentication of RFC 9068 §2.2.1
-     * and the two names of the provider (architecture §4.6); "aud" and "client_id" are the client until a
-     * "resource" parameter says otherwise.
+     * RFC 7662 §2.2, RFC 9068 §2.2.1, Architecture §4.6
      */
     #[Test]
     public function anActiveTokenIsDescribedByWhatTheProviderKnows(): void
@@ -50,34 +56,232 @@ final class IntrospectionResponseTest extends TestCase
         // Given
         $session = Uuid::v7();
         $grant = Uuid::v7();
-        $token = new VerifiedAccessToken(Clients::public(Fixtures::tenant()), new Subject('alice-subject'), $session, $grant, [Scope::openid(), new Scope('email')], ['name'], new AuthenticationSnapshot(new DateTimeImmutable('@1789466000'), ['pwd', 'otp'], '2'), new DateTimeImmutable('@1789466400'), new DateTimeImmutable('@1789467000'));
+        $token = new VerifiedAccessToken(
+            Clients::public(Fixtures::tenant()),
+            new TokenAudience(['spa']),
+            new Subject('alice-subject'),
+            $grant,
+            new Scopes([Scope::openid(), new Scope('email')]),
+            new TokenSignIn($session, new AuthenticationSnapshot(new DateTimeImmutable('@1789466000'), ['pwd', 'otp'], '2')),
+            ['name'],
+            new DateTimeImmutable('@1789466400'),
+            new DateTimeImmutable('@1789467000'),
+        );
 
         // When
         $response = IntrospectionResponse::active($token, new Issuer('https://id.acme.example'));
 
         // Then
         static::assertTrue($response->isActive());
-        static::assertSame([
-            'active' => true,
-            'scope' => 'openid email',
-            'client_id' => 'spa',
-            'token_type' => 'Bearer',
-            'exp' => 1789467000,
-            'iat' => 1789466400,
-            'sub' => 'alice-subject',
-            'aud' => 'spa',
-            'iss' => 'https://id.acme.example',
-            'auth_time' => 1789466000,
-            'acr' => '2',
-            'amr' => ['pwd', 'otp'],
-            'sid' => $session->toRfc4122(),
-            'grant_id' => $grant->toRfc4122(),
-        ], $response->members);
-        static::assertStringStartsWith('{"active":true,"scope":"openid email","client_id":"spa","token_type":"Bearer","exp":1789467000,"iat":1789466400,', $response->body());
+        static::assertSame(
+            [
+                'active' => true,
+                'scope' => 'openid email',
+                'client_id' => 'spa',
+                'token_type' => 'Bearer',
+                'exp' => 1789467000,
+                'iat' => 1789466400,
+                'sub' => 'alice-subject',
+                'aud' => 'spa',
+                'iss' => 'https://id.acme.example',
+                'auth_time' => 1789466000,
+                'acr' => '2',
+                'amr' => ['pwd', 'otp'],
+                'sid' => $session->toRfc4122(),
+                'grant_id' => $grant->toRfc4122(),
+            ],
+            $response->members,
+        );
+        static::assertStringStartsWith(
+            '{"active":true,"scope":"openid email","client_id":"spa","token_type":"Bearer","exp":1789467000,"iat":1789466400,',
+            $response->body(),
+        );
     }
 
     /**
-     * RFC 9701 §5: the signed form travels as the JWT, with its own media type; the members stay.
+     * RFC 6749 §4.4, RFC 9068 §2.2
+     */
+    #[Test]
+    public function aTokenNobodySignedInForIsDescribedWithoutASignIn(): void
+    {
+        // Given
+        $grant = Uuid::v7();
+        $token = new VerifiedAccessToken(
+            Clients::public(Fixtures::tenant(), resources: Clients::resources()),
+            new TokenAudience([Clients::CALENDAR]),
+            new Subject('spa'),
+            $grant,
+            new Scopes([new Scope('invoices.read')]),
+            null,
+            [],
+            new DateTimeImmutable('@1789466400'),
+            new DateTimeImmutable('@1789467000'),
+        );
+
+        // When
+        $response = IntrospectionResponse::active($token, new Issuer('https://id.acme.example'));
+
+        // Then
+        static::assertSame(
+            [
+                'active' => true,
+                'scope' => 'invoices.read',
+                'client_id' => 'spa',
+                'token_type' => 'Bearer',
+                'exp' => 1789467000,
+                'iat' => 1789466400,
+                'sub' => 'spa',
+                'aud' => Clients::CALENDAR,
+                'iss' => 'https://id.acme.example',
+                'grant_id' => $grant->toRfc4122(),
+            ],
+            $response->members,
+        );
+    }
+
+    /**
+     * RFC 8693 §4.1
+     */
+    #[Test]
+    public function aTokenSomebodyHoldsForItsSubjectRendersTheChainOfActors(): void
+    {
+        // Given
+        $grant = Uuid::v7();
+        $token = new VerifiedAccessToken(
+            Clients::public(Fixtures::tenant(), resources: Clients::resources()),
+            new TokenAudience([Clients::CALENDAR]),
+            new Subject('alice-subject'),
+            $grant,
+            new Scopes([new Scope('invoices.read')]),
+            null,
+            [],
+            new DateTimeImmutable('@1789466400'),
+            new DateTimeImmutable('@1789467000'),
+            null,
+            new Actor(new Subject('gateway'), new Actor(new Subject('first-hop'))),
+        );
+
+        // When
+        $response = IntrospectionResponse::active($token, new Issuer('https://id.acme.example'));
+
+        // Then
+        static::assertSame(
+            [
+                'sub' => 'gateway',
+                'act' => [
+                    'sub' => 'first-hop',
+                ],
+            ],
+            $response->members['act'],
+        );
+    }
+
+    /**
+     * RFC 9396 §9
+     */
+    #[Test]
+    public function aTokenOfAGrantWithDetailsRendersThem(): void
+    {
+        // Given
+        $details = AuthorizationDetailTypes::details('acct-4711', ['read']);
+        $token = new VerifiedAccessToken(
+            Clients::public(Fixtures::tenant(), resources: Clients::resources()),
+            new TokenAudience([Clients::CALENDAR]),
+            new Subject('alice-subject'),
+            Uuid::v7(),
+            new Scopes([Scope::openid()]),
+            new TokenSignIn(Uuid::v7(), new AuthenticationSnapshot(new DateTimeImmutable('@1789466000'), ['pwd'], '1')),
+            [],
+            new DateTimeImmutable('@1789466400'),
+            new DateTimeImmutable('@1789467000'),
+            authorizationDetails: $details,
+        );
+
+        // When
+        $response = IntrospectionResponse::active($token, new Issuer('https://id.acme.example'));
+
+        // Then
+        static::assertSame($details->toClaim(), $response->members['authorization_details']);
+    }
+
+    #[Test]
+    public function aTokenOfAGrantWithoutDetailsRendersNone(): void
+    {
+        // Given
+        $token = new VerifiedAccessToken(
+            Clients::public(Fixtures::tenant(), resources: Clients::resources()),
+            new TokenAudience([Clients::CALENDAR]),
+            new Subject('alice-subject'),
+            Uuid::v7(),
+            new Scopes([Scope::openid()]),
+            null,
+            [],
+            new DateTimeImmutable('@1789466400'),
+            new DateTimeImmutable('@1789467000'),
+        );
+
+        // When
+        $response = IntrospectionResponse::active($token, new Issuer('https://id.acme.example'));
+
+        // Then
+        static::assertArrayNotHasKey('authorization_details', $response->members);
+    }
+
+    /**
+     * RFC 8693 §1.3
+     */
+    #[Test]
+    public function aTokenNobodyHoldsForAnybodyRendersNoActor(): void
+    {
+        // Given
+        $token = new VerifiedAccessToken(
+            Clients::public(Fixtures::tenant(), resources: Clients::resources()),
+            new TokenAudience([Clients::CALENDAR]),
+            new Subject('alice-subject'),
+            Uuid::v7(),
+            new Scopes([new Scope('invoices.read')]),
+            null,
+            [],
+            new DateTimeImmutable('@1789466400'),
+            new DateTimeImmutable('@1789467000'),
+        );
+
+        // When
+        $response = IntrospectionResponse::active($token, new Issuer('https://id.acme.example'));
+
+        // Then
+        static::assertArrayNotHasKey('act', $response->members);
+    }
+
+    /**
+     * RFC 8707 §2, RFC 7519 §4.1.3
+     */
+    #[Test]
+    public function theAudienceIsWhatTheTokenIsAddressedTo(): void
+    {
+        // Given
+        $token = new VerifiedAccessToken(
+            Clients::public(Fixtures::tenant(), resources: Clients::resources()),
+            new TokenAudience([Clients::CALENDAR, Clients::CONTACTS]),
+            new Subject('alice-subject'),
+            Uuid::v7(),
+            new Scopes([Scope::openid()]),
+            new TokenSignIn(Uuid::v7(), new AuthenticationSnapshot(new DateTimeImmutable('@1789466000'), ['pwd'], '1')),
+            [],
+            new DateTimeImmutable('@1789466400'),
+            new DateTimeImmutable('@1789467000'),
+        );
+
+        // When
+        $response = IntrospectionResponse::active($token, new Issuer('https://id.acme.example'));
+
+        // Then
+        static::assertSame([Clients::CALENDAR, Clients::CONTACTS], $response->members['aud']);
+        static::assertSame('spa', $response->members['client_id']);
+    }
+
+    /**
+     * RFC 9701 §5
      */
     #[Test]
     public function aSignedResponseIsTheJwtWithItsMediaType(): void

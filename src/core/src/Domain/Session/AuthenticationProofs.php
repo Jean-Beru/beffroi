@@ -2,20 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Domain\Session;
+namespace Beffroi\Core\Domain\Session;
 
 use function array_keys;
 use function array_map;
 use function count;
 use DateTimeImmutable;
-use Heidi\Core\Exception\InvalidArgumentException;
-use function in_array;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use function is_int;
+use function is_string;
 use function max;
 
-/**
- * The methods proven for a session and when each was proven last (the shape of symfony/symfony#66064).
- * "amr" is the list of keys, "auth_time" the most recent proof.
- */
 final readonly class AuthenticationProofs
 {
     /**
@@ -46,8 +43,6 @@ final readonly class AuthenticationProofs
     }
 
     /**
-     * Several methods proven at once, as an assertion of a passkey does (RFC 8176 §2 lists them all).
-     *
      * @param non-empty-list<AuthenticationMethod> $methods
      */
     public static function ofAll(array $methods, DateTimeImmutable $provenAt): self
@@ -60,9 +55,6 @@ final readonly class AuthenticationProofs
         return new self($entries);
     }
 
-    /**
-     * The newest proof of a method replaces the older one.
-     */
     public function with(AuthenticationMethod $method, DateTimeImmutable $provenAt): self
     {
         $entries = $this->entries;
@@ -84,9 +76,6 @@ final readonly class AuthenticationProofs
         return $this->entries[$method->value] ?? null;
     }
 
-    /**
-     * The "auth_time" (OIDC Core §2).
-     */
     public function latest(): DateTimeImmutable
     {
         return max($this->entries);
@@ -101,26 +90,15 @@ final readonly class AuthenticationProofs
     }
 
     /**
-     * The distinct kinds of factor, in the order they were proven.
-     *
-     * @return list<AuthenticationFactor>
+     * @return list<AuthenticationFactor> each kind once
      */
     public function factors(): array
     {
-        $factors = [];
-        foreach ($this->methods() as $method) {
-            $factor = $method->factor();
-            if ($factor !== null && ! in_array($factor, $factors, true)) {
-                $factors[] = $factor;
-            }
-        }
-
-        return $factors;
+        return AuthenticationMethod::factorsOf($this->methods());
     }
 
     /**
-     * The "amr" claim values (RFC 8176 §2): the methods, and "mfa" when two factors of different kinds
-     * were proven, since §2 lets the specific methods stand next to it.
+     * RFC 8176 §2
      *
      * @return non-empty-list<string>
      */
@@ -140,5 +118,23 @@ final readonly class AuthenticationProofs
     public function toTimestamps(): array
     {
         return array_map(static fn (DateTimeImmutable $provenAt): int => $provenAt->getTimestamp(), $this->entries);
+    }
+
+    /**
+     * @param array<array-key, mixed> $timestamps
+     *
+     * @throws InvalidArgumentException when empty, or when an entry is not a method reference on a Unix timestamp
+     */
+    public static function fromTimestamps(array $timestamps): self
+    {
+        $entries = [];
+        foreach ($timestamps as $method => $timestamp) {
+            if (! is_string($method) || ! is_int($timestamp)) {
+                throw new InvalidArgumentException('Authentication proofs map a method reference to a Unix timestamp.');
+            }
+            $entries[$method] = new DateTimeImmutable('@' . $timestamp);
+        }
+
+        return new self($entries);
     }
 }

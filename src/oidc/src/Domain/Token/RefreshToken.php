@@ -2,74 +2,69 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Token;
+namespace Beffroi\Oidc\Domain\Token;
 
-use function array_all;
-use function array_any;
+use Beffroi\Core\Domain\PersonalData\ClassifiedFieldsInterface;
+use Beffroi\Core\Domain\PersonalData\FieldClassificationInterface;
+use Beffroi\Core\Domain\PersonalData\NoPersonalDatum;
+use Beffroi\Core\Domain\PersonalData\Reason;
 use DateTimeImmutable;
-use function hash;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
-use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
-use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Exception\LogicException;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Domain\Authorization\AuthenticationSnapshot;
+use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
+use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ResolvesItsClientInterface;
+use Beffroi\Oidc\Domain\Record\ExpiringRecord;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Exception\LogicException;
 use function min;
-use function preg_match;
-use function random_bytes;
-use SensitiveParameter;
 
 /**
- * A refresh token (RFC 6749 §6, architecture §4.6) as the provider keeps it: the SHA-256 of the value,
- * its family, the authentication of the original authorization carried along the rotations (OIDC Core
- * §12.2). Presented once; a second presentation is a reuse (RFC 9700 §4.13.2).
+ * RFC 6749 §6, RFC 9700 §4.13.2
  */
-final class RefreshToken
+final class RefreshToken extends ExpiringRecord implements HashedTokenInterface, ResolvesItsClientInterface, ClassifiedFieldsInterface
 {
     public readonly Tenant $tenant;
 
-    /**
-     * What a store keeps; the object is what the client repository resolved for it.
-     */
     public readonly string $clientId;
-
-    /**
-     * @var non-empty-list<Scope>
-     */
-    public readonly array $scopes;
 
     public private(set) ?DateTimeImmutable $rotatedAt = null;
 
     public private(set) ?DateTimeImmutable $revokedAt = null;
 
     /**
-     * @param string $tokenHash see hash()
-     * @param list<Scope> $scopes at least one
-     * @param AuthenticationSnapshot $authentication what the session had proven at the grant, the same for the whole family
-     * @param DateTimeImmutable $expiresAt the sliding expiry, never past the one of the family
+     * @param ResourceIndicators|null $resources the whole grant's, which a refresh may narrow (RFC 8707 §2.2)
+     * @param AuthorizationDetails|null $authorizationDetails the whole grant's, which a refresh may narrow (RFC 9396 §7)
+     * @param AuthenticationSnapshot $authentication as proven at the grant, the same for the whole family
+     * @param DateTimeImmutable $expiresAt sliding, never past the family's
      */
     public function __construct(
         public readonly string $tokenHash,
         public readonly RefreshTokenFamily $family,
         public readonly Client $client,
         public readonly AuthenticationSession $session,
-        array $scopes,
+        public readonly Scopes $scopes,
+        public readonly ?ResourceIndicators $resources,
+        public readonly ?AuthorizationDetails $authorizationDetails,
         public readonly ?ClaimsRequest $claimsRequest,
         public readonly AuthenticationSnapshot $authentication,
         public readonly DateTimeImmutable $issuedAt,
         public readonly DateTimeImmutable $expiresAt,
+        public readonly ?ConfirmationInterface $confirmation = null,
     ) {
-        if (preg_match(AuthorizationCode::HASH_PATTERN, $tokenHash) !== 1) {
+        if (! DrawnSecret::isDigest($tokenHash)) {
             throw new InvalidArgumentException('A refresh token is stored as its hex SHA-256.');
         }
         if (! $session->tenant->equals($client->tenant)) {
             throw new InvalidArgumentException('A refresh token binds a session and a client of the same tenant.');
         }
-        if ($scopes === []) {
-            throw new InvalidArgumentException('A refresh token grants at least one scope.');
+        if (! $family->tenant->equals($client->tenant)) {
+            throw new InvalidArgumentException('A refresh token binds a family and a client of the same tenant.');
         }
         if ($issuedAt < $family->startedAt) {
             throw new InvalidArgumentException('A refresh token is issued after its family started.');
@@ -81,40 +76,54 @@ final class RefreshToken
             throw new InvalidArgumentException('A refresh token never outlives its family.');
         }
         $this->tenant = $client->tenant;
-        $this->clientId = $client->clientId;
-        $this->scopes = $scopes;
+        $this->clientId = $client->registration->clientId;
     }
 
-    public static function fromAuthorization(string $tokenHash, RefreshTokenFamily $family, GrantedAuthorization $authorization, DateTimeImmutable $now, DateTimeImmutable $expiresAt): self
-    {
+    public static function fromAuthorization(
+        string $tokenHash,
+        RefreshTokenFamily $family,
+        UserAuthorizationInterface $authorization,
+        DateTimeImmutable $now,
+        DateTimeImmutable $expiresAt,
+    ): self {
         return new self(
             $tokenHash,
             $family,
             $authorization->client,
             $authorization->session,
             $authorization->grantedScopes,
+            $authorization->grantedResources,
+            $authorization->grantedAuthorizationDetails,
             $authorization->claimsRequest,
             $authorization->authentication,
             $now,
             min($expiresAt, $family->expiresAt),
+            // A confidential client authenticates at every refresh, so only a public client's token keeps its binding.
+            $authorization->client->registration->isPublic() ? $authorization->confirmation : null,
         );
     }
 
     /**
-     * 256 bits, base64url without padding.
+     * RFC 9700 §4.13.2
+     *
+     * Where client authentication or a binding protects the token, rotation adds nothing and FAPI 2.0 Security
+     * Profile §5.3.2.1-9 forbids it.
      */
-    public static function generate(): string
+    public function rotatesOnUse(): bool
     {
-        return Base64Url::encode(random_bytes(32));
-    }
-
-    public static function hash(#[SensitiveParameter] string $token): string
-    {
-        return hash('sha256', $token);
+        return $this->client->registration->isPublic() && $this->confirmation === null;
     }
 
     /**
-     * RFC 6749 §6, RFC 9700 §4.13.2. The grant reads isRotated() first: a second presentation is a reuse.
+     * RFC 9449 §5
+     */
+    public function isRefreshedBy(?ConfirmationInterface $confirmation): bool
+    {
+        return $this->confirmation === null || $confirmation !== null && $confirmation->matches($this->confirmation);
+    }
+
+    /**
+     * RFC 6749 §6, RFC 9700 §4.13.2
      */
     public function rotate(DateTimeImmutable $now): void
     {
@@ -127,9 +136,6 @@ final class RefreshToken
         $this->rotatedAt = $now;
     }
 
-    /**
-     * The first revocation wins.
-     */
     public function revoke(DateTimeImmutable $now): void
     {
         if ($this->revokedAt !== null) {
@@ -148,24 +154,32 @@ final class RefreshToken
         return $this->revokedAt !== null;
     }
 
-    /**
-     * Never past the expiry of the family.
-     */
-    public function isExpired(DateTimeImmutable $now): bool
+    public function clientHolder(): object
     {
-        return $now >= $this->expiresAt;
+        return $this;
     }
 
     /**
-     * @param list<Scope> $scopes
+     * @return array<string, FieldClassificationInterface>
      */
-    public function covers(array $scopes): bool
+    public static function classifiedFields(): array
     {
-        return array_all($scopes, fn (Scope $scope): bool => $this->hasScope($scope));
-    }
-
-    public function hasScope(Scope $scope): bool
-    {
-        return array_any($this->scopes, static fn (Scope $granted): bool => $granted->equals($scope));
+        return [
+            'clientId' => new NoPersonalDatum(Reason::A_CLIENT),
+            'scopes' => new NoPersonalDatum(Reason::WHAT_THE_REQUEST_ASKED),
+            'resources' => new NoPersonalDatum(Reason::WHAT_THE_REQUEST_ASKED),
+            'authorizationDetails' => new NoPersonalDatum(Reason::WHAT_THE_REQUEST_ASKED),
+            'claimsRequest' => new NoPersonalDatum(Reason::WHAT_THE_REQUEST_ASKED),
+            'authentication' => new NoPersonalDatum(Reason::WHAT_THE_SESSION_PROVED),
+            'issuedAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'expiresAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'rotatedAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'confirmation' => new NoPersonalDatum(Reason::WHAT_A_TOKEN_IS_BOUND_TO),
+            'revokedAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'tokenHash' => new NoPersonalDatum(Reason::HASHED),
+            'tenant' => new NoPersonalDatum(Reason::THE_TENANT),
+            'family' => new NoPersonalDatum(Reason::DRAWN_AT_RANDOM),
+            'session' => new NoPersonalDatum(Reason::DRAWN_AT_RANDOM),
+        ];
     }
 }

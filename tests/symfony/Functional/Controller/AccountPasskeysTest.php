@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Event\CredentialEnrolled;
-use Heidi\Core\Domain\Event\CredentialRevoked;
-use Heidi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Domain\Event\CredentialEnrolled;
+use Beffroi\Core\Domain\Event\CredentialRenamed;
+use Beffroi\Core\Domain\Event\CredentialRevoked;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use function ksort;
@@ -20,9 +21,7 @@ use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The page of the passkeys of the signed-in user (architecture §5.2): the list, the enrolment through the
- * ceremony of the core, the revocation, the script of the bundle. The authenticator of the browser is a
- * software one.
+ * Architecture §5.2
  */
 final class AccountPasskeysTest extends PasskeyTestCase
 {
@@ -50,8 +49,8 @@ final class AccountPasskeysTest extends PasskeyTestCase
 
         // Then
         self::assertInteractionHeaders($this->browser->getResponse());
-        static::assertCount(1, $crawler->filter('p[data-passkeys="none"]'));
-        static::assertCount(0, $crawler->filter('table'));
+        static::assertCount(1, $crawler->filter('table[data-passkeys="0"] tr[data-empty]'));
+        static::assertCount(0, $crawler->filter('table tbody tr[data-passkey]'));
         static::assertSame('/passkey.js', $crawler->filter('script')->attr('src'));
         $form = $crawler->filter('form[data-passkey="enrol"]');
         static::assertSame('/account/passkeys', $form->attr('action'));
@@ -61,7 +60,7 @@ final class AccountPasskeysTest extends PasskeyTestCase
     }
 
     /**
-     * WebAuthn Level 3 §5.4: the options of a discoverable credential for this user, no attestation asked.
+     * WebAuthn Level 3 §5.4
      */
     #[Test]
     public function theCreationOptionsAreForThisUserAndThisTenant(): void
@@ -79,18 +78,24 @@ final class AccountPasskeysTest extends PasskeyTestCase
         self::assertInteractionHeaders($response);
         $options = json_decode(self::string($response->getContent()), true, 8, JSON_THROW_ON_ERROR);
         static::assertIsArray($options);
-        static::assertSame([
-            'id' => 'op.test',
-            'name' => 'op.test',
-        ], self::sorted($options['rp']));
+        static::assertSame(
+            [
+                'id' => 'op.test',
+                'name' => 'op.test',
+            ],
+            self::sorted($options['rp']),
+        );
         $user = self::sorted($options['user']);
         static::assertSame('alice', $user['name']);
         static::assertSame(86, strlen(self::string($user['id'])), 'A 64-byte handle in base64url.');
-        static::assertSame([
-            'requireResidentKey' => true,
-            'residentKey' => 'required',
-            'userVerification' => 'preferred',
-        ], self::sorted($options['authenticatorSelection']));
+        static::assertSame(
+            [
+                'requireResidentKey' => true,
+                'residentKey' => 'required',
+                'userVerification' => 'preferred',
+            ],
+            self::sorted($options['authenticatorSelection']),
+        );
         static::assertSame('none', $options['attestation']);
         static::assertSame([], $options['excludeCredentials']);
     }
@@ -104,15 +109,14 @@ final class AccountPasskeysTest extends PasskeyTestCase
         // Then
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_UNAUTHORIZED, $response->getStatusCode());
-        static::assertSame([
-            'error' => 'login_required',
-        ], self::json($response));
+        static::assertSame(
+            [
+                'error' => 'login_required',
+            ],
+            self::json($response),
+        );
     }
 
-    /**
-     * The second criterion of the acceptance on this side: a passkey enrolled from a logged-in session,
-     * named, listed.
-     */
     #[Test]
     public function aPasskeyIsEnrolledFromTheSessionAndListed(): void
     {
@@ -120,9 +124,7 @@ final class AccountPasskeysTest extends PasskeyTestCase
         $device = self::device();
         $alice = self::user('alice');
         $this->signIn($alice);
-        $token = $this->passkeysPage()
-            ->filter('form[data-passkey="enrol"] input[name="_token"]')
-            ->attr('value');
+        $token = $this->passkeysPage()->filter('form[data-passkey="enrol"] input[name="_token"]')->attr('value');
         $options = $this->creationOptions();
 
         // When
@@ -134,7 +136,7 @@ final class AccountPasskeysTest extends PasskeyTestCase
 
         // Then
         $response = $this->browser->getResponse();
-        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertSame(Response::HTTP_SEE_OTHER, $response->getStatusCode(), self::string($response->getContent()));
         static::assertSame('/account/passkeys', $response->headers->get('Location'));
         $enrolled = self::events(CredentialEnrolled::class);
         static::assertCount(1, $enrolled);
@@ -142,15 +144,14 @@ final class AccountPasskeysTest extends PasskeyTestCase
         $passkey = self::passkeyOf($alice, $device);
         static::assertSame('YubiKey 5', $passkey->name);
         static::assertTrue($passkey->user->id->equals($alice->id));
-        $row = $this->passkeysPage()
-            ->filter('table[data-passkeys="1"] tr[data-passkey="' . $passkey->id . '"]');
+        $row = $this->passkeysPage()->filter('table[data-passkeys="1"] tr[data-passkey="' . $passkey->id . '"]');
         static::assertCount(1, $row);
         static::assertSame('no', $row->attr('data-revoked'));
-        static::assertStringContainsString('YubiKey 5', $row->text());
+        static::assertSame('YubiKey 5', $row->filter('form[data-passkey="rename"] input[name="name"]')->attr('value'));
     }
 
     /**
-     * §5.4, excludeCredentials: a second passkey is drawn with the first one excluded and the same handle.
+     * WebAuthn Level 3 §5.4
      */
     #[Test]
     public function aSecondPasskeyIsDrawnWithTheFirstExcluded(): void
@@ -164,13 +165,16 @@ final class AccountPasskeysTest extends PasskeyTestCase
 
         // Then
         static::assertIsArray($options);
-        static::assertSame([
+        static::assertSame(
             [
-                'type' => 'public-key',
-                'id' => Base64UrlSafe::encodeUnpadded($first->credentialId),
-                'transports' => ['usb'],
+                [
+                    'type' => 'public-key',
+                    'id' => Base64UrlSafe::encodeUnpadded($first->credentialId),
+                    'transports' => ['usb'],
+                ],
             ],
-        ], $options['excludeCredentials']);
+            $options['excludeCredentials'],
+        );
         static::assertSame(Base64UrlSafe::encodeUnpadded($first->userHandle->value), self::sorted($options['user'])['id']);
     }
 
@@ -184,19 +188,15 @@ final class AccountPasskeysTest extends PasskeyTestCase
         // Given
         $alice = self::user('alice');
         $this->signIn($alice);
-        $token = $this->passkeysPage()
-            ->filter('form[data-passkey="enrol"] input[name="_token"]')
-            ->attr('value');
+        $token = $this->passkeysPage()->filter('form[data-passkey="enrol"] input[name="_token"]')->attr('value');
         static::assertIsString($token);
 
         // When
-        $crawler = $post($this, $token);
+        $post($this, $token);
 
         // Then
-        $response = $this->browser->getResponse();
-        static::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode(), self::string($response->getContent()));
-        static::assertSame($error, $crawler->filter('p[data-error]')->attr('data-error'));
-        static::assertSame([], self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($alice, PasskeyCredential::class));
+        static::assertSame($error, $this->afterTheForm()->filter('p[data-error]')->attr('data-error'));
+        static::assertSame([], self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($alice, PasskeyCredential::class));
         static::assertSame([], self::events(CredentialEnrolled::class));
     }
 
@@ -225,19 +225,23 @@ final class AccountPasskeysTest extends PasskeyTestCase
             static fn (self $test, string $token) => $test->browser->request('POST', '/account/passkeys', [
                 '_token' => $token,
                 'name' => 'Key',
-                '_passkey' => self::device()->create('{"rp":{"id":"op.test"},"user":{"id":"' . str_repeat('A', 86) . '"},"challenge":"' . str_repeat('A', 43) . '"}'),
+                '_passkey' => self::device()
+                    ->create('{"rp":{"id":"op.test"},"user":{"id":"' . str_repeat('A', 86) . '"},"challenge":"' . str_repeat('A', 43) . '"}'),
             ]),
             'no_ceremony',
         ];
-        yield 'no attestation' => [static function (self $test, string $token): Crawler {
-            $test->creationOptions();
+        yield 'no attestation' => [
+            static function (self $test, string $token): Crawler {
+                $test->creationOptions();
 
-            return $test->browser->request('POST', '/account/passkeys', [
-                '_token' => $token,
-                'name' => 'Key',
-                '_passkey' => '',
-            ]);
-        }, 'no_ceremony'];
+                return $test->browser->request('POST', '/account/passkeys', [
+                    '_token' => $token,
+                    'name' => 'Key',
+                    '_passkey' => '',
+                ]);
+            },
+            'no_ceremony',
+        ];
         yield 'an attestation from another origin' => [
             static fn (self $test, string $token) => $test->browser->request('POST', '/account/passkeys', [
                 '_token' => $token,
@@ -254,20 +258,23 @@ final class AccountPasskeysTest extends PasskeyTestCase
             ]),
             'refused',
         ];
-        yield 'an attestation of another challenge' => [static function (self $test, string $token): Crawler {
-            $stale = $test->creationOptions();
-            $test->creationOptions();
+        yield 'an attestation of another challenge' => [
+            static function (self $test, string $token): Crawler {
+                $stale = $test->creationOptions();
+                $test->creationOptions();
 
-            return $test->browser->request('POST', '/account/passkeys', [
-                '_token' => $token,
-                'name' => 'Key',
-                '_passkey' => self::device()->create($stale),
-            ]);
-        }, 'refused'];
+                return $test->browser->request('POST', '/account/passkeys', [
+                    '_token' => $token,
+                    'name' => 'Key',
+                    '_passkey' => self::device()->create($stale),
+                ]);
+            },
+            'refused',
+        ];
     }
 
     /**
-     * WebAuthn Level 3 §7.1, step 26: a credential ID the tenant knows is refused.
+     * WebAuthn Level 3 §7.1, step 26
      */
     #[Test]
     public function aPasskeyEnrolledTwiceIsRefusedTheSecondTime(): void
@@ -276,21 +283,18 @@ final class AccountPasskeysTest extends PasskeyTestCase
         $device = self::device();
         $alice = self::user('alice');
         $this->enrol($alice, $device);
-        $token = $this->passkeysPage()
-            ->filter('form[data-passkey="enrol"] input[name="_token"]')
-            ->attr('value');
+        $token = $this->passkeysPage()->filter('form[data-passkey="enrol"] input[name="_token"]')->attr('value');
 
         // When
-        $crawler = $this->browser->request('POST', '/account/passkeys', [
+        $this->browser->request('POST', '/account/passkeys', [
             '_token' => $token,
             'name' => 'Again',
             '_passkey' => $device->create($this->creationOptions()),
         ]);
 
         // Then
-        static::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $this->browser->getResponse()->getStatusCode());
-        static::assertSame('refused', $crawler->filter('p[data-error]')->attr('data-error'));
-        static::assertCount(1, self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($alice, PasskeyCredential::class));
+        static::assertSame('refused', $this->afterTheForm()->filter('p[data-error]')->attr('data-error'));
+        static::assertCount(1, self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($alice, PasskeyCredential::class));
     }
 
     #[Test]
@@ -311,13 +315,9 @@ final class AccountPasskeysTest extends PasskeyTestCase
         // Then
         static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode());
         static::assertSame('invalid_csrf_token', $crawler->filter('p[data-error]')->attr('data-error'));
-        static::assertSame([], self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($alice, PasskeyCredential::class));
+        static::assertSame([], self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($alice, PasskeyCredential::class));
     }
 
-    /**
-     * The options are drawn for the user of the session that asked them: another user on the same browser
-     * cannot complete with them.
-     */
     #[Test]
     public function theOptionsOfAnotherUserAreNotUsed(): void
     {
@@ -327,21 +327,18 @@ final class AccountPasskeysTest extends PasskeyTestCase
         $this->signIn($alice);
         $options = $this->creationOptions();
         $this->signIn($bob);
-        $token = $this->passkeysPage()
-            ->filter('form[data-passkey="enrol"] input[name="_token"]')
-            ->attr('value');
+        $token = $this->passkeysPage()->filter('form[data-passkey="enrol"] input[name="_token"]')->attr('value');
 
         // When
-        $crawler = $this->browser->request('POST', '/account/passkeys', [
+        $this->browser->request('POST', '/account/passkeys', [
             '_token' => $token,
             'name' => 'Key',
             '_passkey' => self::device()->create($options),
         ]);
 
         // Then
-        static::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $this->browser->getResponse()->getStatusCode());
-        static::assertSame('no_ceremony', $crawler->filter('p[data-error]')->attr('data-error'));
-        static::assertSame([], self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($bob, PasskeyCredential::class));
+        static::assertSame('no_ceremony', $this->afterTheForm()->filter('p[data-error]')->attr('data-error'));
+        static::assertSame([], self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($bob, PasskeyCredential::class));
     }
 
     #[Test]
@@ -361,13 +358,12 @@ final class AccountPasskeysTest extends PasskeyTestCase
 
         // Then
         $response = $this->browser->getResponse();
-        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertSame(Response::HTTP_SEE_OTHER, $response->getStatusCode(), self::string($response->getContent()));
         static::assertSame('/account/passkeys', $response->headers->get('Location'));
         $revoked = self::events(CredentialRevoked::class);
         static::assertCount(1, $revoked);
         static::assertTrue(self::passkeyOf($alice, $device)->isRevoked());
-        $row = $this->passkeysPage()
-            ->filter('tr[data-passkey="' . $passkey->id . '"]');
+        $row = $this->passkeysPage()->filter('tr[data-passkey="' . $passkey->id . '"]');
         static::assertSame('yes', $row->attr('data-revoked'));
         static::assertCount(0, $row->filter('button'), 'No revoking twice.');
     }
@@ -379,7 +375,12 @@ final class AccountPasskeysTest extends PasskeyTestCase
         $device = self::device();
         $alice = self::user('alice');
         $passkey = $this->enrol($alice, $device);
-        $this->browser->submit($this->passkeysPage()->filter('tr[data-passkey="' . $passkey->id . '"]')->selectButton('Revoke')->form());
+        $this->browser->submit(
+            $this->passkeysPage()
+                ->filter('tr[data-passkey="' . $passkey->id . '"]')
+                ->selectButton('Revoke')
+                ->form(),
+        );
         $this->forgetTheBrowser();
         $interaction = $this->authorize();
 
@@ -401,7 +402,7 @@ final class AccountPasskeysTest extends PasskeyTestCase
         $bob = self::user('bob', 'bob-subject');
         $own = $this->enrol($bob, self::device());
         $token = $this->passkeysPage()
-            ->filter('tr[data-passkey="' . $own->id . '"] input[name="_token"]')
+            ->filter('tr[data-passkey="' . $own->id . '"] form[data-passkey="revoke"] input[name="_token"]')
             ->attr('value');
 
         // When
@@ -412,6 +413,106 @@ final class AccountPasskeysTest extends PasskeyTestCase
         // Then
         static::assertSame(Response::HTTP_NOT_FOUND, $this->browser->getResponse()->getStatusCode());
         static::assertFalse(self::passkeyOf($alice, $device)->isRevoked());
+    }
+
+    #[Test]
+    public function aPasskeyIsNamedAgainFromItsOwnLine(): void
+    {
+        // Given
+        $device = self::device();
+        $alice = self::user('alice');
+        $passkey = $this->enrol($alice, $device);
+        $form = $this->passkeysPage()
+            ->filter('tr[data-passkey="' . $passkey->id . '"] form[data-passkey="rename"]')
+            ->form();
+        $form->setValues([
+            'name' => 'The key of my telephone',
+        ]);
+
+        // When
+        $this->browser->submit($form);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_SEE_OTHER, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertSame('The key of my telephone', self::passkeyOf($alice, $device)->name);
+        $renamed = self::events(CredentialRenamed::class);
+        static::assertCount(1, $renamed);
+        static::assertSame('YubiKey 5', $renamed[0]->was);
+    }
+
+    #[Test]
+    public function aNameAPasskeyCannotHoldIsRefused(): void
+    {
+        // Given
+        $device = self::device();
+        $alice = self::user('alice');
+        $passkey = $this->enrol($alice, $device);
+        $token = self::string(
+            $this->passkeysPage()
+                ->filter('tr[data-passkey="' . $passkey->id . '"] form[data-passkey="rename"] input[name="_token"]')
+                ->attr('value'),
+        );
+
+        // When
+        $this->browser->request('POST', '/account/passkeys/' . $passkey->id . '/name', [
+            '_token' => $token,
+            'name' => str_repeat('k', 256),
+        ]);
+
+        // Then
+        static::assertSame('invalid_name', $this->afterTheForm()->filter('p[data-error]')->attr('data-error'));
+        static::assertSame('YubiKey 5', self::passkeyOf($alice, $device)->name);
+        static::assertSame([], self::events(CredentialRenamed::class));
+    }
+
+    #[Test]
+    public function somebodyElsesPasskeyIsNotFoundToName(): void
+    {
+        // Given
+        $device = self::device();
+        $alice = self::user('alice');
+        $passkey = $this->enrol($alice, $device);
+        $this->forgetTheBrowser();
+        $bob = self::user('bob', 'bob-subject');
+        $own = $this->enrol($bob, self::device());
+        $token = self::string(
+            $this->passkeysPage()
+                ->filter('tr[data-passkey="' . $own->id . '"] form[data-passkey="rename"] input[name="_token"]')
+                ->attr('value'),
+        );
+
+        // When
+        $this->browser->request('POST', '/account/passkeys/' . $passkey->id . '/name', [
+            '_token' => $token,
+            'name' => 'Not mine',
+        ]);
+
+        // Then
+        static::assertSame(Response::HTTP_NOT_FOUND, $this->browser->getResponse()->getStatusCode());
+        static::assertSame('YubiKey 5', self::passkeyOf($alice, $device)->name);
+    }
+
+    #[Test]
+    public function aRevokedPasskeyIsNotNamedAgain(): void
+    {
+        // Given
+        $device = self::device();
+        $alice = self::user('alice');
+        $passkey = $this->enrol($alice, $device);
+        $this->browser->submit(
+            $this->passkeysPage()
+                ->filter('tr[data-passkey="' . $passkey->id . '"]')
+                ->selectButton('Revoke')
+                ->form(),
+        );
+
+        // When
+        $row = $this->passkeysPage()->filter('tr[data-passkey="' . $passkey->id . '"]');
+
+        // Then
+        static::assertCount(0, $row->filter('form[data-passkey="rename"]'));
+        static::assertStringContainsString('YubiKey 5', $row->text());
     }
 
     #[Test]
@@ -469,10 +570,10 @@ final class AccountPasskeysTest extends PasskeyTestCase
     }
 
     /**
-     * Architecture §5.2: the one script of the bundle, served by the bundle, cacheable.
+     * Architecture §5.2
      */
     #[Test]
-    public function theScriptIsServedByTheBundle(): void
+    public function theScriptIsServedByTheProvider(): void
     {
         // When
         $this->browser->request('GET', '/passkey.js');
@@ -484,15 +585,12 @@ final class AccountPasskeysTest extends PasskeyTestCase
         static::assertTrue($response->headers->hasCacheControlDirective('public'));
         static::assertSame('3600', $response->headers->getCacheControlDirective('max-age'));
         static::assertNotNull($response->headers->get('ETag'));
-        $script = $this->browser->getInternalResponse()
-            ->getContent();
+        $script = $this->browser->getInternalResponse()->getContent();
         static::assertStringContainsString('navigator.credentials.get(', $script);
         static::assertStringContainsString('navigator.credentials.create(', $script);
     }
 
     /**
-     * A JSON object as an array, keys sorted: the order the serializer writes is not the point.
-     *
      * @return array<string, mixed>
      */
     private static function sorted(mixed $object): array
@@ -512,8 +610,7 @@ final class AccountPasskeysTest extends PasskeyTestCase
     {
         // Given
         $this->browser->request('GET', '/passkey.js');
-        $etag = $this->browser->getResponse()
-            ->headers->get('ETag');
+        $etag = $this->browser->getResponse()->headers->get('ETag');
 
         // When
         $this->browser->request('GET', '/passkey.js', server: [

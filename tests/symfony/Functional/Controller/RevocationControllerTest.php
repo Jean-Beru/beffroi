@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use function base64_encode;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * RFC 7009 §2, architecture §4.12: the revocation endpoint over HTTP.
+ * RFC 7009 §2, Architecture §4.12
  */
 final class RevocationControllerTest extends BrowserTestCase
 {
     /**
-     * RFC 7009 §2.1: POST only.
+     * RFC 7009 §2.1
      */
     #[Test]
     public function theRevocationEndpointIsPostOnly(): void
@@ -29,15 +29,20 @@ final class RevocationControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7009 §2.2: an invalid token is answered 200 with an empty body, never cached.
+     * RFC 7009 §2.2
      */
     #[Test]
     public function anUnknownTokenIsAnsweredWithNothing(): void
     {
         // When
-        $this->browser->request('POST', '/revoke', [
-            'token' => 'unknown',
-        ], server: self::demoCredentials());
+        $this->browser->request(
+            'POST',
+            '/revoke',
+            [
+                'token' => 'unknown',
+            ],
+            server: self::demoCredentials(),
+        );
 
         // Then
         $response = $this->browser->getResponse();
@@ -47,15 +52,20 @@ final class RevocationControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7009 §2.2.1, RFC 6749 §5.2: a caller that does not authenticate is invalid_client, 401.
+     * RFC 7009 §2.2.1, RFC 6749 §5.2
      */
     #[Test]
     public function aWrongSecretIsChallenged(): void
     {
         // When
-        $this->browser->request('POST', '/revoke', [
-            'token' => 'whatever',
-        ], server: self::demoCredentials('wrong-secret-of-at-least-32-characters'));
+        $this->browser->request(
+            'POST',
+            '/revoke',
+            [
+                'token' => 'whatever',
+            ],
+            server: self::demoCredentials('wrong-secret-of-at-least-32-characters'),
+        );
 
         // Then
         $response = $this->browser->getResponse();
@@ -64,7 +74,7 @@ final class RevocationControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7009 §2.2.1: a self-contained access token of the provider cannot be taken back.
+     * RFC 7009 §2.2.1
      */
     #[Test]
     public function aJwtAccessTokenIsRefusedAsUnsupported(): void
@@ -73,9 +83,14 @@ final class RevocationControllerTest extends BrowserTestCase
         $accessToken = $this->jwtAccessTokenOfTheDemoClient();
 
         // When
-        $this->browser->request('POST', '/revoke', [
-            'token' => $accessToken,
-        ], server: self::demoCredentials());
+        $this->browser->request(
+            'POST',
+            '/revoke',
+            [
+                'token' => $accessToken,
+            ],
+            server: self::demoCredentials(),
+        );
 
         // Then
         $response = $this->browser->getResponse();
@@ -84,7 +99,35 @@ final class RevocationControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 7009 §2.1: a refresh token given back is refused by the token endpoint from then on.
+     * RFC 7009 §2.2
+     */
+    #[Test]
+    public function aJwtAccessTokenOfASessionThatEndedIsAnsweredWithNothing(): void
+    {
+        // Given
+        self::signingKey();
+        $session = $this->signIn(self::user('alice'));
+        $accessToken = $this->jwtAccessTokenOfTheSignedInBrowser();
+        $this->endSession($session);
+
+        // When
+        $this->browser->request(
+            'POST',
+            '/revoke',
+            [
+                'token' => $accessToken,
+            ],
+            server: self::demoCredentials(),
+        );
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        static::assertSame('', $response->getContent());
+    }
+
+    /**
+     * RFC 7009 §2.1
      */
     #[Test]
     public function aRevokedRefreshTokenIsRefusedByTheTokenEndpoint(): void
@@ -92,39 +135,56 @@ final class RevocationControllerTest extends BrowserTestCase
         // Given
         $this->jwtAccessTokenOfTheDemoClient();
         $refreshToken = self::string(self::json($this->browser->getResponse())['refresh_token']);
-        $this->browser->request('POST', '/revoke', [
-            'token' => $refreshToken,
-            'token_type_hint' => 'refresh_token',
-        ], server: self::demoCredentials());
+        $this->browser->request(
+            'POST',
+            '/revoke',
+            [
+                'token' => $refreshToken,
+                'token_type_hint' => 'refresh_token',
+            ],
+            server: self::demoCredentials(),
+        );
         static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
 
         // When
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'refresh_token',
-            'refresh_token' => $refreshToken,
-        ], server: self::demoCredentials());
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $refreshToken,
+            ],
+            server: self::demoCredentials(),
+        );
 
         // Then
         static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
         static::assertSame('invalid_grant', self::json($this->browser->getResponse())['error']);
     }
 
-    /**
-     * The access token oidc-demo gets from the code flow of alice; the response of the token endpoint is
-     * the last one of the browser.
-     */
     private function jwtAccessTokenOfTheDemoClient(): string
     {
         self::signingKey();
         $this->signIn(self::user('alice'));
+
+        return $this->jwtAccessTokenOfTheSignedInBrowser();
+    }
+
+    private function jwtAccessTokenOfTheSignedInBrowser(): string
+    {
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));
         $code = self::redirectedQuery($this->browser->getResponse())['code'];
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => 'https://demo.test/login/check',
-            'code_verifier' => self::CODE_VERIFIER,
-        ], server: self::demoCredentials());
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => 'https://demo.test/login/check',
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            server: self::demoCredentials(),
+        );
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
 

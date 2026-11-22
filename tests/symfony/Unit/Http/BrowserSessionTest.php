@@ -2,18 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Http;
+namespace App\Tests\Symfony\Unit\Http;
 
-use Heidi\Bundle\Http\BrowserSession;
-use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\SessionEnd;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Bridge\InMemory\InMemoryInteractionRepository;
-use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\Requests;
+use Beffroi\Oidc\Tests\Fixture\Secrets;
+use App\Http\BrowserSession;
+use App\Http\LoginAddresses;
+use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryInteractionRepository;
+use Beffroi\Oidc\Domain\Interaction\Interaction;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\Requests;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -23,8 +25,7 @@ use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 
 /**
- * Architecture §3.2 and §4.3: the cookie side of a session of the core, and the interactions a browser
- * may resume.
+ * Architecture §3.2, §4.3
  */
 final class BrowserSessionTest extends TestCase
 {
@@ -81,16 +82,12 @@ final class BrowserSessionTest extends TestCase
         static::assertSame($session, $this->browser->authenticationSession($request, $this->tenant));
     }
 
-    /**
-     * An identifier fixed before the login opens nothing after it.
-     */
     #[Test]
     public function bindingRegeneratesTheHttpSessionIdentifier(): void
     {
         // Given
         $request = self::request();
-        $before = $request->getSession()
-            ->getId();
+        $before = $request->getSession()->getId();
 
         // When
         $this->browser->bind($request->getSession(), $this->session());
@@ -145,8 +142,7 @@ final class BrowserSessionTest extends TestCase
     {
         // Given
         $request = self::request();
-        $request->getSession()
-            ->set(BrowserSession::AUTHENTICATION_SESSION_KEY, $bound);
+        $request->getSession()->set(BrowserSession::AUTHENTICATION_SESSION_KEY, $bound);
 
         // When / Then
         static::assertNull($this->browser->authenticationSession($request, $this->tenant));
@@ -254,8 +250,24 @@ final class BrowserSessionTest extends TestCase
     }
 
     /**
-     * One tab per interaction, the oldest forgotten first.
+     * beffroi/saml S-68
      */
+    #[Test]
+    public function anInteractionThatIsOverTakesTheAddressKeptForItWithIt(): void
+    {
+        // Given
+        $interaction = $this->interaction();
+        $request = self::request();
+        $this->browser->begin($request->getSession(), $interaction);
+        new LoginAddresses()->sendOn($request->getSession(), $interaction, 'alice@example.org', Fixtures::now());
+
+        // When
+        $this->browser->forget($request->getSession(), $interaction);
+
+        // Then
+        static::assertSame([], $request->getSession()->get(LoginAddresses::SENT_SESSION_KEY));
+    }
+
     #[Test]
     public function aBrowserHoldsABoundedNumberOfInteractions(): void
     {
@@ -285,8 +297,7 @@ final class BrowserSessionTest extends TestCase
         // Given
         $interaction = $this->interaction();
         $request = self::request();
-        $request->getSession()
-            ->set(BrowserSession::INTERACTIONS_KEY, 'not-a-list');
+        $request->getSession()->set(BrowserSession::INTERACTIONS_KEY, 'not-a-list');
 
         // When / Then
         static::assertNull($this->browser->pending($request, $this->tenant, $interaction->id));
@@ -298,16 +309,12 @@ final class BrowserSessionTest extends TestCase
         // Given
         $interaction = $this->interaction();
         $request = self::request();
-        $request->getSession()
-            ->set(BrowserSession::INTERACTIONS_KEY, [$interaction->id, 42]);
+        $request->getSession()->set(BrowserSession::INTERACTIONS_KEY, [$interaction->id, 42]);
 
         // When / Then
         static::assertSame($interaction, $this->browser->pending($request, $this->tenant, $interaction->id));
     }
 
-    /**
-     * A request that carries the cookie of the session.
-     */
     private static function request(): Request
     {
         $request = Request::create('/authorize');
@@ -329,7 +336,7 @@ final class BrowserSessionTest extends TestCase
     private function interaction(): Interaction
     {
         $request = Requests::authorization(Clients::public($this->tenant));
-        $interaction = new Interaction(Interaction::generateId(), $this->tenant, $request, null, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        $interaction = new Interaction(Secrets::draw(), $this->tenant, $request, null, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
         $this->interactions->save($interaction);
 
         return $interaction;

@@ -2,15 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Bridge\InMemory;
+namespace Beffroi\Core\Tests\Bridge\InMemory;
 
-use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
-use Heidi\Core\Bridge\Null\NullGeoLocator;
-use Heidi\Core\Bridge\Null\NullUserAgentParser;
-use Heidi\Core\Domain\Session\SessionEnd;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
+use Beffroi\Core\Bridge\Null\NullGeoLocator;
+use Beffroi\Core\Bridge\Null\NullUserAgentParser;
+use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryAuthenticationSessionRepositoryTest extends TestCase
@@ -36,6 +38,30 @@ final class InMemoryAuthenticationSessionRepositoryTest extends TestCase
         static::assertSame([$active], $sessions);
     }
 
+    /**
+     * Decision 0031
+     */
+    #[Test]
+    public function itListsTheUnendedSessionsOfAUserThoseExpiredIncluded(): void
+    {
+        // Given
+        $alice = Fixtures::user();
+        $repository = new InMemoryAuthenticationSessionRepository();
+        $active = Fixtures::session($alice);
+        $ended = Fixtures::session($alice);
+        $ended->end(SessionEnd::User, Fixtures::now());
+        $expired = Fixtures::session($alice, Fixtures::now()->modify('-2 days'));
+        foreach ([$active, $ended, $expired, Fixtures::session(Fixtures::user(username: 'bob', subject: 'bob-subject'))] as $session) {
+            $repository->save($session);
+        }
+
+        // When
+        $sessions = $repository->findUnendedByUser($alice);
+
+        // Then
+        static::assertSame([$active, $expired], $sessions);
+    }
+
     #[Test]
     public function itFindsAnySavedSessionById(): void
     {
@@ -57,6 +83,39 @@ final class InMemoryAuthenticationSessionRepositoryTest extends TestCase
 
         // When / Then
         static::assertNull($repository->find(Uuid::v7()));
+    }
+
+    /**
+     * Decision 0011
+     */
+    #[Test]
+    public function itNamesThePersonOfASavedSessionByTheirSubject(): void
+    {
+        // Given
+        $repository = new InMemoryAuthenticationSessionRepository();
+        $session = Fixtures::session(Fixtures::user(username: 'bob', subject: 'bob-subject'));
+        $repository->save($session);
+
+        // When
+        $subject = $repository->of($session->id);
+
+        // Then
+        static::assertSame('bob-subject', $subject->value);
+    }
+
+    #[Test]
+    public function itNamesNobodyForAnUnknownSession(): void
+    {
+        // Given
+        $repository = new InMemoryAuthenticationSessionRepository();
+        $unknown = Uuid::v7();
+
+        // Then
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageIs(sprintf('No session "%s" was saved.', $unknown->toRfc4122()));
+
+        // When
+        $repository->of($unknown);
     }
 
     #[Test]

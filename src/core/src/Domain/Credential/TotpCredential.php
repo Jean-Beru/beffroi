@@ -2,41 +2,41 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Domain\Credential;
+namespace Beffroi\Core\Domain\Credential;
 
+use Beffroi\Core\Domain\PersonalData\FieldClassificationInterface;
+use Beffroi\Core\Domain\PersonalData\NoPersonalDatum;
+use Beffroi\Core\Domain\PersonalData\Reason;
 use function count;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Exception\LogicException;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\LogicException;
 use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * A time-based one-time password (RFC 6238) as a second factor on a password account: the shared secret
- * sealed by the KMS of the tenant (an envelope, never the secret), the last time step whose code was
- * accepted so that a code is accepted once (§5.2), the backup codes, and its revocation, which keeps the
- * row for the audit trail. One active per user; the parameters are those every authenticator implements
- * (§5.1: thirty seconds, six digits, HMAC-SHA-1) and are not a choice. While one is active, the password
- * of the user signs nobody in on its own (SecondFactorCredentialInterface).
+ * RFC 6238
  */
-final class TotpCredential extends Credential implements SecondFactorCredentialInterface, ProvingCredentialInterface
+final class TotpCredential extends RevocableCredential implements SecondFactorCredentialInterface, ProvingCredentialInterface
 {
     /**
-     * RFC 6238 §5.2: thirty seconds.
+     * RFC 6238 §5.2
      */
     public const int PERIOD = 30;
 
     public const int DIGITS = 6;
 
     /**
-     * RFC 6238 §5.1: HMAC-SHA-1, what Google Authenticator and the others implement.
+     * RFC 6238 §5.1
+     *
+     * SHA-1 is what Google Authenticator and the others implement.
      */
     public const string ALGORITHM = 'sha1';
 
     /**
-     * RFC 6238 §5.2: at most one time step of clock drift on each side.
+     * RFC 6238 §5.2
      */
     public const int DRIFT = 1;
 
@@ -49,12 +49,9 @@ final class TotpCredential extends Credential implements SecondFactorCredentialI
      */
     public private(set) array $backupCodes;
 
-    public private(set) ?DateTimeImmutable $revokedAt = null;
-
     /**
-     * @param string $sealedSecret the envelope the SecretSealerInterface wrote, opaque bytes
      * @param list<BackupCode> $backupCodes
-     * @param int $lastAcceptedStep the time step of the code that completed the enrolment: a credential exists only once a code was verified
+     * @param int $lastAcceptedStep the step of the code that completed the enrolment
      */
     public function __construct(
         Uuid $id,
@@ -83,26 +80,18 @@ final class TotpCredential extends Credential implements SecondFactorCredentialI
         return 'totp';
     }
 
-    /**
-     * What a code proves, as an "amr" value (RFC 8176 §2): "otp", a backup code as much as a TOTP.
-     */
     public static function method(): AuthenticationMethod
     {
         return new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD);
     }
 
-    /**
-     * What a code of this credential may prove (architecture §4.3): "otp", the password it follows being
-     * the password's to declare. Nothing for a revoked one.
-     */
     public function provableMethods(): array
     {
-        return $this->revokedAt === null ? [self::method()] : [];
+        return $this->isRevoked() ? [] : [self::method()];
     }
 
     /**
-     * RFC 6238 §5.2: a code is accepted once, and the accepted step moves forward, never back; the code
-     * of an earlier step, whatever the drift, is refused after a later one was accepted.
+     * RFC 6238 §5.2
      */
     public function acceptsStep(int $step): bool
     {
@@ -111,9 +100,7 @@ final class TotpCredential extends Credential implements SecondFactorCredentialI
 
     public function recordUse(int $step, DateTimeImmutable $now): void
     {
-        if ($this->revokedAt !== null) {
-            throw new LogicException('A revoked TOTP credential never authenticates again.');
-        }
+        $this->refuseIfRevoked();
         if (! $this->acceptsStep($step)) {
             throw new LogicException('A TOTP code is accepted once (RFC 6238 §5.2).');
         }
@@ -122,31 +109,38 @@ final class TotpCredential extends Credential implements SecondFactorCredentialI
     }
 
     /**
-     * The code at that position of the list is spent and the credential used.
+     * @param list<BackupCode> $backupCodes
+     *
+     * @throws InvalidArgumentException when they are not as many as a credential holds
+     * @throws LogicException when the credential is revoked
      */
+    public function renewBackupCodes(array $backupCodes): void
+    {
+        $this->refuseIfRevoked();
+        if (count($backupCodes) !== self::BACKUP_CODES) {
+            throw new InvalidArgumentException(sprintf('A TOTP credential holds %d backup codes.', self::BACKUP_CODES));
+        }
+        $this->backupCodes = $backupCodes;
+    }
+
     public function spendBackupCode(int $index, DateTimeImmutable $now): void
     {
-        if ($this->revokedAt !== null) {
-            throw new LogicException('A revoked TOTP credential never authenticates again.');
-        }
+        $this->refuseIfRevoked();
         $code = $this->backupCodes[$index] ?? throw new InvalidArgumentException(sprintf('There is no backup code at position %d.', $index));
         $this->backupCodes[$index] = $code->spend($now);
         $this->markUsed($now);
     }
 
     /**
-     * The row stays for the audit trail.
+     * @return array<string, FieldClassificationInterface>
      */
-    public function revoke(DateTimeImmutable $now): void
+    public static function classifiedFields(): array
     {
-        if ($this->revokedAt !== null) {
-            return;
-        }
-        $this->revokedAt = $now;
-    }
-
-    public function isRevoked(): bool
-    {
-        return $this->revokedAt !== null;
+        return [
+            ...parent::classifiedFields(),
+            'sealedSecret' => new NoPersonalDatum(Reason::AN_ENVELOPE),
+            'lastAcceptedStep' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'backupCodes' => new NoPersonalDatum(Reason::HASHED),
+        ];
     }
 }

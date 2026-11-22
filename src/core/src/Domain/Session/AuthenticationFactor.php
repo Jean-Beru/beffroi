@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Domain\Session;
+namespace Beffroi\Core\Domain\Session;
 
 /**
- * Something the user knows, has, or is (NIST SP 800-63B §4). Two proofs of the same kind are one factor.
+ * NIST SP 800-63B §2
  */
 enum AuthenticationFactor: string
 {

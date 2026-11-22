@@ -2,25 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Security;
+namespace App\Tests\Symfony\Unit\Security;
 
-use Heidi\Bundle\Security\SecurityUser;
-use Heidi\Bundle\Security\UserChecker;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use App\Security\SecurityUser;
+use App\Security\UserChecker;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Security\Core\Exception\DisabledException;
 use Symfony\Component\Security\Core\User\InMemoryUser;
 
 /**
- * Decision 0006: the state of the account is checked after the password, never before.
+ * Decision 0006
  */
 final class UserCheckerTest extends TestCase
 {
-    /**
-     * The account state is checked after the password: whoever does not know the password cannot tell a
-     * disabled account from a wrong password.
-     */
     #[Test]
     public function aDisabledUserPassesBeforeThePassword(): void
     {

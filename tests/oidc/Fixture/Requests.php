@@ -2,25 +2,25 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
 use function array_map;
-use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
-use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
-use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
-use Heidi\Oidc\Domain\Authorization\Prompt;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationRequest;
+use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
+use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
+use Beffroi\Oidc\Domain\Authorization\CodeChallenge;
+use Beffroi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
+use Beffroi\Oidc\Domain\Authorization\Prompt;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Scope\Scope;
 
 final class Requests
 {
     public const string CHALLENGE = 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM';
 
     /**
-     * A request that passed both stages of the parser, for the first redirect URI of the client, with
-     * "openid" and whatever else is asked.
-     *
      * @param list<string> $scopes
      * @param list<Prompt> $prompts
      * @param list<string> $acrValues
@@ -31,23 +31,29 @@ final class Requests
         array $prompts = [],
         ?int $maxAge = null,
         ?string $idTokenHint = null,
+        ?string $loginHint = null,
         ?string $state = 'af0ifjsldkj',
         ?string $nonce = 'n-0S6_WzA2Mj',
         ?ClaimsRequest $claims = null,
         array $acrValues = [],
+        ?AuthorizationDetails $authorizationDetails = null,
+        ?ResourceIndicators $resources = null,
     ): AuthorizationRequest {
         return new AuthorizationRequest(
             $client,
-            $client->redirectUris[0],
-            array_map(static fn (string $scope): Scope => new Scope($scope), $scopes),
-            new CodeChallenge(self::CHALLENGE, CodeChallengeMethod::S256),
+            $client->registration->redirectUris[0],
+            new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
+            new CodeChallenge(self::CHALLENGE, new Sha256CodeChallengeMethod()),
             $state,
             $nonce,
             $prompts,
             $maxAge,
+            $loginHint,
             acrValues: $acrValues,
             idTokenHint: $idTokenHint,
             claims: $claims,
+            resources: $resources,
+            authorizationDetails: $authorizationDetails,
         );
     }
 }

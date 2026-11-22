@@ -2,18 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Bridge\JwtLibrary\Algorithm;
+namespace Beffroi\Core\Bridge\JwtLibrary\Algorithm;
 
-use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithmInterface;
+use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithmInterface;
+use Beffroi\Core\Domain\Key\KeyUse;
 use Jose\Component\Core\JWK;
 use Jose\Component\KeyManagement\JWKFactory;
 use Jose\Component\Signature\Algorithm\RS256 as JoseRs256;
 use Jose\Component\Signature\Algorithm\SignatureAlgorithm as JoseAlgorithm;
 
 /**
- * RSASSA-PKCS1-v1_5 with SHA-256 (RFC 7518 §3.3), the algorithm every relying party understands and the
- * only one OIDC Core §15.1 makes mandatory. FAPI 2.0 §5.2.2 refuses it: a deployment that follows that
- * profile wires the others and leaves this one out.
+ * RFC 7518 §3.3
  */
 final readonly class Rs256 implements JoseSignatureAlgorithmInterface
 {
@@ -32,6 +31,11 @@ final readonly class Rs256 implements JoseSignatureAlgorithmInterface
         return 'RSA';
     }
 
+    public function keyUse(): KeyUse
+    {
+        return KeyUse::Signature;
+    }
+
     public function digestAlgorithm(): string
     {
         return 'sha256';
@@ -46,7 +50,7 @@ final readonly class Rs256 implements JoseSignatureAlgorithmInterface
     {
         return JWKFactory::createRSAKey($this->keyBits->value, [
             'alg' => $this->name(),
-            'use' => 'sig',
+            'use' => $this->keyUse()->value,
         ]);
     }
 }

@@ -2,32 +2,29 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Oidc\Application\Token\GrantInterface;
-use Heidi\Oidc\Application\Token\TokenRequest;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\GrantType;
-use Heidi\Oidc\Domain\Token\IssuedTokens;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Oidc\Application\Client\AuthenticatedClient;
+use Beffroi\Oidc\Application\Token\GrantInterface;
+use Beffroi\Oidc\Application\Request\RequestParameters;
+use Beffroi\Oidc\Domain\Client\GrantTypeName;
+use Beffroi\Oidc\Domain\Token\IssuedTokens;
 use LogicException;
 
-/**
- * A grant that names its type and grants nothing, for what reads the grants wired (the discovery document).
- */
 final readonly class FakeGrant implements GrantInterface
 {
     public function __construct(
-        private GrantType $grantType,
+        private GrantTypeName $grantType,
     ) {
     }
 
-    public function grantType(): GrantType
+    public function grantType(): GrantTypeName
     {
         return $this->grantType;
     }
 
-    public function grant(Client $client, TokenRequest $request, RequestContext $context): IssuedTokens
+    public function grant(AuthenticatedClient $client, RequestParameters $request, RequestContext $context): IssuedTokens
     {
         throw new LogicException('The fake grant grants nothing.');
     }

@@ -2,30 +2,23 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
-use Heidi\Oidc\Domain\Authorization\FormPostResponse;
+use Beffroi\Oidc\Domain\Authorization\FormPostResponse;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * OAuth 2.0 Form Post Response Mode §2, the first success criterion of spike 4 (issue #138): a client
- * that asks for "form_post" gets the answer of the authorization endpoint as a page whose form the
- * browser posts to the redirect URI, never as a redirection. A refusal is posted the same way, the mode
- * of the request being the mode of everything it hears back (OIDC Core §3.1.2.6).
+ * OAuth 2.0 Form Post Response Mode §2, OIDC Core §3.1.2.6
  */
 final class FormPostResponseTest extends BrowserTestCase
 {
-    /**
-     * The hash the Content-Security-Policy of the page names, over the one script the page carries.
-     */
     private const string SCRIPT_HASH = 'sha256-8lDeP0UDwCO6/RhblgeH/ctdBzjVpJxrXizsnIk3cEQ=';
 
     /**
-     * RFC 6749 §4.1.2 and RFC 9207 §2: the code, the state and the issuer, every one of them a hidden
-     * field of a form whose action is the registered redirect URI.
+     * RFC 6749 §4.1.2, RFC 9207 §2
      */
     #[Test]
     public function theCodeIsPostedWithTheStateAndTheIssuer(): void
@@ -47,8 +40,7 @@ final class FormPostResponseTest extends BrowserTestCase
     }
 
     /**
-     * Form Post Response Mode §2: the answer is a page, so nothing of it is ever written in a URL, in an
-     * address bar, in a history or in an access log.
+     * Form Post Response Mode §2
      */
     #[Test]
     public function nothingOfTheAnswerIsWrittenInAUrl(): void
@@ -66,8 +58,7 @@ final class FormPostResponseTest extends BrowserTestCase
     }
 
     /**
-     * Form Post Response Mode §2 and RFC 6749 §5.1: a page carrying an authorization code is never
-     * stored, by the browser or by anything between.
+     * Form Post Response Mode §2, RFC 6749 §5.1
      */
     #[Test]
     public function thePageIsNotCacheable(): void
@@ -83,8 +74,7 @@ final class FormPostResponseTest extends BrowserTestCase
     }
 
     /**
-     * CSP Level 3 §6.1: the one script that submits the form is named by its hash, so the page allows
-     * that script and no other; nothing else loads and nothing frames the page.
+     * CSP Level 3 §6.1
      */
     #[Test]
     public function thePolicyNamesTheScriptByItsHash(): void
@@ -98,15 +88,10 @@ final class FormPostResponseTest extends BrowserTestCase
         // Then
         static::assertSame(
             sprintf("default-src 'none'; script-src '%s'; form-action https://demo.test; base-uri 'none'; frame-ancestors 'none'", self::SCRIPT_HASH),
-            $this->browser->getResponse()
-                ->headers->get('Content-Security-Policy'),
+            $this->browser->getResponse()->headers->get('Content-Security-Policy'),
         );
     }
 
-    /**
-     * The script the policy names is the one the page carries, byte for byte: a page whose script the
-     * hash does not cover would never submit itself.
-     */
     #[Test]
     public function thePageCarriesTheScriptThePolicyNames(): void
     {
@@ -121,7 +106,7 @@ final class FormPostResponseTest extends BrowserTestCase
     }
 
     /**
-     * Form Post Response Mode §2: a browser that runs no script is given the button that posts the form.
+     * Form Post Response Mode §2
      */
     #[Test]
     public function thePageOffersASubmitButtonToABrowserWithoutScripting(): void
@@ -137,8 +122,7 @@ final class FormPostResponseTest extends BrowserTestCase
     }
 
     /**
-     * OIDC Core §3.1.2.6: a refusal uses the response mode a successful answer would have used, so an
-     * error is posted as well, with the state and the issuer (RFC 9207 §2).
+     * OIDC Core §3.1.2.6, RFC 9207 §2
      */
     #[Test]
     public function aRefusalIsPostedToo(): void
@@ -152,17 +136,19 @@ final class FormPostResponseTest extends BrowserTestCase
         // Then
         static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
         static::assertFalse($this->browser->getResponse()->headers->has('Location'));
-        static::assertSame([
-            'error' => 'invalid_request',
-            'error_description' => 'The code_challenge parameter is missing (RFC 7636 section 4.3).',
-            'state' => 'state-of-the-client',
-            'iss' => 'https://op.test',
-        ], self::postedFields($crawler));
+        static::assertSame(
+            [
+                'error' => 'invalid_request',
+                'error_description' => 'The code_challenge parameter is missing (RFC 7636 section 4.3).',
+                'state' => 'state-of-the-client',
+                'iss' => 'https://op.test',
+            ],
+            self::postedFields($crawler),
+        );
     }
 
     /**
-     * RFC 9700 §4.1: an error found before the redirect URI is validated is still shown to the user, the
-     * response mode of a request that named no known client saying nothing about where to send anything.
+     * RFC 9700 §4.1
      */
     #[Test]
     public function anErrorOfTheFirstStageIsStillAPage(): void
@@ -179,8 +165,7 @@ final class FormPostResponseTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §4.3: the mode is read once, with the redirect URI, and kept by the interaction, so a
-     * request that went through the login and the consent pages is answered in the mode it asked for.
+     * Architecture §4.3
      */
     #[Test]
     public function theModeSurvivesTheLoginAndTheConsentPages(): void
@@ -203,8 +188,7 @@ final class FormPostResponseTest extends BrowserTestCase
     }
 
     /**
-     * Multiple Response Type Encoding Practices §2.1: a mode the provider does not serve is refused, and
-     * the refusal comes back in the default mode, the one the client is sure to read.
+     * Multiple Response Type Encoding Practices §2.1
      */
     #[Test]
     public function aModeTheProviderDoesNotServeIsRefusedInTheDefaultMode(): void
@@ -221,8 +205,7 @@ final class FormPostResponseTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0006: "code" is the only response type served, in every mode, so the refusal names the
-     * response type and not the mode; it is posted, the mode of the request being honoured all the same.
+     * Decision 0006
      */
     #[Test]
     public function aResponseTypeOtherThanCodeIsRefusedWhateverTheMode(): void
@@ -238,23 +221,22 @@ final class FormPostResponseTest extends BrowserTestCase
     }
 
     /**
-     * A valid authorization request that asks for the posted form; "oidc-demo" needs no consent, so the
-     * answer comes from the authorization endpoint itself.
-     *
      * @param array<string, string|null> $parameters
      *
      * @return array<string, string>
      */
     private static function formPostParameters(array $parameters = [], string $clientId = 'oidc-demo'): array
     {
-        return self::authorizationParameters($clientId, $parameters + [
-            'response_mode' => 'form_post',
-        ]);
+        return self::authorizationParameters(
+            $clientId,
+            $parameters
+            + [
+                'response_mode' => 'form_post',
+            ],
+        );
     }
 
     /**
-     * The hidden fields of the form the page posts, in the order the response names them.
-     *
      * @return array<string, string>
      */
     private static function postedFields(Crawler $page): array

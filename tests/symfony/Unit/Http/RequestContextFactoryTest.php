@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Http;
+namespace App\Tests\Symfony\Unit\Http;
 
 use DateTimeImmutable;
 use function gethostname;
-use Heidi\Bundle\Http\RequestContextFactory;
+use App\Http\RequestContextFactory;
 use PHPUnit\Framework\Attributes\BackupGlobals;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -15,8 +15,7 @@ use Symfony\Component\Clock\MockClock;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * Architecture §3.5: the context of a request, as received, not enriched; the context of a process that is
- * no request, saying what it is.
+ * Architecture §3.5
  */
 final class RequestContextFactoryTest extends TestCase
 {
@@ -58,9 +57,6 @@ final class RequestContextFactoryTest extends TestCase
         static::assertNull($context->userAgent);
     }
 
-    /**
-     * The console names its command and the user of the shell, so that the trail says who rotated a key.
-     */
     #[Test]
     #[BackupGlobals(true)]
     public function theConsoleNamesItsCommandAndTheUserOfTheShell(): void
@@ -72,12 +68,12 @@ final class RequestContextFactoryTest extends TestCase
         $_SERVER['USER'] = 'root';
 
         // When
-        $context = $factory->fromConsole('heidi:keys:rotate');
+        $context = $factory->fromConsole('beffroi:keys:rotate');
 
         // Then
         static::assertEquals($now, $context->receivedAt);
         static::assertNull($context->ipAddress);
-        static::assertSame(sprintf('heidi-console/heidi:keys:rotate (alice@%s)', self::host()), $context->userAgent);
+        static::assertSame(sprintf('beffroi-console/beffroi:keys:rotate (alice@%s)', self::host()), $context->userAgent);
     }
 
     #[Test]
@@ -90,10 +86,10 @@ final class RequestContextFactoryTest extends TestCase
         $_SERVER['USER'] = 'bob';
 
         // When
-        $context = $factory->fromConsole('heidi:keys:rotate');
+        $context = $factory->fromConsole('beffroi:keys:rotate');
 
         // Then
-        static::assertStringStartsWith('heidi-console/heidi:keys:rotate (bob@', $context->userAgent ?? '');
+        static::assertStringStartsWith('beffroi-console/beffroi:keys:rotate (bob@', $context->userAgent ?? '');
     }
 
     #[Test]
@@ -103,11 +99,11 @@ final class RequestContextFactoryTest extends TestCase
         $factory = new RequestContextFactory(new MockClock());
 
         // When
-        $context = $factory->fromSchedule('heidi');
+        $context = $factory->fromSchedule('beffroi');
 
         // Then
         static::assertNull($context->ipAddress);
-        static::assertSame(sprintf('heidi-scheduler/heidi (%s)', self::host()), $context->userAgent);
+        static::assertSame(sprintf('beffroi-scheduler/beffroi (%s)', self::host()), $context->userAgent);
     }
 
     private static function host(): string

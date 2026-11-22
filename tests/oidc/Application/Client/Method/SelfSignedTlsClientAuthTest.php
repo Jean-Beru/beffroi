@@ -1,0 +1,220 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Beffroi\Oidc\Tests\Application\Client\Method;
+
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Oidc\Application\Client\AuthenticatedClient;
+use Beffroi\Oidc\Application\Client\ClientAuthenticator;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Beffroi\Oidc\Domain\Client\Certificate\ClientCertificate;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientPresentation;
+use Beffroi\Oidc\Domain\Client\ClientRegistration;
+use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailed;
+use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
+use Beffroi\Oidc\Domain\Token\CertificateConfirmation;
+use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
+use Beffroi\Oidc\Exception\InvalidClientException;
+use Beffroi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Oidc\Tests\Fixture\Certificates;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\FakeClientJwksFetcher;
+use Beffroi\Oidc\Tests\Fixture\FakeClientLoadBudget;
+use Beffroi\Oidc\Tests\Fixture\Methods;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+use Symfony\Component\Clock\MockClock;
+use Beffroi\Oidc\Tests\Fixture\Shapes;
+
+/**
+ * RFC 8705 §2.2
+ */
+final class SelfSignedTlsClientAuthTest extends TestCase
+{
+    private const string ENDPOINT = 'https://id.acme.example/token';
+
+    private const string JWKS_URI = 'https://self-signed.example/jwks';
+
+    private Tenant $tenant;
+
+    private RequestContext $context;
+
+    private InMemoryClientRepository $clients;
+
+    private RecordingEventDispatcher $events;
+
+    private Client $client;
+
+    protected function setUp(): void
+    {
+        $this->tenant = Fixtures::tenant();
+        $this->context = Fixtures::context();
+        $this->clients = new InMemoryClientRepository();
+        $this->events = new RecordingEventDispatcher();
+        $this->client = Clients::withPublishedCertificate($this->tenant);
+        $this->clients->save($this->client);
+    }
+
+    /**
+     * RFC 8705 §2.2, RFC 7517 §4.7
+     */
+    #[Test]
+    public function itAuthenticatesACertificateTheClientPublishes(): void
+    {
+        // When
+        $authenticated = $this->authenticate(Certificates::selfSigned());
+
+        // Then
+        static::assertSame($this->client, $authenticated->client);
+    }
+
+    /**
+     * RFC 7517 §4.9
+     */
+    #[Test]
+    public function itAuthenticatesACertificateTheClientNamesByItsThumbprint(): void
+    {
+        // Given
+        $client = Clients::withPublishedCertificate($this->tenant, Certificates::thumbprintedIn(Certificates::selfSigned()), 'thumbprint-client');
+        $this->clients->save($client);
+
+        // When
+        $authenticated = $this->authenticate(Certificates::selfSigned(), 'thumbprint-client');
+
+        // Then
+        static::assertSame($client, $authenticated->client);
+    }
+
+    #[Test]
+    public function theSameCertificateReissuedIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidClientException::class);
+        $this->expectExceptionMessageIs('invalid_client: Client authentication failed.');
+
+        // When
+        $this->authenticate(Certificates::reissued());
+    }
+
+    #[Test]
+    public function aCertificateTheClientDoesNotPublishIsRecordedAsSuch(): void
+    {
+        // When
+        $this->failToAuthenticate(Certificates::client());
+
+        // Then
+        $event = $this->events->events[0] ?? static::fail('A refusal is recorded.');
+        static::assertInstanceOf(ClientAuthenticationFailed::class, $event);
+        static::assertSame(ClientAuthenticationFailureReason::UnexpectedCertificate, $event->reason);
+    }
+
+    /**
+     * RFC 8705 §3
+     */
+    #[Test]
+    public function theTokensOfTheRequestAreBoundToTheCertificatePresented(): void
+    {
+        // Given
+        $certificate = Certificates::selfSigned();
+
+        // When
+        $authenticated = $this->authenticate($certificate);
+
+        // Then
+        static::assertEquals(CertificateConfirmation::ofCertificate($certificate), $authenticated->confirmation);
+    }
+
+    /**
+     * RFC 7591 §2
+     */
+    #[Test]
+    public function aClientWhoseKeysCannotBeReadBackIsRefused(): void
+    {
+        // Given
+        $this->clients->save(
+            new Client(
+                $this->tenant,
+                new ClientRegistration(
+                    'remote-client',
+                    new ClientPresentation('Client publishing its certificate behind a URI'),
+                    Methods::selfSignedTlsClientAuth(),
+                    false,
+                    $this->client->registration->redirectUris,
+                    Shapes::jwt(),
+                    jwksUri: new ClientUri(self::JWKS_URI),
+                ),
+            ),
+        );
+        $fetcher = new FakeClientJwksFetcher([]);
+        $fetcher->failure = new ClientKeysUnavailableException('The keys of the client could not be read back.');
+
+        // When
+        $this->failToAuthenticate(Certificates::selfSigned(), 'remote-client', $fetcher);
+
+        // Then
+        $event = $this->events->events[0] ?? static::fail('A refusal is recorded.');
+        static::assertInstanceOf(ClientAuthenticationFailed::class, $event);
+        static::assertSame(ClientAuthenticationFailureReason::UnreadableClientKeys, $event->reason);
+    }
+
+    /**
+     * RFC 8705 §2.2
+     */
+    #[Test]
+    public function itAnnouncesItselfUnderTheNameOfTheSpecification(): void
+    {
+        // When / Then
+        static::assertSame('self_signed_tls_client_auth', Methods::selfSignedTlsClientAuth()->name());
+    }
+
+    private function authenticate(
+        ClientCertificate $certificate,
+        string $clientId = 'self-signed-client',
+        ?FakeClientJwksFetcher $fetcher = null,
+    ): AuthenticatedClient {
+        return $this->authenticator($fetcher)->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            null,
+            [
+                'client_id' => $clientId,
+            ],
+            $this->context,
+            $certificate,
+        );
+    }
+
+    private function failToAuthenticate(
+        ClientCertificate $certificate,
+        string $clientId = 'self-signed-client',
+        ?FakeClientJwksFetcher $fetcher = null,
+    ): OAuth2Exception {
+        try {
+            $this->authenticate($certificate, $clientId, $fetcher);
+        } catch (OAuth2Exception $exception) {
+            return $exception;
+        }
+
+        static::fail('The authentication should have failed.');
+    }
+
+    private function authenticator(?FakeClientJwksFetcher $fetcher = null): ClientAuthenticator
+    {
+        $clock = new MockClock('2026-09-22T12:00:00+00:00');
+
+        return new ClientAuthenticator(
+            $this->clients,
+            Methods::all(keys: Methods::keySetProvider($fetcher, $clock)),
+            Methods::requestParser(),
+            $clock,
+            $this->events,
+            new FakeClientLoadBudget(),
+        );
+    }
+}

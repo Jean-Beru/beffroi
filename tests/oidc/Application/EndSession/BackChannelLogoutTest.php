@@ -2,29 +2,32 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\EndSession;
+namespace Beffroi\Oidc\Tests\Application\EndSession;
 
+use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use DateInterval;
 use function array_map;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\SessionEnd;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
-use Heidi\Oidc\Application\EndSession\BackChannelLogout;
-use Heidi\Oidc\Application\EndSession\LogoutTokenIssuer;
-use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Event\LogoutTokenIssued;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\Jwts;
-use Heidi\Oidc\Tests\Fixture\Tokens;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Oidc\Application\EndSession\BackChannelLogout;
+use Beffroi\Oidc\Application\EndSession\LogoutTokenIssuer;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Event\LogoutTokenIssued;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\FakeLogoutTokenDelivery;
+use Beffroi\Oidc\Tests\Fixture\Jwts;
+use Beffroi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Beffroi\Oidc\Tests\Fixture\Subjects;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Back-Channel Logout 1.0 §2.6: who is told that a session ended, and who is not.
+ * Back-Channel Logout 1.0 §2.6
  */
 final class BackChannelLogoutTest extends TestCase
 {
@@ -43,14 +46,20 @@ final class BackChannelLogoutTest extends TestCase
         $this->events = new RecordingEventDispatcher();
         $this->logout = new BackChannelLogout(
             $this->grants,
-            new LogoutTokenIssuer(new Jwts($this->session->tenant)->signer, new PublicSubjectIdentifierResolver(), Algorithms::all()),
+            new LogoutTokenIssuer(
+                new Jwts($this->session->tenant)->signer,
+                Subjects::publicKind(),
+                Algorithms::all(),
+                new SymfonyUuidGenerator(),
+                new FakeLogoutTokenDelivery(new DateInterval('PT200S')),
+            ),
             $this->events,
             new MockClock(Fixtures::now()),
         );
     }
 
     /**
-     * §2.6: every client the session signed in that registered a URI, and one token each.
+     * Back-Channel Logout 1.0 §2.6
      */
     #[Test]
     public function everyClientOfTheSessionThatRegisteredAUriIsTold(): void
@@ -65,14 +74,13 @@ final class BackChannelLogoutTest extends TestCase
 
         // Then
         static::assertSame(['first', 'second', 'third'], array_map(
-            static fn (LogoutTokenIssued $event): string => $event->client->clientId,
+            static fn (LogoutTokenIssued $event): string => $event->clientId,
             $this->events->of(LogoutTokenIssued::class),
         ));
     }
 
     /**
-     * §2.6: a client that registered no back-channel logout URI has nowhere to be told, and no token is
-     * minted for it; the clients that come after it are told all the same.
+     * Back-Channel Logout 1.0 §2.6
      */
     #[Test]
     public function aClientWithoutABackChannelLogoutUriIsNotTold(): void
@@ -86,13 +94,13 @@ final class BackChannelLogoutTest extends TestCase
 
         // Then
         static::assertSame(['listening'], array_map(
-            static fn (LogoutTokenIssued $event): string => $event->client->clientId,
+            static fn (LogoutTokenIssued $event): string => $event->clientId,
             $this->events->of(LogoutTokenIssued::class),
         ));
     }
 
     /**
-     * §2.6: a session and a client, one token, whatever the number of grants the client obtained in it.
+     * Back-Channel Logout 1.0 §2.6
      */
     #[Test]
     public function aClientIsToldOnceWhateverTheNumberOfItsGrants(): void
@@ -110,7 +118,7 @@ final class BackChannelLogoutTest extends TestCase
     }
 
     /**
-     * §2.6: a code still waiting at the token endpoint gave the client no session to end.
+     * Back-Channel Logout 1.0 §2.6
      */
     #[Test]
     public function aClientThatNeverExchangedItsCodeIsNotTold(): void
@@ -127,8 +135,7 @@ final class BackChannelLogoutTest extends TestCase
     }
 
     /**
-     * A session of another browser keeps its clients: the announcement is per session, which is what
-     * "sid" names in the token (§2.4).
+     * Back-Channel Logout 1.0 §2.4
      */
     #[Test]
     public function theClientsOfAnotherSessionAreNotTold(): void
@@ -148,8 +155,7 @@ final class BackChannelLogoutTest extends TestCase
     }
 
     /**
-     * The event carries what the sender needs and nothing it would have to decide: the URI of the client
-     * and the compact JWS (architecture §5.6).
+     * Architecture §5.6
      */
     #[Test]
     public function theEventCarriesTheUriAndTheTokenToPostThere(): void
@@ -164,17 +170,14 @@ final class BackChannelLogoutTest extends TestCase
         // Then
         [$event] = $this->events->of(LogoutTokenIssued::class);
         static::assertSame('https://first.example/logout', $event->logoutUri->value);
-        static::assertSame($this->session->id, $event->session->id);
+        static::assertSame($this->session->id, $event->sessionId);
         static::assertSame(Fixtures::now()->getTimestamp(), $event->occurredAt->getTimestamp());
         static::assertStringStartsWith('eyJ', $event->token);
     }
 
-    /**
-     * A client that obtained a token in the session: a grant of the session, exchanged.
-     */
     private function signedIn(Client $client, string $code = 'code-of-the-client'): void
     {
-        $grant = Tokens::code($code . '-' . $client->clientId, $client, $this->session, Fixtures::now());
+        $grant = Tokens::code($code . '-' . $client->registration->clientId, $client, $this->session, Fixtures::now());
         $grant->consume(Fixtures::now());
         $this->grants->save($grant);
     }

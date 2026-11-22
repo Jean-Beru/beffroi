@@ -2,21 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\EndSession;
+namespace Beffroi\Oidc\Tests\Domain\EndSession;
 
 use function base64_encode;
 use function hash;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Domain\EndSession\FrontChannelLogoutFrame;
-use Heidi\Oidc\Domain\EndSession\FrontChannelLogoutPage;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Domain\EndSession\FrontChannelLogoutFrame;
+use Beffroi\Oidc\Domain\EndSession\FrontChannelLogoutPage;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Front-Channel Logout 1.0 §2: the page itself, and the policy that is part of it.
+ * Front-Channel Logout 1.0 §2
  */
 final class FrontChannelLogoutPageTest extends TestCase
 {
@@ -27,21 +27,21 @@ final class FrontChannelLogoutPageTest extends TestCase
         $this->session = Fixtures::session();
     }
 
-    /**
-     * One frame per client, in the order the clients were given.
-     */
     #[Test]
     public function itCarriesOneFrameForEachClient(): void
     {
         // When
-        $page = new FrontChannelLogoutPage([$this->frame('first', 'https://first.example/logout'), $this->frame('second', 'https://second.example/logout')], null);
+        $page = new FrontChannelLogoutPage([
+            $this->frame('first', 'https://first.example/logout'),
+            $this->frame('second', 'https://second.example/logout'),
+        ], null);
 
         // Then
         static::assertSame(['https://first.example/logout', 'https://second.example/logout'], $page->frames);
     }
 
     /**
-     * RFC 6454 §3.2: two clients of one origin are one source in the policy.
+     * RFC 6454 §3.2
      */
     #[Test]
     public function twoClientsOfTheSameOriginAreOneSource(): void
@@ -54,25 +54,26 @@ final class FrontChannelLogoutPageTest extends TestCase
     }
 
     /**
-     * CSP Level 3 §6.1: nothing loads but the frames the clients registered, nothing frames this page,
-     * and the one script that moves the browser on is named by its hash.
+     * CSP Level 3 §6.1
      */
     #[Test]
     public function thePolicyNamesTheFramesAndTheOneScript(): void
     {
         // Given
-        $page = new FrontChannelLogoutPage([$this->frame('first', 'https://first.example/logout'), $this->frame('second', 'https://second.example/logout')], 'https://demo.example/');
+        $page = new FrontChannelLogoutPage([
+            $this->frame('first', 'https://first.example/logout'),
+            $this->frame('second', 'https://second.example/logout'),
+        ], 'https://demo.example/');
 
         // When / Then
         static::assertSame(
-            "default-src 'none'; frame-src https://first.example https://second.example; script-src '" . $page->scriptHash() . "'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'",
+            "default-src 'none'; frame-src https://first.example https://second.example; script-src '"
+            . $page->scriptHash()
+            . "'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'",
             $page->contentSecurityPolicy(),
         );
     }
 
-    /**
-     * A page with nowhere to continue to runs no script, so it allows none.
-     */
     #[Test]
     public function aPageThatGoesNowhereAllowsNoScript(): void
     {
@@ -87,8 +88,7 @@ final class FrontChannelLogoutPageTest extends TestCase
     }
 
     /**
-     * CSP Level 3 §6.6.2.2: the hash is over the text of the script element, which is why that text is a
-     * constant.
+     * CSP Level 3 §6.6.2.2
      */
     #[Test]
     public function theHashIsTheOneOfTheScriptTheTemplateRenders(): void
@@ -101,7 +101,7 @@ final class FrontChannelLogoutPageTest extends TestCase
     }
 
     /**
-     * §2: a page with no frame has nothing to do; the caller renders none.
+     * Front-Channel Logout 1.0 §2
      */
     #[Test]
     public function aPageWithoutAFrameIsRefused(): void

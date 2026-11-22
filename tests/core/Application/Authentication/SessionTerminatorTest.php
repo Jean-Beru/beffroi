@@ -2,17 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Application\Authentication;
+namespace Beffroi\Core\Tests\Application\Authentication;
 
-use Heidi\Core\Application\Authentication\SessionTerminator;
-use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
-use Heidi\Core\Domain\Event\AuthenticationSessionEnded;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Session\SessionEnd;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Core\Application\Authentication\SessionTerminator;
+use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
+use Beffroi\Core\Domain\Event\AuthenticationSessionEnded;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -87,6 +88,35 @@ final class SessionTerminatorTest extends TestCase
         static::assertSame($this->ended, $event->session);
         static::assertSame($this->context, $event->context);
         static::assertEquals($this->clock->now(), $event->occurredAt);
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function theEndAnAdministratorMadeNamesThemInItsAct(): void
+    {
+        // Given
+        $administrator = new Subject('administrator-subject');
+
+        // When
+        $this->terminator->endByAnAdministrator($this->ended, $administrator, $this->context);
+
+        // Then
+        static::assertSame(
+            [SessionEnd::Administrator, $administrator],
+            [$this->ended->endedBy, $this->events->of(AuthenticationSessionEnded::class)[0]->author()],
+        );
+    }
+
+    #[Test]
+    public function theEndThePersonMadeNamesNoAuthor(): void
+    {
+        // When
+        $this->terminator->end($this->ended, SessionEnd::User, $this->context);
+
+        // Then
+        static::assertNull($this->events->of(AuthenticationSessionEnded::class)[0]->author());
     }
 
     #[Test]

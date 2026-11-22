@@ -2,42 +2,61 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Token;
+namespace Beffroi\Oidc\Tests\Application\Token;
 
-use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
-use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
-use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\SessionEnd;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
-use Heidi\Oidc\Application\Token\AccessTokenInspector;
-use Heidi\Oidc\Application\Token\AccessTokenVerifier;
-use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
-use Heidi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
-use Heidi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
-use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
-use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
-use Heidi\Oidc\Exception\InvalidTokenException;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\Jwts;
-use Heidi\Oidc\Tests\Fixture\Tokens;
+use Beffroi\Oidc\Tests\Fixture\Secrets;
+use Beffroi\Oidc\Application\Token\OpaqueAccessTokenIssuer;
+use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
+use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Token\AccessTokenInspector;
+use Beffroi\Oidc\Tests\Fixture\AccessTokenShapes;
+use Beffroi\Oidc\Application\Token\JwtAccessTokenIssuer;
+use Beffroi\Oidc\Application\Token\SealedPerson;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryAccessTokenRepository;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationCode;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Authorization\AuthenticationSnapshot;
+use Beffroi\Oidc\Domain\Token\ClientAuthorization;
+use Beffroi\Oidc\Domain\Token\SubjectAuthorization;
+use Beffroi\Oidc\Domain\Token\TokenSignIn;
+use Beffroi\Oidc\Domain\Token\UserAuthorization;
+use Beffroi\Oidc\Exception\InvalidTokenException;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\Grants;
+use Beffroi\Oidc\Tests\Fixture\Jwts;
+use Beffroi\Oidc\Tests\Fixture\Tokens;
+use Beffroi\Oidc\Tests\Fixture\Shapes;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Beffroi\Oidc\Tests\Fixture\Subjects;
+use Symfony\Component\Uid\Uuid;
 
 /**
- * The checks the provider's own resources add to the verification (architecture §4.6): the session, the
- * grant and the user, asked in one way of both shapes of token, an opaque one being the shape used
- * wherever the shape is not what the test is about.
+ * Architecture §4.6
  */
 final class AccessTokenInspectorTest extends TestCase
 {
+    /**
+     * OIDC Core §8.1
+     */
+    private const string SUBJECT_OF_THE_FIRST_CLIENT = 'alice-to-the-first-client';
+
     private Tenant $tenant;
 
     private User $user;
@@ -54,6 +73,10 @@ final class AccessTokenInspectorTest extends TestCase
 
     private Jwts $jwts;
 
+    private InMemoryClientRepository $clients;
+
+    private SealedPerson $persons;
+
     private AccessTokenInspector $inspector;
 
     protected function setUp(): void
@@ -69,16 +92,29 @@ final class AccessTokenInspectorTest extends TestCase
         $this->jwts = new Jwts($this->tenant);
         $users = new InMemoryUserRepository();
         $users->save($this->user);
-        $clients = new InMemoryClientRepository();
-        $clients->save($this->client);
-        $this->inspector = new AccessTokenInspector(new AccessTokenVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()), $clients, $this->tokens, new PublicSubjectIdentifierResolver()), $this->sessions, $this->grants, $users);
+        $this->clients = new InMemoryClientRepository();
+        $this->clients->save($this->client);
+        $this->persons = Subjects::sealedPerson();
+        $this->inspector = new AccessTokenInspector(
+            AccessTokenShapes::verifier(
+                new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
+                $this->clients,
+                $this->tokens,
+                Subjects::publicKind(),
+                $this->persons,
+            ),
+            $this->sessions,
+            $this->grants,
+            Subjects::personOfAToken($users),
+        );
     }
 
     #[Test]
-    public function itHandsOverTheVerifiedTokenAndItsUser(): void
+    #[DataProvider('provideAccessTokenShapes')]
+    public function itHandsOverTheVerifiedTokenAndItsUser(string $shape): void
     {
         // Given
-        $token = $this->tokenOf($this->code());
+        $token = $this->tokenOfShape($shape, $this->code());
 
         // When
         $inspected = $this->inspector->inspect($this->tenant, $token, Fixtures::now());
@@ -90,7 +126,131 @@ final class AccessTokenInspectorTest extends TestCase
     }
 
     /**
-     * RFC 6749 §4.1.2: the replay of the code revoked the grant; every token descending from it is refused.
+     * @return iterable<string, array{string}>
+     */
+    public static function provideAccessTokenShapes(): iterable
+    {
+        yield 'opaque' => ['opaque'];
+        yield 'at+jwt' => ['jwt'];
+    }
+
+    /**
+     * RFC 8693 §2.2.1, OIDC Core §8.1
+     */
+    #[Test]
+    public function itNamesThePersonTheRecordOfAnExchangedTokenKeeps(): void
+    {
+        // Given
+        $token = $this->exchangedToken($this->code(), $this->user->subject);
+
+        // When
+        $inspected = $this->inspector->inspect($this->tenant, $token, Fixtures::now());
+
+        // Then
+        static::assertSame($this->user, $inspected->user);
+        static::assertSame(self::SUBJECT_OF_THE_FIRST_CLIENT, (string) $inspected->token->subject);
+    }
+
+    /**
+     * OIDC Core §8.1
+     */
+    #[Test]
+    public function itNamesThePersonASelfContainedExchangedTokenCarries(): void
+    {
+        // Given
+        $token = $this->selfContainedExchangedToken($this->code(), $this->user->subject);
+
+        // When
+        $inspected = $this->inspector->inspect($this->tenant, $token, Fixtures::now());
+
+        // Then
+        static::assertSame($this->user, $inspected->user);
+        static::assertSame(self::SUBJECT_OF_THE_FIRST_CLIENT, (string) $inspected->token->subject);
+    }
+
+    #[Test]
+    public function itRefusesAnExchangedTokenOfADisabledPerson(): void
+    {
+        // Given
+        $token = $this->exchangedToken($this->code(), $this->user->subject);
+        $this->user->disable(Fixtures::now());
+
+        // Then
+        $this->expectException(InvalidTokenException::class);
+        $this->expectExceptionMessageIs('invalid_token: The access token names a user this provider no longer serves.');
+
+        // When
+        $this->inspector->inspect($this->tenant, $token, Fixtures::now());
+    }
+
+    /**
+     * RFC 6749 §4.4
+     */
+    #[Test]
+    public function itHandsOverATokenNobodySignedInForWithoutAUser(): void
+    {
+        // Given
+        $token = $this->clientToken();
+
+        // When
+        $inspected = $this->inspector->inspect($this->tenant, $token, Fixtures::now());
+
+        // Then
+        static::assertNull($inspected->user);
+        static::assertNull($inspected->token->signIn);
+        static::assertSame('batch', (string) $inspected->token->subject);
+    }
+
+    #[Test]
+    public function aTokenNobodySignedInForOutlivesTheLogoutOfEverybody(): void
+    {
+        // Given
+        $token = $this->clientToken();
+        $this->session->end(SessionEnd::User, Fixtures::now()->modify('+1 minute'));
+
+        // When
+        $inspected = $this->inspector->inspect($this->tenant, $token, Fixtures::now());
+
+        // Then
+        static::assertNull($inspected->user);
+    }
+
+    /**
+     * RFC 7523 §2.1
+     */
+    #[Test]
+    #[DataProvider('provideAccessTokenShapes')]
+    public function itNamesThePersonOfATokenNobodySignedInFor(string $shape): void
+    {
+        // Given
+        $token = $this->tokenOfAnAssertion($shape);
+
+        // When
+        $inspected = $this->inspector->inspect($this->tenant, $token, Fixtures::now());
+
+        // Then
+        static::assertSame($this->user, $inspected->user);
+        static::assertNull($inspected->token->signIn);
+    }
+
+    #[Test]
+    #[DataProvider('provideAccessTokenShapes')]
+    public function itRefusesATokenNobodySignedInForOfADisabledPerson(string $shape): void
+    {
+        // Given
+        $token = $this->tokenOfAnAssertion($shape);
+        $this->user->disable(Fixtures::now());
+
+        // Then
+        $this->expectException(InvalidTokenException::class);
+        $this->expectExceptionMessageIs('invalid_token: The access token names a user this provider no longer serves.');
+
+        // When
+        $this->inspector->inspect($this->tenant, $token, Fixtures::now());
+    }
+
+    /**
+     * RFC 6749 §4.1.2
      */
     #[Test]
     public function itRefusesATokenOfARevokedGrant(): void
@@ -108,9 +268,6 @@ final class AccessTokenInspectorTest extends TestCase
         $this->inspector->inspect($this->tenant, $token, Fixtures::now());
     }
 
-    /**
-     * A grant the provider no longer keeps is a grant it cannot vouch for.
-     */
     #[Test]
     public function itRefusesATokenWhoseGrantIsGone(): void
     {
@@ -144,7 +301,17 @@ final class AccessTokenInspectorTest extends TestCase
     public function itRefusesATokenOfAUserGone(): void
     {
         // Given
-        $inspector = new AccessTokenInspector(new AccessTokenVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()), new InMemoryClientRepository(), $this->tokens, new PublicSubjectIdentifierResolver()), $this->sessions, $this->grants, new InMemoryUserRepository());
+        $inspector = new AccessTokenInspector(
+            AccessTokenShapes::verifier(
+                new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
+                new InMemoryClientRepository(),
+                $this->tokens,
+                Subjects::publicKind(),
+            ),
+            $this->sessions,
+            $this->grants,
+            Subjects::personOfAToken(new InMemoryUserRepository()),
+        );
         $token = $this->tokenOf($this->code());
 
         // Then
@@ -155,9 +322,6 @@ final class AccessTokenInspectorTest extends TestCase
         $inspector->inspect($this->tenant, $token, Fixtures::now());
     }
 
-    /**
-     * What the verifier refuses, the inspector refuses, before any grant or user is looked at.
-     */
     #[Test]
     public function itRefusesWhatTheVerifierRefuses(): void
     {
@@ -170,9 +334,7 @@ final class AccessTokenInspectorTest extends TestCase
     }
 
     /**
-     * Architecture §4.9 and issue #150: what a logout ends, it ends for both shapes of token. An opaque
-     * one is refused by the record the provider keeps, an "at+jwt" by the "sid" it carries, and the
-     * question is asked in the same place for both.
+     * Architecture §4.9
      */
     #[Test]
     #[DataProvider('provideAccessTokenShapes')]
@@ -191,18 +353,26 @@ final class AccessTokenInspectorTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{string}>
+     * Decision 0031
      */
-    public static function provideAccessTokenShapes(): iterable
+    #[Test]
+    #[DataProvider('provideAccessTokenShapes')]
+    public function itHonoursATokenOfASessionPastItsExpiry(string $shape): void
     {
-        yield 'opaque' => ['opaque'];
-        yield 'at+jwt' => ['jwt'];
+        // Given
+        $expiring = Fixtures::session($this->user, Fixtures::now()->modify('-12 hours +1 minute'));
+        $this->sessions->save($expiring);
+        $code = Tokens::code('the-code', $this->client, $expiring, Fixtures::now());
+        $this->grants->save($code);
+        $token = $this->tokenOfShape($shape, $code);
+
+        // When
+        $inspected = $this->inspector->inspect($this->tenant, $token, Fixtures::now()->modify('+2 minutes'));
+
+        // Then
+        static::assertSame($this->user, $inspected->user);
     }
 
-    /**
-     * A session the provider no longer keeps is a session it cannot vouch for, as a grant it no longer
-     * keeps is.
-     */
     #[Test]
     public function itRefusesATokenWhoseSessionIsGone(): void
     {
@@ -213,7 +383,17 @@ final class AccessTokenInspectorTest extends TestCase
         $users->save($this->user);
         $clients = new InMemoryClientRepository();
         $clients->save($this->client);
-        $inspector = new AccessTokenInspector(new AccessTokenVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()), $clients, $this->tokens, new PublicSubjectIdentifierResolver()), $sessions, $this->grants, $users);
+        $inspector = new AccessTokenInspector(
+            AccessTokenShapes::verifier(
+                new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()),
+                $clients,
+                $this->tokens,
+                Subjects::publicKind(),
+            ),
+            $sessions,
+            $this->grants,
+            Subjects::personOfAToken($users),
+        );
 
         // Then
         $this->expectException(InvalidTokenException::class);
@@ -221,6 +401,124 @@ final class AccessTokenInspectorTest extends TestCase
 
         // When
         $inspector->inspect($this->tenant, $token, Fixtures::now());
+    }
+
+    /**
+     * RFC 6749 §4.4
+     */
+    private function clientToken(): string
+    {
+        $service = Clients::service($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
+        $this->clients->save($service);
+
+        return Tokens::accessToken(
+            $this->opaque(),
+            new ClientAuthorization(
+                Grants::clientCredentials(),
+                Uuid::v7(),
+                $service,
+                new Scopes([new Scope('invoices.read')]),
+                ResourceIndicators::of([Clients::CALENDAR]),
+            ),
+            Fixtures::now(),
+        )->value;
+    }
+
+    /**
+     * RFC 8693 §2.1
+     */
+    private function exchangedToken(AuthorizationCode $code, Subject $person): string
+    {
+        $gateway = Clients::gateway(
+            $this->tenant,
+            new FakePasswordHasher()->hash(Clients::SECRET),
+            'person-gateway',
+            accessTokenShape: Shapes::opaque(),
+        );
+        $this->clients->save($gateway);
+        $value = Secrets::draw();
+        $this->tokens->save(Tokens::storedSubjectAccessToken(
+            $value,
+            $gateway,
+            new Subject(self::SUBJECT_OF_THE_FIRST_CLIENT),
+            Fixtures::now(),
+            grantId: $code->grantId,
+            session: $this->session,
+            person: $person,
+        ));
+
+        return $value;
+    }
+
+    /**
+     * RFC 8693 §2.1
+     */
+    private function selfContainedExchangedToken(AuthorizationCode $code, Subject $person): string
+    {
+        $gateway = Clients::gateway($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET), 'person-jwt-gateway');
+        $this->clients->save($gateway);
+
+        return Tokens::accessToken(
+            new JwtAccessTokenIssuer(
+                $this->jwts->signer,
+                Subjects::publicKind(),
+                Algorithms::all(),
+                new SymfonyUuidGenerator(),
+                $this->persons,
+            ),
+            new SubjectAuthorization(
+                Grants::tokenExchange(),
+                $code->grantId,
+                $gateway,
+                new Subject(self::SUBJECT_OF_THE_FIRST_CLIENT),
+                new Scopes([new Scope('invoices.read')]),
+                new Scopes([new Scope('invoices.read')]),
+                ResourceIndicators::of([Clients::CALENDAR]),
+                ResourceIndicators::of([Clients::CALENDAR]),
+                new TokenSignIn($this->session->id, AuthenticationSnapshot::ofSession($this->session, $this->session->authenticationContextClass())),
+                person: $person,
+            ),
+            Fixtures::now(),
+        )->value;
+    }
+
+    /**
+     * RFC 7523 §2.1
+     */
+    private function tokenOfAnAssertion(string $shape): string
+    {
+        $runner = Clients::presentingAssertions(
+            $this->tenant,
+            new FakePasswordHasher()->hash(Clients::SECRET),
+            accessTokenShape: $shape === 'opaque' ? Shapes::opaque() : Shapes::jwt(),
+        );
+        $this->clients->save($runner);
+        $authorization = new SubjectAuthorization(
+            Grants::jwtBearer(),
+            Uuid::v7(),
+            $runner,
+            $this->user->subject,
+            new Scopes([new Scope('invoices.read')]),
+            new Scopes([new Scope('invoices.read')]),
+            ResourceIndicators::of([Clients::CALENDAR]),
+            ResourceIndicators::of([Clients::CALENDAR]),
+            person: $this->user->subject,
+        );
+        if ($shape === 'opaque') {
+            return Tokens::accessToken($this->opaque(), $authorization, Fixtures::now())->value;
+        }
+
+        return Tokens::accessToken(
+            new JwtAccessTokenIssuer(
+                $this->jwts->signer,
+                Subjects::publicKind(),
+                Algorithms::all(),
+                new SymfonyUuidGenerator(),
+                $this->persons,
+            ),
+            $authorization,
+            Fixtures::now(),
+        )->value;
     }
 
     private function code(): AuthorizationCode
@@ -233,21 +531,30 @@ final class AccessTokenInspectorTest extends TestCase
 
     private function tokenOf(AuthorizationCode $code): string
     {
-        return $this->tokens->issue(GrantedAuthorization::fromAuthorizationCode($code), Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        return Tokens::accessToken($this->opaque(), UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code), Fixtures::now())->value;
     }
 
-    /**
-     * The same grant in either shape: the record the repository keeps, or the "at+jwt" the issuer mints
-     * and the bridge of the core verifies.
-     */
+    private function opaque(): OpaqueAccessTokenIssuer
+    {
+        return new OpaqueAccessTokenIssuer($this->tokens, Secrets::drawer());
+    }
+
     private function tokenOfShape(string $shape, AuthorizationCode $code): string
     {
         if ($shape === 'opaque') {
             return $this->tokenOf($code);
         }
 
-        return new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())
-            ->issue(GrantedAuthorization::fromAuthorizationCode($code), Fixtures::now())
-            ->value;
+        return Tokens::accessToken(
+            new JwtAccessTokenIssuer(
+                $this->jwts->signer,
+                Subjects::publicKind(),
+                Algorithms::all(),
+                new SymfonyUuidGenerator(),
+                Subjects::sealedPerson(),
+            ),
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), $code),
+            Fixtures::now(),
+        )->value;
     }
 }

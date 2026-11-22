@@ -2,24 +2,23 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Application\EndSession;
+namespace Beffroi\Oidc\Application\EndSession;
 
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Application\Authorization\IdTokenHintVerifier;
-use Heidi\Oidc\Application\Request\RequestParameters;
-use Heidi\Oidc\Domain\Authorization\IdTokenHint;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\EndSession\EndSessionRequest;
-use Heidi\Oidc\Exception\InvalidRequestException;
-use Heidi\Oidc\Exception\OAuth2Exception;
-use Heidi\Oidc\Port\ClientRepositoryInterface;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Application\Authorization\IdTokenHintVerifier;
+use Beffroi\Oidc\Application\Request\RequestParameters;
+use Beffroi\Oidc\Domain\Authorization\IdTokenHint;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\RedirectUri;
+use Beffroi\Oidc\Domain\EndSession\EndSessionRequest;
+use Beffroi\Oidc\Exception\InvalidRequestException;
+use Beffroi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Oidc\Port\ClientRepositoryInterface;
 
 /**
- * Reads a logout request (RP-Initiated Logout §2): the hint identifies the client, client_id must be
- * in its audience, post_logout_redirect_uri is honoured only for an identified client (§3). No error
- * is redirectable (§4). A hint the provider cannot verify today (a retired key) identifies no client
- * and marks the request so that the handler asks the user (§2, §6).
+ * RP-Initiated Logout §2, §4
+ *
+ * A hint that cannot be verified (a retired key) is no error: it identifies no client and the user is asked.
  */
 final readonly class EndSessionRequestParser
 {
@@ -36,7 +35,8 @@ final readonly class EndSessionRequestParser
      */
     public function parse(Tenant $tenant, array $parameters): EndSessionRequest
     {
-        $idTokenHint = RequestParameters::compactJws($parameters, 'id_token_hint', false);
+        $request = RequestParameters::of($parameters);
+        $idTokenHint = $request->compactJws('id_token_hint');
         $hint = null;
         $invalidHint = false;
         if ($idTokenHint !== null) {
@@ -46,24 +46,21 @@ final readonly class EndSessionRequestParser
                 $invalidHint = true;
             }
         }
-        $client = $this->client($tenant, $hint, RequestParameters::single($parameters, 'client_id', false));
-        $postLogoutRedirectUri = self::postLogoutRedirectUri($client, RequestParameters::single($parameters, 'post_logout_redirect_uri', false), $invalidHint);
+        $client = $this->client($tenant, $hint, $request->optional('client_id'));
+        $postLogoutRedirectUri = self::postLogoutRedirectUri($client, $request->optional('post_logout_redirect_uri'), $invalidHint);
 
         return new EndSessionRequest(
             $tenant,
             $client,
             $hint,
             $postLogoutRedirectUri,
-            RequestParameters::state($parameters, false),
-            RequestParameters::text($parameters, 'logout_hint', false),
-            RequestParameters::uiLocales($parameters, false),
+            $request->state(),
+            $request->text('logout_hint'),
+            $request->uiLocales(),
             $invalidHint,
         );
     }
 
-    /**
-     * §2: client_id, or else the first audience of the hint that is a client of the tenant.
-     */
     private function client(Tenant $tenant, ?IdTokenHint $hint, ?string $clientId): ?Client
     {
         if ($clientId !== null) {
@@ -87,8 +84,7 @@ final readonly class EndSessionRequestParser
     }
 
     /**
-     * §3: only a URI the client registered byte for byte. Without a client the URI is a fault of the
-     * request, unless the hint could not be verified: it is then dropped and the user asked.
+     * RP-Initiated Logout §3
      */
     private static function postLogoutRedirectUri(?Client $client, ?string $postLogoutRedirectUri, bool $invalidHint): ?RedirectUri
     {
@@ -102,7 +98,7 @@ final readonly class EndSessionRequestParser
 
             throw new InvalidRequestException('The post_logout_redirect_uri parameter requires id_token_hint or client_id to identify the client.');
         }
-        if (! $client->hasPostLogoutRedirectUri($postLogoutRedirectUri)) {
+        if (! $client->registration->hasPostLogoutRedirectUri($postLogoutRedirectUri)) {
             throw new InvalidRequestException('The post_logout_redirect_uri parameter is not registered for this client.');
         }
 

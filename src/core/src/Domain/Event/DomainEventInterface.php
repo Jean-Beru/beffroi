@@ -2,17 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Domain\Event;
+namespace Beffroi\Core\Domain\Event;
 
 use DateTimeImmutable;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Tenant\Tenant;
 
 /**
- * When, in which tenant, from which request. The core announces; the integration reacts asynchronously (architecture §3.5).
+ * Written to a broker: an event holds a domain object only when it serializes whole, and identifiers otherwise.
  */
 interface DomainEventInterface
 {
+    /**
+     * The label the journal writes down, stable whatever the class is called.
+     */
+    public function name(): string;
+
     public DateTimeImmutable $occurredAt { get; }
 
     public Tenant $tenant { get; }

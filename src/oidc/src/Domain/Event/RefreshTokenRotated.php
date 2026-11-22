@@ -2,30 +2,39 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Event;
+namespace Beffroi\Oidc\Domain\Event;
 
 use DateTimeImmutable;
-use Heidi\Core\Domain\Event\DomainEventInterface;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Domain\Token\RefreshToken;
+use Beffroi\Core\Domain\Event\ConcernsAPersonInterface;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Symfony\Component\Uid\Uuid;
 
-/**
- * A refresh token was presented and replaced by its successor in the same family (RFC 6749 §6,
- * RFC 9700 §4.13.2).
- */
-final readonly class RefreshTokenRotated implements DomainEventInterface
+final readonly class RefreshTokenRotated implements ConcernsAClientInterface, ConcernsAPersonInterface
 {
-    public DateTimeImmutable $occurredAt;
-
-    public Tenant $tenant;
+    public const string NAME = 'refresh_token.rotated';
 
     public function __construct(
-        public RefreshToken $previous,
-        public RefreshToken $next,
+        public DateTimeImmutable $occurredAt,
+        public Tenant $tenant,
+        public string $clientId,
+        public Subject $subject,
+        public Uuid $familyId,
+        public string $previousTokenHash,
+        public string $nextTokenHash,
+        public DateTimeImmutable $nextExpiresAt,
         public RequestContext $context,
     ) {
-        $this->occurredAt = $next->issuedAt;
-        $this->tenant = $next->client->tenant;
+    }
+
+    public function name(): string
+    {
+        return self::NAME;
+    }
+
+    public function subject(): Subject
+    {
+        return $this->subject;
     }
 }

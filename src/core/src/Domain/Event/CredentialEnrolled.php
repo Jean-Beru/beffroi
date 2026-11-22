@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Domain\Event;
+namespace Beffroi\Core\Domain\Event;
 
 use DateTimeImmutable;
-use Heidi\Core\Domain\Credential\Credential;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Domain\Credential\Credential;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Tenant\Tenant;
 
-/**
- * A user got a credential of some kind through an enrolment; the kind is the class of the credential.
- */
-final readonly class CredentialEnrolled implements DomainEventInterface
+final readonly class CredentialEnrolled implements ConcernsAPersonInterface
 {
+    public const string NAME = 'credential.enrolled';
+
     public Tenant $tenant;
 
     public function __construct(
@@ -22,5 +22,15 @@ final readonly class CredentialEnrolled implements DomainEventInterface
         public RequestContext $context,
     ) {
         $this->tenant = $credential->tenant;
+    }
+
+    public function name(): string
+    {
+        return self::NAME;
+    }
+
+    public function subject(): Subject
+    {
+        return $this->credential->user->subject;
     }
 }

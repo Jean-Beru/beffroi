@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Security;
+namespace App\Tests\Symfony\Functional\Security;
 
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Exception\LogicException;
-use Heidi\Core\Port\AlgorithmPasswordHasherInterface;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Domain\Credential\PasswordAlgorithmInterface;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Exception\LogicException;
+use Beffroi\Core\Port\AlgorithmPasswordHasherInterface;
 use const PASSWORD_ARGON2ID;
 use function password_hash;
 use function password_needs_rehash;
@@ -16,13 +17,7 @@ use SensitiveParameter;
 use function sprintf;
 
 /**
- * The argon2id hasher of the test kernel: genuine argon2id hashes, "$argon2id$" strings that the native
- * hasher of the core verifies as well, at the smallest cost the algorithm accepts, a millisecond and a
- * mebibyte instead of the 400 ms and 64 MiB of the defaults of PHP the native hasher refuses to go below
- * (RFC 9106 §4). Tagged ahead of the native hasher, it takes every argon2id hash of the suite: the
- * passwords of the users, the ten backup codes of a TOTP, the secrets of the clients rehashed at every
- * reboot of the kernel, the decoys. The native hasher keeps the hashes of the other algorithms, so that
- * a bcrypt hash is still verified and rehashed on login. Never leaves the test suite.
+ * RFC 9106 §4
  */
 final readonly class CheapArgon2idHasher implements AlgorithmPasswordHasherInterface
 {
@@ -35,14 +30,14 @@ final readonly class CheapArgon2idHasher implements AlgorithmPasswordHasherInter
         'threads' => 1,
     ];
 
-    public function supports(PasswordAlgorithm $algorithm): bool
+    public function supports(PasswordAlgorithmInterface $algorithm): bool
     {
-        return $algorithm === PasswordAlgorithm::Argon2id;
+        return $algorithm->name() === Argon2id::NAME;
     }
 
     public function hash(#[SensitiveParameter] string $plainPassword): PasswordHash
     {
-        return new PasswordHash(PasswordAlgorithm::Argon2id, password_hash($plainPassword, PASSWORD_ARGON2ID, self::OPTIONS));
+        return new PasswordHash(new Argon2id(), password_hash($plainPassword, PASSWORD_ARGON2ID, self::OPTIONS));
     }
 
     public function verify(PasswordHash $hash, #[SensitiveParameter] string $plainPassword): bool
@@ -59,10 +54,10 @@ final readonly class CheapArgon2idHasher implements AlgorithmPasswordHasherInter
         return password_needs_rehash($hash->encoded, PASSWORD_ARGON2ID, self::OPTIONS);
     }
 
-    private function assertSupported(PasswordAlgorithm $algorithm): void
+    private function assertSupported(PasswordAlgorithmInterface $algorithm): void
     {
         if (! $this->supports($algorithm)) {
-            throw new LogicException(sprintf('The cheap hasher handles argon2id hashes only, not "%s"; route them through the registry.', $algorithm->value));
+            throw new LogicException(sprintf('The cheap hasher handles argon2id hashes only, not "%s"; route them through the registry.', $algorithm->name()));
         }
     }
 }

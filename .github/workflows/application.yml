@@ -1,0 +1,175 @@
+name: Application
+
+on:
+  push:
+    branches:
+      - '*.*.x'
+  pull_request:
+    paths:
+      - '.github/workflows/application.yml'
+      - '.castor/stack/qa.php'
+      - 'src/**'
+      - 'apps/beffroi/**'
+  workflow_dispatch: ~
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+# What the application can be judged on without a stack, which is the pair it makes with the packages,
+# what its kernel writes, what its own files say, and what its pages answer: a database service is not a
+# stack, and the suite at the end of this job drives the kernel of the application without one process of
+# the development stack being started.
+#
+# The pair first. apps/beffroi/composer.json resolves beffroi/* through path repositories to ../../src/*, so the
+# packages come from the branch, while apps/beffroi/composer.lock pins every third-party dependency at the
+# commit it was written against. Booting the application is therefore the one place where the lock of the
+# application meets the packages of this branch, and the only place either is told the other moved: an API
+# that changes upstream arrives in the packages, which every job of ci.yml installs at its highest
+# resolvable version, and does not arrive in the application, which installs what its lock names. The push
+# to a maintenance branch boots it whatever changed, and a pull request boots it as soon as it touches a
+# package or the application, so the commit that breaks the pair is the commit that is red. When the boot
+# fails, the step after it resolves the application's dependencies again and boots it a second time: a
+# second boot that succeeds says the lock is behind and the fix is a lock bump, one that fails again says
+# the packages of this branch are what broke it. A failure that does not name the side that moved sends
+# somebody reading the wrong diff.
+#
+# apps/beffroi/config/reference.php and apps/beffroi/config/schema.json are written by the kernel when it compiles
+# its container, from the configuration trees of the bundles it has installed, and both are committed: an
+# editor reads them to complete a "beffroi.*" key, a reader of the repository reads them to know what the
+# provider takes. Nothing else writes them, so the check boots the application and fails when either file
+# comes back different, naming it and printing the diff ("castor config-reference", .castor/stack/qa.php).
+# The three linters then read the container that step compiled: a template of the provider this application
+# overrides, a configuration file of its own, a catalogue it adds to.
+#
+# Then the suite of the application (issue #521), which is why this job carries a PostgreSQL service. The
+# kernel of apps/beffroi is the one a deployment boots, and the page this application owns writes a person: a
+# sealed column needs the KMS of apps/beffroi/.env.test, and every column needs a database that answers, so a
+# functional test here cannot be an in-memory one. The migrations of the provider write the schema before the
+# first test, as they write it on a deployment, which also makes this the one run of the repository that
+# plays them against PostgreSQL without being asked by hand. The suite judges what only this kernel can
+# answer, its own configuration, its own routes and its own templates; the rules of the provider are judged
+# by the three suites of ci.yml, on a test kernel of their own.
+#
+# A workflow of its own rather than a job of ci.yml, and the reason is the lean CI rule: this is the only
+# check of a pull request that needs the Composer install of apps/beffroi and a database service beside it, and
+# no job of ci.yml needs either. "paths" is what keeps a pull request that touches neither the packages nor
+# the application from paying the half minute this costs, and it names every package rather than the
+# configuration trees alone, because a commit that breaks the pair is not only a commit that moves a tree.
+#
+# It runs in the phpqa image, as every job of ci.yml does and as every task of .castor/stack/qa.php does on
+# a desk: the PHP that boots the application is the one of that image, and the runner of the suite is the
+# PHPUnit it carries, this application declaring none of its own.
+
+jobs:
+  application:
+    name: "The application boots, what its kernel writes is what is committed, and its suite is green"
+    runs-on: [self-hosted, kloude-light]
+    container:
+      image: ghcr.io/spomky-labs/phpqa:8.5
+    env:
+      # A job that runs in a container is on the network of the services beside it, where this one answers
+      # at its own name and not at the loopback address apps/beffroi/.env names for a desk. A real environment
+      # variable wins over .env and over .env.test, which is what lets the same task run in both places
+      # (apps/beffroi/.env.test). The suite writes the "_test" database beside the one named here, which its
+      # test environment appends the suffix to (apps/beffroi/config/packages/test/doctrine.yaml), and
+      # "castor app-phpunit" creates it.
+      DATABASE_URL: "postgresql://beffroi:beffroi@database:5432/beffroi?serverVersion=16&charset=utf8"
+    # The database the suite of the application needs. The version is the one compose.yaml serves the
+    # development stack with.
+    #
+    # From Docker Hub, pulled by the runner before the first step, out of reach of the cache that holds the
+    # image of the split, under the account the secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN of this
+    # repository name: an anonymous pull is counted per address of the runner pool, which this repository
+    # shares, and an address already spent answers "toomanyrequests". Both are required: GitHub refuses, before
+    # the job starts, a service whose credentials are empty, so they are secrets of Dependabot as well, for its
+    # pull requests. An organisation on the free plan hands its own secrets to its public repositories only. Docker Hub, GitHub's registry and GitLab's (the images of the conformance suite) are the only registries this repository reads.
+    services:
+      database:
+        image: postgres:16-alpine
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+        env:
+          POSTGRES_DB: beffroi
+          POSTGRES_USER: beffroi
+          POSTGRES_PASSWORD: beffroi
+        options: >-
+          --health-cmd "pg_isready -d beffroi -U beffroi"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v7
+      # The application is pinned by its own lock, the way a developer runs it. Without its scripts: what is
+      # compiled here is the container, and the assets the auto-scripts install are no part of it.
+      - uses: ramsey/composer-install@v4
+        with:
+          working-directory: apps/beffroi
+          dependency-versions: locked
+          composer-options: --optimize-autoloader --no-scripts
+      # The pair, before anything is compared and before a tool is downloaded for it: the container
+      # compiles or it does not, and a failure here is the lock of the application and the packages of this
+      # branch disagreeing. The task further down compiles it a second time, two seconds, which is the
+      # price of a failure that says what it is instead of one failure standing for two causes.
+      - name: "The application boots on its lock and the packages of this branch"
+        id: "boot"
+        working-directory: apps/beffroi
+        env:
+          APP_ENV: dev
+          APP_DEBUG: 1
+        run: php bin/console cache:clear
+
+      # Which of the two moved, asked only of a boot that failed: the dependencies are resolved again, at
+      # the highest version they allow, which is what every job of ci.yml installs for the packages. A
+      # second boot that succeeds names the lock, and what Composer moved is what to bump; one that fails
+      # again names the packages; a resolution that cannot be done at all names itself, and is neither of
+      # the two. The step fails in all three cases, it diagnoses and repairs nothing.
+      #
+      # "failure()" is what makes the condition reached: an "if" that names no status function is given
+      # success() on top of itself, and this step is wanted on a job that has just failed. The log is
+      # redirected rather than piped, because the default shell of a step is "bash -e" without pipefail,
+      # where the status of a pipe is the status of "tee" and a resolution that failed reads as one that
+      # worked.
+      - name: "Which of the two moved"
+        if: "failure() && steps.boot.outcome == 'failure'"
+        working-directory: apps/beffroi
+        env:
+          APP_ENV: dev
+          APP_DEBUG: 1
+        run: |
+          if ! composer update --no-interaction --no-scripts --no-progress > "${RUNNER_TEMP}/update.log" 2>&1; then
+            cat "${RUNNER_TEMP}/update.log"
+            echo "The dependencies of the application do not resolve at all, so neither the lock nor a package of this branch is the whole of it: what Composer refuses is above." >> "${GITHUB_STEP_SUMMARY}"
+            echo "::error title=The dependencies of the application do not resolve::Composer cannot satisfy apps/beffroi/composer.json against the packages of this branch, so the pair cannot be told apart. The log is in the step."
+            exit 1
+          fi
+          cat "${RUNNER_TEMP}/update.log"
+          moved=$(grep -E '^\s+- (Upgrading|Downgrading|Installing|Removing)' "${RUNNER_TEMP}/update.log" || true)
+          if php bin/console cache:clear; then
+            {
+              echo "The application boots once its dependencies are resolved again, so apps/beffroi/composer.lock is behind the packages: the fix is a lock bump here and not a change of the packages. Run \"(cd apps/beffroi && composer update)\", then \"castor config-reference-fix\", and commit both."
+              echo
+              echo '```'
+              echo "${moved:-Composer moved nothing it names, so what moved is a dependency of a dependency.}"
+              echo '```'
+            } >> "${GITHUB_STEP_SUMMARY}"
+            echo "::error title=The lock of the application is behind the packages::It boots with its dependencies resolved again, so the fix is a lock bump in apps/beffroi. The job summary lists what moved."
+            exit 1
+          fi
+          echo "The application boots neither on its lock nor on its dependencies resolved again, so what broke it is in the packages of this branch and no lock bump reaches it." >> "${GITHUB_STEP_SUMMARY}"
+          echo "::error title=The packages of this branch do not boot the application::It fails on its lock and on its dependencies resolved again, so the fix is in src and not in apps/beffroi/composer.lock."
+          exit 1
+
+      - name: "The reference and the schema against the configuration trees"
+        run: castor config-reference
+      - name: "Templates, configuration and catalogues"
+        working-directory: apps/beffroi
+        run: |
+          php bin/console lint:twig templates
+          php bin/console lint:yaml config
+          php bin/console lint:xliff translations src/Lab/translations
+      # The migrations of the provider, then the suite: both are in the task, so the command here is the
+      # command on a desk.
+      - name: "The suite of the application, on its own kernel"
+        run: castor app-phpunit

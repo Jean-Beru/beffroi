@@ -1,0 +1,135 @@
+name: OpenID Conformance
+
+# The certification plans are the judge of the provider, and a judge nobody waits for. They drive a real
+# browser through a real OP: the host runs Docker, not the phpqa image, and the fifteen runs take more than
+# twenty minutes whatever the change (tests/conformance/README.md). So they are a workflow of their
+# own, asked for by hand and run once a week, and no merge waits on them.
+#
+# It is the lean CI rule of this repository: what does not have to be paid on every event is not. A pull
+# request has the provider suite, which is what judges a change before it lands; "castor conformance" on the
+# development stack is what judges a change that touches the protocol before the merge, and "AGENTS.md"
+# asks for that run by hand when a spike is closed. The week is what catches what neither of them looked
+# at.
+#
+# The schedule runs on the default branch, which "auto-switch-default-branch.yml" keeps pointed at the
+# newest maintenance branch; a dispatch runs on whatever branch it is given. A red it finds names the week
+# of commits behind it, which is the price of a judge no merge waits on: what narrows a red down is the
+# run by hand, on the branch, of the person who has just merged something the plans touch.
+
+on:
+  schedule:
+    # Monday 03:17 UTC: the result of the week is there when the week starts, and the minute is off the top
+    # of the hour, which is when the scheduler of GitHub is at its busiest.
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      plan:
+        description: 'Plans to run, separated by spaces or commas; every plan when empty (basic, config, form-post, rp-initiated-logout, front-channel-logout, back-channel-logout, fapi2-security-dpop, fapi2-security-mtls, fapi2-signing-dpop, fapi2-signing-mtls, fapi-ciba-poll, fapi-ciba-ping, dynamic, third-party-init, rotate-keys)'
+        type: string
+        required: false
+      module:
+        description: 'Run only the modules whose name contains this text, separated by spaces or commas'
+        type: string
+        required: false
+      strict:
+        description: 'Fail on WARNING as well as on FAILED, which is the state a submission has to be in'
+        type: boolean
+        required: false
+        default: true
+
+# One run at a time per branch, and a run already going is never cancelled: twenty-odd minutes of a real
+# browser against a real OP are not thrown away because somebody asked for a second one, and the weekly
+# run does not kill what a human started.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  conformance:
+    name: "OpenID Conformance (Basic, Config, Form Post, the three logout profiles, the four FAPI 2 runs, the two FAPI-CIBA runs, Dynamic OP and 3rd Party-Init OP)"
+    runs-on: [self-hosted, kloude, X64]
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      # One checkout: the stack booted below is this repository, the packages and the application it holds
+      # at apps/beffroi, which is the layout of a working copy and the layout "castor conformance" expects from
+      # one. No credential but the account of Docker Hub below, and nothing to install before the install below.
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+        env:
+          runner: self-hosted
+      # The application is pinned by its own lock, the way a developer runs it; the jobs of "ci.yml" are the
+      # ones that follow the dev branches of Symfony.
+      - uses: ramsey/composer-install@v4
+        with:
+          working-directory: apps/beffroi
+          dependency-versions: locked
+          composer-options: --optimize-autoloader
+      - name: "Install Castor"
+        run: |
+          case "${RUNNER_ARCH}" in
+            X64) build=linux-amd64 ;;
+            ARM64) build=linux-arm64 ;;
+            *) echo "::error title=Castor::Castor publishes no build for a runner of architecture ${RUNNER_ARCH}."; exit 1 ;;
+          esac
+          curl -fsSL -o "${RUNNER_TEMP}/castor" "https://github.com/jolicode/castor/releases/download/v1.7.0/castor.${build}"
+          chmod +x "${RUNNER_TEMP}/castor"
+          echo "${RUNNER_TEMP}" >> "$GITHUB_PATH"
+      # Docker Hub under the account the secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN of this repository name,
+      # so that the pulls below are counted against it and not against the address of the runner, which the pool
+      # shares; a run given no secret pulls anonymously and says so.
+      - name: "Docker Hub, under the account of the repository"
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -n "${DOCKERHUB_USERNAME}" ] && [ -n "${DOCKERHUB_TOKEN}" ]; then
+            printf '%s' "${DOCKERHUB_TOKEN}" | docker login --username "${DOCKERHUB_USERNAME}" --password-stdin
+          else
+            echo "::warning title=Docker Hub, anonymously::This run is given no DOCKERHUB_USERNAME and DOCKERHUB_TOKEN, so its pulls of Docker Hub are counted against the address of the runner, which is shared and may be spent."
+          fi
+      - name: "Start the OP and the conformance suite"
+        run: castor start --conformance --build
+      - name: "Provision the OP"
+        run: castor provision
+      # Every input reaches the task through the environment and is split here, never expanded into this
+      # script by the template engine. A schedule sends no input at all, and an empty value is the whole set
+      # of plans in --strict: the run that judges the branch is the one nobody had to configure. Under
+      # --strict a WARNING is a failure, which is what the plans must look like before anything is
+      # submitted; REVIEW and SKIPPED stay accepted, no run of a plan can avoid them
+      # (tests/conformance/README.md).
+      #
+      # "--reset" is not offered: it empties the database of the OP and provisions it again, and the runner
+      # starts from an empty one on every run. It is a developer's option, on a stack that has been used.
+      - name: "Run the certification plans"
+        env:
+          PLAN: ${{ inputs.plan }}
+          MODULE: ${{ inputs.module }}
+          STRICT: ${{ inputs.strict }}
+        run: |
+          set -o noglob
+          plan="${PLAN:-}"
+          module="${MODULE:-}"
+          options=()
+          for name in ${plan//,/ }; do options+=("--plan=${name}"); done
+          for text in ${module//,/ }; do options+=("--module=${text}"); done
+          if [ "${STRICT:-true}" != "false" ]; then options+=("--strict"); fi
+          echo "castor conformance ${options[*]}"
+          castor conformance "${options[@]}"
+      # The page of the OP each REVIEW module of the OpenID Connect plans asked for, with what the module asked
+      # and what the browser did (tests/conformance/README.md): what a submission is checked against.
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: conformance-captures
+          path: var/conformance/captures
+          retention-days: 30
+          if-no-files-found: ignore
+      - name: "Logs of the stack"
+        if: failure()
+        run: docker compose --profile conformance logs --no-color --tail 400
+      - name: "Stop the stack"
+        if: always()
+        run: castor stop

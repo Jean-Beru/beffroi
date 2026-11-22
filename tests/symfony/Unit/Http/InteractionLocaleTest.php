@@ -2,20 +2,33 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Http;
+namespace App\Tests\Symfony\Unit\Http;
 
+use Beffroi\Oidc\Tests\Fixture\Secrets;
 use DateTimeImmutable;
-use Heidi\Bundle\Http\InteractionLocale;
-use Heidi\Core\Domain\Tenant\Issuer;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
-use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Tests\Fixture\Methods;
+use App\Http\BrowserSession;
+use App\Http\BrowserPreferences;
+use App\Locale\LocalePreference;
+use App\Locale\UserLocale;
+use App\Tests\Symfony\Fixture\AmbientTenant;
+use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryInteractionRepository;
+use Symfony\Component\Clock\MockClock;
+use App\Http\InteractionLocale;
+use App\Locale\ServedLocales;
+use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationRequest;
+use Beffroi\Oidc\Domain\Authorization\CodeChallenge;
+use Beffroi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientPresentation;
+use Beffroi\Oidc\Domain\Client\ClientRegistration;
+use Beffroi\Oidc\Domain\Client\RedirectUri;
+use Beffroi\Oidc\Domain\Interaction\Interaction;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -24,10 +37,10 @@ use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\Translation\LocaleSwitcher;
 use Symfony\Component\Uid\Uuid;
+use Beffroi\Oidc\Tests\Fixture\Shapes;
 
 /**
- * Architecture §5.7: the locale of an interaction is "ui_locales" (OIDC Core §3.1.2.1) matched against
- * the enabled locales, then "Accept-Language", then the default of the deployment; never the URL.
+ * Architecture §5.7, OIDC Core §3.1.2.1
  */
 final class InteractionLocaleTest extends TestCase
 {
@@ -37,11 +50,16 @@ final class InteractionLocaleTest extends TestCase
      */
     #[Test]
     #[DataProvider('provideChoices')]
-    public function theLocaleIsUiLocalesThenAcceptLanguageThenTheDefault(array $enabled, string $default, array $uiLocales, ?string $acceptLanguage, string $expected): void
-    {
+    public function theLocaleIsUiLocalesThenAcceptLanguageThenTheDefault(
+        array $enabled,
+        string $default,
+        array $uiLocales,
+        ?string $acceptLanguage,
+        string $expected,
+    ): void {
         // Given
-        $locale = new InteractionLocale(new LocaleSwitcher($default, []), $enabled, $default);
-        // Request::create() gives every request an English Accept-Language; the case says which header there is
+        $locale = self::locale(new LocaleSwitcher($default, []), new ServedLocales($enabled, $default));
+        // Request::create() sets an English Accept-Language; each case sets its own or none.
         $request = Request::create('/authorize');
         $request->headers->remove('Accept-Language');
         if ($acceptLanguage !== null) {
@@ -57,39 +75,47 @@ final class InteractionLocaleTest extends TestCase
      */
     public static function provideChoices(): iterable
     {
-        yield 'the first ui_locales tag an enabled locale matches wins' => [['en', 'fr'], 'en', ['de', 'fr-CA', 'en'], 'en', 'fr'];
-        yield 'a region is kept when that locale is enabled' => [['en', 'fr', 'fr_CA'], 'en', ['fr-ca'], null, 'fr_CA'];
-        yield 'a region is dropped when only the language is enabled' => [['en', 'fr'], 'en', ['fr-BE'], null, 'fr'];
-        yield 'a script subtag is matched before the language alone' => [['en', 'zh_Hant'], 'en', ['zh-Hant-TW'], null, 'zh_Hant'];
-        yield 'a tag no locale matches is skipped, not refused' => [['en', 'fr'], 'en', ['xx-YY', 'fr'], null, 'fr'];
+        yield 'ui_locales, before the header' => [['en', 'fr'], 'en', ['fr'], 'en', 'fr'];
         yield 'Accept-Language when ui_locales matches nothing' => [['en', 'fr'], 'en', ['de'], 'fr-FR,fr;q=0.9,en;q=0.8', 'fr'];
         yield 'Accept-Language when there is no ui_locales' => [['en', 'fr'], 'en', [], 'fr-CA', 'fr'];
         yield 'the default when nothing matches' => [['en', 'fr'], 'en', ['de'], 'de-DE,de;q=0.9', 'en'];
         yield 'the default when nothing is asked' => [['en', 'fr'], 'fr', [], null, 'fr'];
-        yield 'the default alone when the application enables no locale' => [[], 'en', ['fr'], 'fr', 'en'];
-        yield 'a tag that names no language is ignored' => [['en', 'fr'], 'en', ['', '1-2', 'fr'], null, 'fr'];
-        yield 'a private use subtag is ignored' => [['en', 'fr'], 'en', ['fr-x-private'], null, 'fr'];
+        yield 'the default alone when the application serves no other locale' => [[], 'en', ['fr'], 'fr', 'en'];
     }
 
     #[Test]
-    public function theEnabledLocalesAreCanonicalAndTheDefaultComesFirst(): void
+    public function whatTheVisitorChoseOutranksTheHintOfTheClient(): void
     {
         // Given
-        $locale = new InteractionLocale(new LocaleSwitcher('fr', []), ['en', 'fr-ca', 'FR', 'zh-hant'], 'fr');
+        $served = new ServedLocales(['en', 'fr'], 'en');
+        $locale = self::locale(new LocaleSwitcher('en', []), $served);
+        $request = Request::create('/authorize');
+        $request->headers->set('Accept-Language', 'en');
+        $request->cookies->set(BrowserPreferences::COOKIE, 'locale=fr');
 
         // When / Then
-        static::assertSame(['fr', 'en', 'fr_CA', 'zh_Hant'], $locale->enabledLocales());
+        static::assertSame('fr', $locale->choose($request, ['en']));
     }
 
-    /**
-     * The request carries the locale for the response, the switcher for everything that translates.
-     */
+    #[Test]
+    public function aChoiceThisDeploymentDoesNotServeLeavesTheHintInPlace(): void
+    {
+        // Given
+        $served = new ServedLocales(['en', 'fr'], 'en');
+        $locale = self::locale(new LocaleSwitcher('en', []), $served);
+        $request = Request::create('/authorize');
+        $request->cookies->set(BrowserPreferences::COOKIE, 'locale=de');
+
+        // When / Then
+        static::assertSame('fr', $locale->choose($request, ['fr']));
+    }
+
     #[Test]
     public function applyingALocaleSetsItOnTheRequestAndOnTheSwitcher(): void
     {
         // Given
         $switcher = new LocaleSwitcher('en', []);
-        $locale = new InteractionLocale($switcher, ['en', 'fr'], 'en');
+        $locale = self::locale($switcher, new ServedLocales(['en', 'fr'], 'en'));
         $request = Request::create('/login');
 
         // When
@@ -105,7 +131,7 @@ final class InteractionLocaleTest extends TestCase
     {
         // Given
         $switcher = new LocaleSwitcher('en', []);
-        $locale = new InteractionLocale($switcher, ['en', 'fr'], 'en');
+        $locale = self::locale($switcher, new ServedLocales(['en', 'fr'], 'en'));
         $request = Request::create('/login');
 
         // When
@@ -121,7 +147,7 @@ final class InteractionLocaleTest extends TestCase
     {
         // Given
         $switcher = new LocaleSwitcher('en', []);
-        $locale = new InteractionLocale($switcher, ['en', 'fr'], 'en');
+        $locale = self::locale($switcher, new ServedLocales(['en', 'fr'], 'en'));
         $request = Request::create('/login');
         $request->setLocale('fr');
 
@@ -133,17 +159,12 @@ final class InteractionLocaleTest extends TestCase
         static::assertSame('en', $switcher->getLocale());
     }
 
-    /**
-     * The listener chooses for the pages of the interaction plane before the controller runs, through
-     * the "_locale" attribute the LocaleListener of the kernel reads; the protocol plane and the routes
-     * of a host application are not touched.
-     */
     #[Test]
     public function theListenerChoosesForThePagesOfTheInteractionPlane(): void
     {
         // Given
-        $locale = new InteractionLocale(new LocaleSwitcher('en', []), ['en', 'fr'], 'en');
-        $page = self::event('heidi_interaction_logout', 'fr');
+        $locale = self::locale(new LocaleSwitcher('en', []), new ServedLocales(['en', 'fr'], 'en'));
+        $page = self::event('beffroi_interaction_logout', 'fr');
 
         // When
         $locale->onKernelRequest($page);
@@ -157,7 +178,7 @@ final class InteractionLocaleTest extends TestCase
     public function theListenerLeavesTheOtherRequestsAlone(?string $route, int $type): void
     {
         // Given
-        $locale = new InteractionLocale(new LocaleSwitcher('en', []), ['en', 'fr'], 'en');
+        $locale = self::locale(new LocaleSwitcher('en', []), new ServedLocales(['en', 'fr'], 'en'));
         $event = self::event($route, 'fr', $type);
 
         // When
@@ -172,10 +193,10 @@ final class InteractionLocaleTest extends TestCase
      */
     public static function provideRequestsOutsideTheInteractionPlane(): iterable
     {
-        yield 'the protocol plane' => ['heidi_protocol_token', HttpKernelInterface::MAIN_REQUEST];
-        yield 'a route of the host application' => ['host_route', HttpKernelInterface::MAIN_REQUEST];
+        yield 'the protocol plane' => ['beffroi_protocol_token', HttpKernelInterface::MAIN_REQUEST];
+        yield 'a route of the application' => ['host_route', HttpKernelInterface::MAIN_REQUEST];
         yield 'no route' => [null, HttpKernelInterface::MAIN_REQUEST];
-        yield 'a sub request of the interaction plane' => ['heidi_interaction_login', HttpKernelInterface::SUB_REQUEST];
+        yield 'a sub request of the interaction plane' => ['beffroi_interaction_login', HttpKernelInterface::SUB_REQUEST];
     }
 
     private static function event(?string $route, string $acceptLanguage, int $type = HttpKernelInterface::MAIN_REQUEST): RequestEvent
@@ -193,16 +214,38 @@ final class InteractionLocaleTest extends TestCase
     {
         $now = new DateTimeImmutable('2026-09-15T10:00:00+00:00');
         $tenant = new Tenant(Uuid::v7(), 'default', new Issuer('https://op.test'), 'OP', $now);
-        $client = new Client($tenant, 'native-app', 'Native', Methods::none(), null, [new RedirectUri('http://127.0.0.1/callback')]);
+        $client = new Client(
+            $tenant,
+            new ClientRegistration(
+                'native-app',
+                new ClientPresentation('Native'),
+                Methods::none(),
+                false,
+                [new RedirectUri('http://127.0.0.1/callback')],
+                Shapes::jwt(),
+            ),
+        );
         $request = new AuthorizationRequest(
             $client,
             new RedirectUri('http://127.0.0.1/callback'),
-            [Scope::openid()],
-            new CodeChallenge('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', CodeChallengeMethod::S256),
+            new Scopes([Scope::openid()]),
+            new CodeChallenge('E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', new Sha256CodeChallengeMethod()),
             'state',
             'nonce',
         );
 
-        return new Interaction(Interaction::generateId(), $tenant, $request, $locale, $now, $now->modify('+10 minutes'));
+        return new Interaction(Secrets::draw(), $tenant, $request, $locale, $now, $now->modify('+10 minutes'));
+    }
+
+    private static function locale(LocaleSwitcher $switcher, ServedLocales $served): InteractionLocale
+    {
+        return new InteractionLocale(
+            $switcher,
+            $served,
+            new BrowserPreferences([new LocalePreference($served)]),
+            new BrowserSession(new InMemoryAuthenticationSessionRepository(), new InMemoryInteractionRepository(), new MockClock()),
+            new AmbientTenant(null),
+            new UserLocale($served),
+        );
     }
 }

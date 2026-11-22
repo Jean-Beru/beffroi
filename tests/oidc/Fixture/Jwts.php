@@ -2,23 +2,31 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
 use function base64_decode;
 use DateTimeImmutable;
 use function explode;
-use Heidi\Core\Bridge\InMemory\InMemorySigningKeyRepository;
-use Heidi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
-use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
-use Heidi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
-use Heidi\Core\Bridge\Key\SealedKeyProvider;
-use Heidi\Core\Domain\Key\GeneratedKeyPair;
-use Heidi\Core\Domain\Key\SignatureAlgorithmInterface;
-use Heidi\Core\Domain\Key\SigningKey;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Keys;
+use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
+use Beffroi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JoseSignatureAlgorithms;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
+use Beffroi\Core\Bridge\Key\OpenedKeys;
+use Beffroi\Core\Bridge\Key\SealedKeyProvider;
+use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
+use Beffroi\Core\Domain\Key\GeneratedKeyPair;
+use Beffroi\Core\Domain\Key\KeyAlgorithmInterface;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\SigningKeyOpenerInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\EnvelopesThatThrow;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Keys;
+use Beffroi\Oidc\Application\Client\ClientDocumentIssuer;
+use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryJweEncrypter;
+use Beffroi\Oidc\Port\ClientJwksFetcherInterface;
 use function is_array;
 use Jose\Component\Checker\AudienceChecker;
 use Jose\Component\Checker\ClaimCheckerManager;
@@ -33,15 +41,11 @@ use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Assert;
 use function strtr;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\KeyManagement\Exception\RuntimeException as KeyManagementRuntimeException;
 
-/**
- * A tenant with one real active RS256 key, signing through the bridge of the core, and the verification a
- * relying party performs with web-token/jwt-library against the published JWK Set. activate() gives the
- * tenant a key of another algorithm, for a client that registered that one.
- */
 final readonly class Jwts
 {
-    public SigningKey $key;
+    public TenantKey $key;
 
     public SealedKeyProvider $keys;
 
@@ -49,26 +53,51 @@ final readonly class Jwts
 
     public JoseSignatureAlgorithms $algorithms;
 
-    private InMemorySigningKeyRepository $repository;
+    public ClientDocumentIssuer $documents;
+
+    private InMemoryTenantKeyRepository $repository;
 
     public function __construct(
         public Tenant $tenant,
     ) {
         $this->algorithms = Algorithms::all();
-        $this->repository = new InMemorySigningKeyRepository();
+        $this->repository = new InMemoryTenantKeyRepository();
         $this->key = $this->activate(Algorithms::rs256(), Keys::pair());
-        $this->keys = new SealedKeyProvider($this->repository, Keys::sealer());
+        $this->keys = new SealedKeyProvider($this->repository, Keys::opened());
         $this->signer = new JwtLibraryJwsSigner($this->keys, $this->algorithms);
+        $this->documents = $this->documentsFor();
     }
 
-    /**
-     * An active key of that algorithm for the tenant, published in its JWK Set beside the others.
-     */
-    public function activate(SignatureAlgorithmInterface $algorithm, ?GeneratedKeyPair $pair = null): SigningKey
+    public function documentsFor(?ClientJwksFetcherInterface $fetcher = null, ?SigningKeyOpenerInterface $signer = null): ClientDocumentIssuer
     {
-        $pair ??= new JwtLibraryKeyPairGenerator($this->algorithms)
-            ->generate($algorithm);
-        $key = new SigningKey($pair->kid, $this->tenant, $algorithm, $pair->publicJwk, Keys::sealer()->seal($this->tenant, $pair->privateJwk), Fixtures::now(), Fixtures::now());
+        return new ClientDocumentIssuer(
+            $signer ?? $this->signer,
+            $this->algorithms,
+            Methods::keySetProvider($fetcher),
+            new JwtLibraryJweEncrypter(new JoseEncryptionAlgorithms(Algorithms::keyEncryption(), Algorithms::contentEncryption())->manager()),
+        );
+    }
+
+    public function signerBehindAnOutage(): JwtLibraryJwsSigner
+    {
+        return new JwtLibraryJwsSigner(new SealedKeyProvider($this->repository, new OpenedKeys(new EnvelopeKeySealer(
+            new EnvelopesThatThrow(new KeyManagementRuntimeException('Failed to reach the KMS.')),
+            Keys::KMS_KEY_ID,
+        ))), $this->algorithms);
+    }
+
+    public function activate(KeyAlgorithmInterface $algorithm, ?GeneratedKeyPair $pair = null): TenantKey
+    {
+        $pair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate($algorithm);
+        $key = new TenantKey(
+            $pair->kid,
+            $this->tenant,
+            $algorithm,
+            $pair->publicJwk,
+            Keys::sealer()->seal($this->tenant, $pair->privateJwk),
+            Fixtures::now(),
+            Fixtures::now(),
+        );
         $key->activate(Fixtures::now());
         $this->repository->save($key);
 
@@ -76,19 +105,23 @@ final readonly class Jwts
     }
 
     /**
-     * The signature against the JWK Set of the tenant, then "iss", "aud", "exp" and "iat" the way a
-     * relying party checks them (OIDC Core §3.1.3.7) at the time given. A logout token has no "exp"
-     * (RFC 8417 §2), so what must be there is said by the caller.
+     * OIDC Core §3.1.3.7
      *
-     * @param list<string> $mandatory the claims the token must carry
+     * @param list<string> $mandatory
      *
      * @return array{header: array<string, mixed>, claims: array<string, mixed>}
      */
     public function verify(string $compactJws, string $audience, DateTimeImmutable $at, array $mandatory = ['iss', 'aud', 'exp', 'iat']): array
     {
-        $jws = new CompactSerializer()
-            ->unserialize($compactJws);
-        Assert::assertTrue(new JWSVerifier($this->algorithms->manager())->verifyWithKeySet($jws, JWKSet::createFromKeyData($this->keys->publicKeys($this->tenant)->toJwks()), 0), 'the signature verifies against the published JWKS');
+        $jws = new CompactSerializer()->unserialize($compactJws);
+        Assert::assertTrue(
+            new JWSVerifier($this->algorithms->manager())->verifyWithKeySet(
+                $jws,
+                JWKSet::createFromKeyData($this->keys->publicKeys($this->tenant)->toJwks()),
+                0,
+            ),
+            'the signature verifies against the published JWKS',
+        );
         $claims = self::decode((string) $jws->getPayload());
         $clock = new MockClock($at);
         new ClaimCheckerManager([
@@ -99,15 +132,11 @@ final readonly class Jwts
         ])->check($claims, $mandatory);
 
         return [
-            'header' => $jws->getSignature(0)
-                ->getProtectedHeader(),
+            'header' => $jws->getSignature(0)->getProtectedHeader(),
             'claims' => $claims,
         ];
     }
 
-    /**
-     * The payload as the wire carries it, before any decoding: what a JSON boolean or number looks like.
-     */
     public static function rawPayload(string $compactJws): string
     {
         [, $payload] = explode('.', $compactJws);

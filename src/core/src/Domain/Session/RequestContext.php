@@ -2,24 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Domain\Session;
+namespace Beffroi\Core\Domain\Session;
 
 use DateTimeImmutable;
+use Exception;
 use const FILTER_VALIDATE_IP;
 use function filter_var;
-use Heidi\Core\Exception\InvalidArgumentException;
-use function mb_strlen;
+use Beffroi\Core\Domain\Encoding\Document;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use function mb_substr;
 use function sprintf;
 use function trim;
 
-/**
- * Where a request came from and with what, carried by every session and event (architecture §3.5).
- * Enrichments (location, device) are asynchronous.
- */
 final readonly class RequestContext
 {
     public const int USER_AGENT_MAX_LENGTH = 1024;
+
+    /**
+     * To the second, with no offset: read back in the default timezone, as the Doctrine datetime type does.
+     */
+    private const string RECEIVED_AT = 'Y-m-d H:i:s';
 
     public ?string $userAgent;
 
@@ -60,8 +62,47 @@ final readonly class RequestContext
         return $this->location !== null || $this->device !== null;
     }
 
-    public function userAgentLength(): int
+    /**
+     * @return array<string, mixed>
+     */
+    public function toDocument(): array
     {
-        return $this->userAgent === null ? 0 : mb_strlen($this->userAgent);
+        return [
+            'received_at' => $this->receivedAt->format(self::RECEIVED_AT),
+            'ip_address' => $this->ipAddress,
+            'user_agent' => $this->userAgent,
+            'location' => $this->location?->toDocument(),
+            'device' => $this->device?->toDocument(),
+        ];
+    }
+
+    /**
+     * @param array<array-key, mixed> $document
+     *
+     * @throws InvalidArgumentException
+     */
+    public static function fromDocument(array $document): self
+    {
+        $members = new Document($document);
+        $written = $members->nullableString('received_at');
+        if ($written === null) {
+            throw new InvalidArgumentException('A request context says when the request was received.');
+        }
+
+        try {
+            $receivedAt = new DateTimeImmutable($written);
+        } catch (Exception $exception) {
+            throw new InvalidArgumentException(sprintf('"%s" is not when a request was received.', $written), previous: $exception);
+        }
+        $location = $members->nested('location');
+        $device = $members->nested('device');
+
+        return new self(
+            $receivedAt,
+            $members->nullableString('ip_address'),
+            $members->nullableString('user_agent'),
+            $location === null ? null : GeoLocation::fromDocument($location),
+            $device === null ? null : Device::fromDocument($device),
+        );
     }
 }

@@ -2,19 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Application\Token;
+namespace Beffroi\Oidc\Application\Token;
 
 use DateTimeImmutable;
-use Heidi\Oidc\Domain\Token\RefreshToken;
-use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
+use Beffroi\Oidc\Domain\Token\RefreshToken;
+use Beffroi\Oidc\Port\RefreshTokenRepositoryInterface;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Takes a set of refresh tokens out of use at once, for the three reasons the protocol names: a code
- * presented twice (RFC 6749 §4.1.2), a rotated token presented again (RFC 9700 §4.13.2), a session that
- * ends (architecture §4.9). A token already revoked keeps its date and is not counted; what the caller
- * announces, and which access tokens go with them, is the caller's.
- */
 final readonly class RefreshTokenRevocation
 {
     public function __construct(
@@ -23,7 +17,7 @@ final readonly class RefreshTokenRevocation
     }
 
     /**
-     * @param string $codeHash see AuthorizationCode::hash()
+     * @param string $codeHash see DrawnSecret::digestOf()
      *
      * @return list<RefreshToken> the tokens revoked by this call
      */
@@ -51,9 +45,9 @@ final readonly class RefreshTokenRevocation
     /**
      * @param iterable<RefreshToken> $tokens
      *
-     * @return list<RefreshToken>
+     * @return list<RefreshToken> the tokens revoked by this call
      */
-    private function revokeAll(iterable $tokens, DateTimeImmutable $now): array
+    public function revokeAll(iterable $tokens, DateTimeImmutable $now): array
     {
         $revoked = [];
         foreach ($tokens as $token) {

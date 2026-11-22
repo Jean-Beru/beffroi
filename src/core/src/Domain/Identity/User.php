@@ -2,21 +2,35 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Domain\Identity;
+namespace Beffroi\Core\Domain\Identity;
 
+use Beffroi\Core\Domain\PersonalData\BlindIndex;
+use Beffroi\Core\Domain\PersonalData\ClassifiedFieldsInterface;
+use Beffroi\Core\Domain\PersonalData\FieldClassificationInterface;
+use Beffroi\Core\Domain\PersonalData\NoPersonalDatum;
+use Beffroi\Core\Domain\PersonalData\Reason;
+use Beffroi\Core\Domain\PersonalData\Sealed;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use function sprintf;
 use function strlen;
 use Symfony\Component\Uid\Uuid;
 use function trim;
 
-/**
- * An identity of a tenant; credentials, linked identities and group memberships hang off it (decision 0002).
- */
-final class User
+final class User implements ClassifiedFieldsInterface
 {
     public private(set) ?DateTimeImmutable $disabledAt = null;
+
+    /**
+     * A blind index the storage fills on every write: a sealed column can be neither unique nor looked up.
+     */
+    public private(set) string $usernameIndex = '';
+
+    /**
+     * Filled the same way, and not unique: two local persons of a tenant may share an address.
+     */
+    public private(set) ?string $emailIndex = null;
 
     public function __construct(
         public private(set) Uuid $id,
@@ -31,14 +45,11 @@ final class User
         public private(set) ?Address $address,
         public readonly DateTimeImmutable $createdAt,
         public private(set) DateTimeImmutable $updatedAt,
+        public private(set) UserSource $source,
     ) {
         $this->username = self::normalizeUsername($username);
-        if ($email === null && $emailVerified) {
-            throw new InvalidArgumentException('An absent email address cannot be verified.');
-        }
-        if ($phoneNumber === null && $phoneNumberVerified) {
-            throw new InvalidArgumentException('An absent phone number cannot be verified.');
-        }
+        self::assertVerifiable($email, $emailVerified, 'email address');
+        self::assertVerifiable($phoneNumber, $phoneNumberVerified, 'phone number');
     }
 
     public static function create(
@@ -49,8 +60,23 @@ final class User
         DateTimeImmutable $now,
         ?EmailAddress $email = null,
         bool $emailVerified = false,
+        ?UserSource $source = null,
     ): self {
-        return new self($id, $tenant, $subject, $username, $email, $emailVerified, Profile::empty(), null, false, null, $now, $now);
+        return new self(
+            $id,
+            $tenant,
+            $subject,
+            $username,
+            $email,
+            $emailVerified,
+            Profile::empty(),
+            null,
+            false,
+            null,
+            $now,
+            $now,
+            $source ?? UserSource::local(),
+        );
     }
 
     public function rename(string $username, DateTimeImmutable $now): void
@@ -64,9 +90,7 @@ final class User
      */
     public function changeEmail(?EmailAddress $email, bool $verified, DateTimeImmutable $now): void
     {
-        if ($email === null && $verified) {
-            throw new InvalidArgumentException('An absent email address cannot be verified.');
-        }
+        self::assertVerifiable($email, $verified, 'email address');
         $this->email = $email;
         $this->emailVerified = $verified;
         $this->updatedAt = $now;
@@ -74,9 +98,7 @@ final class User
 
     public function changePhoneNumber(?string $phoneNumber, bool $verified, DateTimeImmutable $now): void
     {
-        if ($phoneNumber === null && $verified) {
-            throw new InvalidArgumentException('An absent phone number cannot be verified.');
-        }
+        self::assertVerifiable($phoneNumber, $verified, 'phone number');
         $this->phoneNumber = $phoneNumber;
         $this->phoneNumberVerified = $verified;
         $this->updatedAt = $now;
@@ -91,6 +113,18 @@ final class User
     public function changeAddress(?Address $address, DateTimeImmutable $now): void
     {
         $this->address = $address?->isEmpty() === true ? null : $address;
+        $this->updatedAt = $now;
+    }
+
+    /**
+     * @throws InvalidArgumentException when the source names another provider than the one that created the person
+     */
+    public function heldBy(UserSource $source, DateTimeImmutable $now): void
+    {
+        if ($source->provider !== $this->source->provider) {
+            throw new InvalidArgumentException('What a source holds of a person changes, and the provider that created the person does not.');
+        }
+        $this->source = $source;
         $this->updatedAt = $now;
     }
 
@@ -122,6 +156,21 @@ final class User
         return $this->tenant->equals($tenant);
     }
 
+    public function maySayOfThemselves(string $claim): bool
+    {
+        return $this->tenant->selfServedClaims->opens($claim) && ! $this->source->holds($claim);
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    private static function assertVerifiable(EmailAddress|string|null $value, bool $verified, string $what): void
+    {
+        if ($value === null && $verified) {
+            throw new InvalidArgumentException(sprintf('An absent %s cannot be verified.', $what));
+        }
+    }
+
     private static function normalizeUsername(string $username): string
     {
         $username = trim($username);
@@ -130,5 +179,30 @@ final class User
         }
 
         return $username;
+    }
+
+    /**
+     * @return array<string, FieldClassificationInterface>
+     */
+    public static function classifiedFields(): array
+    {
+        return [
+            'subject' => new NoPersonalDatum(Reason::THE_SUBJECT),
+            'username' => new Sealed('user'),
+            'usernameIndex' => new BlindIndex(),
+            'email' => new Sealed('user'),
+            'emailIndex' => new BlindIndex(),
+            'emailVerified' => new NoPersonalDatum('whether an address or a number was verified, which says nothing of either'),
+            'profile' => new Sealed('user'),
+            'phoneNumber' => new Sealed('user'),
+            'phoneNumberVerified' => new NoPersonalDatum('whether an address or a number was verified, which says nothing of either'),
+            'address' => new Sealed('user'),
+            'source' => new Sealed('user'),
+            'createdAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'updatedAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'disabledAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'id' => new NoPersonalDatum(Reason::DRAWN_AT_RANDOM),
+            'tenant' => new NoPersonalDatum(Reason::THE_TENANT),
+        ];
     }
 }

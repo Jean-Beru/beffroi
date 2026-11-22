@@ -1,0 +1,119 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Beffroi\Oidc\Application\Authorization;
+
+use function count;
+use function explode;
+use Beffroi\Oidc\Application\Request\RequestParameters;
+use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
+use Beffroi\Oidc\Domain\Authorization\Display;
+use Beffroi\Oidc\Domain\Authorization\Prompt;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Exception\InvalidRequestException;
+use function in_array;
+use function preg_match;
+
+/**
+ * OIDC Core §3.1.2.1
+ */
+final readonly class RequestedInteraction
+{
+    /**
+     * At most 18 digits, so that it fits a PHP integer.
+     */
+    private const string MAX_AGE_PATTERN = '/^(?:0|[1-9][0-9]{0,17})$/D';
+
+    /**
+     * @param list<Prompt> $prompts
+     * @param list<string> $uiLocales most preferred first
+     * @param list<string> $acrValues in order of preference
+     */
+    private function __construct(
+        public array $prompts,
+        public ?int $maxAge,
+        public ?string $loginHint,
+        public array $uiLocales,
+        public array $acrValues,
+        public ?Display $display,
+        public ?string $idTokenHint,
+        public ?ClaimsRequest $claims,
+    ) {
+    }
+
+    /**
+     * @throws InvalidRequestException
+     */
+    public static function of(RequestParameters $request): self
+    {
+        return new self(
+            self::prompts($request->optional('prompt')),
+            self::maxAge($request->optional('max_age')),
+            $request->text('login_hint'),
+            $request->uiLocales(),
+            $request->acrValues(),
+            self::display($request->optional('display')),
+            $request->compactJws('id_token_hint'),
+            self::claims($request->optional('claims')),
+        );
+    }
+
+    /**
+     * @return list<Prompt>
+     */
+    private static function prompts(?string $prompt): array
+    {
+        if ($prompt === null) {
+            return [];
+        }
+        $prompts = [];
+        foreach (explode(' ', $prompt) as $value) {
+            $candidate = Prompt::tryFrom($value);
+            if ($candidate === null) {
+                throw new InvalidRequestException('The prompt parameter is not a space-separated list of none, login, consent or select_account.', true);
+            }
+            if (! in_array($candidate, $prompts, true)) {
+                $prompts[] = $candidate;
+            }
+        }
+        if (in_array(Prompt::None, $prompts, true) && count($prompts) > 1) {
+            throw new InvalidRequestException('The prompt value none cannot be combined with another value (OIDC Core section 3.1.2.1).', true);
+        }
+
+        return $prompts;
+    }
+
+    private static function maxAge(?string $maxAge): ?int
+    {
+        if ($maxAge === null) {
+            return null;
+        }
+        if (preg_match(self::MAX_AGE_PATTERN, $maxAge) !== 1) {
+            throw new InvalidRequestException('The max_age parameter must be a non-negative integer.', true);
+        }
+
+        return (int) $maxAge;
+    }
+
+    private static function display(?string $display): ?Display
+    {
+        if ($display === null) {
+            return null;
+        }
+
+        return Display::tryFrom($display) ?? throw new InvalidRequestException('The display parameter is not one of page, popup, touch or wap.', true);
+    }
+
+    private static function claims(?string $claims): ?ClaimsRequest
+    {
+        if ($claims === null) {
+            return null;
+        }
+        try {
+            return ClaimsRequest::fromJson($claims);
+        } catch (InvalidArgumentException) {
+            throw new InvalidRequestException('The claims parameter is not a claims request (OIDC Core section 5.5).', true);
+        }
+    }
+}

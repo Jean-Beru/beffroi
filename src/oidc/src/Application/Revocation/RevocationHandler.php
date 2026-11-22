@@ -2,35 +2,37 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Application\Revocation;
+namespace Beffroi\Oidc\Application\Revocation;
 
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Core\Port\SubjectsOfSessionsInterface;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Application\Client\ClientAuthenticator;
-use Heidi\Oidc\Application\Token\AccessTokenVerifier;
-use Heidi\Oidc\Application\Token\TokenRequest;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Event\TokenRevoked;
-use Heidi\Oidc\Domain\Token\RefreshToken;
-use Heidi\Oidc\Domain\Token\StoredAccessToken;
-use Heidi\Oidc\Exception\InvalidTokenException;
-use Heidi\Oidc\Exception\OAuth2Exception;
-use Heidi\Oidc\Exception\UnsupportedTokenTypeException;
-use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
-use Heidi\Oidc\Port\CanRevokeAccessTokenInterface;
-use Heidi\Oidc\Port\CanRevokeAccessTokensByGrantInterface;
-use Heidi\Oidc\Port\EndpointLocatorInterface;
-use Heidi\Oidc\Port\RefreshTokenRepositoryInterface;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Application\Client\ClientAuthenticator;
+use Beffroi\Oidc\Application\Request\RequestParameters;
+use Beffroi\Oidc\Application\Token\AccessTokenInspector;
+use Beffroi\Oidc\Application\Token\AccessTokenVerifier;
+use Beffroi\Oidc\Domain\Client\Certificate\ClientCertificate;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Event\TokenRevoked;
+use Beffroi\Oidc\Domain\Token\RefreshToken;
+use Beffroi\Oidc\Domain\Token\RevokedTokenHashes;
+use Beffroi\Oidc\Domain\Token\StoredAccessToken;
+use Beffroi\Oidc\Exception\InvalidTokenException;
+use Beffroi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Oidc\Exception\UnsupportedTokenTypeException;
+use Beffroi\Oidc\Port\AccessTokenRepositoryInterface;
+use Beffroi\Oidc\Port\CanRevokeAccessTokenInterface;
+use Beffroi\Oidc\Port\CanRevokeAccessTokensByGrantInterface;
+use Beffroi\Oidc\Port\EndpointLocatorInterface;
+use Beffroi\Oidc\Port\RefreshTokenRepositoryInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use SensitiveParameter;
-use function str_contains;
 
 /**
- * The revocation endpoint (RFC 7009 §2, architecture §4.12): a stored access token or a refresh token
- * issued to the caller is revoked, a refresh token taking the access tokens of its grant with it (§2.1).
- * An unknown token or another client's is answered 200 without a word (§2.2); an access token the
- * provider cannot take back is unsupported_token_type (§2.2.1). "token_type_hint" is ignored.
+ * RFC 7009 §2
  */
 final readonly class RevocationHandler
 {
@@ -38,25 +40,39 @@ final readonly class RevocationHandler
         private ClientAuthenticator $clients,
         private EndpointLocatorInterface $endpoints,
         private AccessTokenVerifier $verifier,
+        private AccessTokenInspector $inspector,
         private AccessTokenRepositoryInterface $accessTokens,
         private RefreshTokenRepositoryInterface $refreshTokens,
+        private SubjectsOfSessionsInterface $subjects,
         private EventDispatcherInterface $events,
     ) {
     }
 
     /**
-     * @param array<string, mixed> $parameters the form parameters of the request body
+     * @param array<string, mixed> $parameters
      *
      * @throws OAuth2Exception invalid_client, invalid_request or unsupported_token_type
      */
-    public function handle(Tenant $tenant, ?string $authorizationHeader, array $parameters, RequestContext $context): void
-    {
-        $caller = $this->clients->authenticate($tenant, $this->endpoints->locate($tenant)->revocation, $authorizationHeader, $parameters, $context);
-        $request = new TokenRequest($parameters);
+    public function handle(
+        Tenant $tenant,
+        ?string $authorizationHeader,
+        array $parameters,
+        RequestContext $context,
+        ?ClientCertificate $certificate = null,
+    ): void {
+        $caller = $this->clients->authenticate(
+            $tenant,
+            $this->endpoints->locate($tenant)->revocation,
+            $authorizationHeader,
+            $parameters,
+            $context,
+            $certificate,
+        )->client;
+        $request = RequestParameters::of($parameters);
         $token = $request->required('token');
         $request->optional('token_type_hint');
         $now = $context->receivedAt;
-        if (str_contains($token, '.')) {
+        if ($this->verifier->expiresOnItsOwn($token)) {
             $this->refuseSelfContained($tenant, $token, $now);
 
             return;
@@ -67,19 +83,19 @@ final readonly class RevocationHandler
 
             return;
         }
-        $refreshToken = $this->refreshTokens->findByTokenHash(RefreshToken::hash($token));
+        $refreshToken = $this->refreshTokens->findByTokenHash(DrawnSecret::digestOf($token));
         if ($refreshToken !== null) {
             $this->revokeRefreshToken($refreshToken, $caller, $context, $now);
         }
     }
 
     /**
-     * A JWS that verifies cannot be revoked; one that does not is an invalid token, answered 200.
+     * A JWS still honoured cannot be revoked; one the provider refuses is an invalid token, answered 200.
      */
     private function refuseSelfContained(Tenant $tenant, #[SensitiveParameter] string $token, DateTimeImmutable $now): void
     {
         try {
-            $this->verifier->verify($tenant, $token, $now);
+            $this->inspector->inspect($tenant, $token, $now);
         } catch (InvalidTokenException) {
             return;
         }
@@ -95,7 +111,17 @@ final readonly class RevocationHandler
             throw new UnsupportedTokenTypeException('This provider does not take access tokens back; they expire on their own (RFC 7009 section 2.2.1).');
         }
         $this->accessTokens->revoke($token);
-        $this->events->dispatch(new TokenRevoked($now, $token, $caller, [], $context));
+        $this->events->dispatch(new TokenRevoked(
+            $now,
+            $caller->tenant,
+            $caller->registration->clientId,
+            $this->personOf($token),
+            TokenRevoked::ACCESS_TOKEN,
+            $token->tokenHash,
+            $token->grantId,
+            [],
+            $context,
+        ));
     }
 
     private function revokeRefreshToken(RefreshToken $token, Client $caller, RequestContext $context, DateTimeImmutable $now): void
@@ -106,6 +132,26 @@ final readonly class RevocationHandler
         $token->revoke($now);
         $this->refreshTokens->save($token);
         $accessTokens = $this->accessTokens instanceof CanRevokeAccessTokensByGrantInterface ? $this->accessTokens->revokeByGrant($token->family->grantId) : [];
-        $this->events->dispatch(new TokenRevoked($now, $token, $caller, $accessTokens, $context));
+        $this->events->dispatch(new TokenRevoked(
+            $now,
+            $caller->tenant,
+            $caller->registration->clientId,
+            $this->subjects->of($token->session->id),
+            TokenRevoked::REFRESH_TOKEN,
+            $token->tokenHash,
+            $token->family->grantId,
+            RevokedTokenHashes::of($accessTokens),
+            $context,
+        ));
+    }
+
+    /**
+     * Never read by opening the session, so a revocation is announced whether or not the KMS answers.
+     */
+    private function personOf(StoredAccessToken $token): ?Subject
+    {
+        $session = $token->sessionNamingItsPerson();
+
+        return $session === null ? $token->person() : $this->subjects->of($session);
     }
 }

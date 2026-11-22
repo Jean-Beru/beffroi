@@ -2,107 +2,148 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Application\Identity;
+namespace Beffroi\Core\Application\Identity;
 
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Identity\Address;
-use Heidi\Core\Domain\Identity\EmailAddress;
-use Heidi\Core\Domain\Identity\Profile;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\PasswordHasherInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
-use function mb_strlen;
+use Beffroi\Core\Application\Credential\ActivePassword;
+use Beffroi\Core\Application\Credential\BreachedPasswordRefusal;
+use Beffroi\Core\Application\Credential\EnrolmentRefusal;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Credential\PlainPassword;
+use Beffroi\Core\Domain\Identity\Address;
+use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Identity\Profile;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Identity\UserSource;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\CredentialEnrolmentFailedException;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\PasswordRefusedException;
+use Beffroi\Core\Port\ClaimsInterface;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\UuidGeneratorInterface;
+use Beffroi\Core\Port\PasswordHasherInterface;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use Psr\Clock\ClockInterface;
 use SensitiveParameter;
-use function sprintf;
-use function strlen;
-use Symfony\Component\Uid\Uuid;
 use function trim;
 
-/**
- * Creates the users of a tenant and gives them a password, from a console, a fixture or an import.
- * Synchronous writes, no session, no event.
- */
 final readonly class UserProvisioner
 {
-    /**
-     * NIST SP 800-63B §5.1.1.2, counted in characters.
-     */
-    public const int MINIMUM_PASSWORD_LENGTH = 8;
-
-    /**
-     * The bound of Symfony's password hashers (CVE-2013-1443).
-     */
-    public const int MAXIMUM_PASSWORD_BYTES = 4096;
-
     public function __construct(
         private UserRepositoryInterface $users,
         private CredentialRepositoryInterface $credentials,
+        private ActivePassword $activePassword,
         private PasswordHasherInterface $hasher,
+        private BreachedPasswordRefusal $breaches,
+        private EnrolmentRefusal $enrolments,
+        private UuidGeneratorInterface $uuids,
         private ClockInterface $clock,
+        private ClaimsInterface $claims,
     ) {
     }
 
     /**
-     * The subject is generated unless an import brings one (decision 0002); it never changes afterwards.
-     *
      * @throws UserAlreadyExistsException
      */
-    public function create(Tenant $tenant, string $username, ?EmailAddress $email = null, bool $emailVerified = false, ?Subject $subject = null): User
-    {
+    public function create(
+        Tenant $tenant,
+        string $username,
+        ?EmailAddress $email = null,
+        bool $emailVerified = false,
+        ?Subject $subject = null,
+        ?UserSource $source = null,
+    ): User {
         $username = trim($username);
         if ($this->users->findByUsername($tenant, $username) !== null) {
             throw UserAlreadyExistsException::username($username);
         }
-        $subject ??= new Subject(Uuid::v4()->toRfc4122());
+        $subject ??= new Subject($this->uuids->opaque()->toRfc4122());
         if ($this->users->findBySubject($tenant, $subject) !== null) {
             throw UserAlreadyExistsException::subject($subject->value);
         }
-        $user = User::create(Uuid::v7(), $tenant, $subject, $username, $this->clock->now(), $email, $emailVerified);
+        $user = User::create($this->uuids->timeOrdered(), $tenant, $subject, $username, $this->clock->now(), $email, $emailVerified, $source);
         $this->users->save($user);
 
         return $user;
     }
 
     /**
-     * The claims of OIDC Core §5.1. A replacement, not a merge: what the caller does not say is cleared.
+     * A replacement, not a merge: what the caller does not say is cleared, save the claims the source holds.
      *
-     * @throws InvalidArgumentException when a phone number is absent but said to be verified
+     * @throws InvalidArgumentException when a claim the source holds is said otherwise, a claim has a value it does
+     *                                  not hold, or a phone number is absent but said to be verified
      */
     public function setProfile(User $user, Profile $profile, ?string $phoneNumber = null, bool $phoneNumberVerified = false, ?Address $address = null): User
     {
+        $source = $user->source;
+        $address = $address?->isEmpty() === true ? null : $address;
+        $source->assertLeaves(self::changedBy($user, $profile, $phoneNumber, $phoneNumberVerified, $address));
+        foreach ($profile->claims() as $name => $value) {
+            $this->claims->named($name)?->field()->assertHolds($value);
+        }
         $now = $this->clock->now();
-        // first: the one change the user can refuse
-        $user->changePhoneNumber($phoneNumber, $phoneNumberVerified, $now);
-        $user->updateProfile($profile, $now);
-        $user->changeAddress($address, $now);
+        // The one change the user can refuse comes first.
+        if (! $source->holds('phone_number')) {
+            $user->changePhoneNumber($phoneNumber, $phoneNumberVerified, $now);
+        }
+        $kept = [];
+        foreach ($user->profile->claims() as $claim => $value) {
+            if ($source->holds($claim)) {
+                $kept[$claim] = $value;
+            }
+        }
+        $user->updateProfile($kept === [] ? $profile : $profile->describedWith($kept), $now);
+        if (! $source->holds('address')) {
+            $user->changeAddress($address, $now);
+        }
         $this->users->save($user);
 
         return $user;
     }
 
     /**
-     * @throws InvalidArgumentException when the password is too short or too long
+     * @return list<string>
      */
-    public function setPassword(User $user, #[SensitiveParameter] string $password): PasswordCredential
+    private static function changedBy(User $user, Profile $profile, ?string $phoneNumber, bool $phoneNumberVerified, ?Address $address): array
     {
-        if (mb_strlen($password) < self::MINIMUM_PASSWORD_LENGTH) {
-            throw new InvalidArgumentException(sprintf('A password is at least %d characters long.', self::MINIMUM_PASSWORD_LENGTH));
+        $changed = [];
+        $was = $user->profile->claims();
+        foreach ($profile->claims() as $claim => $value) {
+            if ($value !== null && $value !== $was[$claim]) {
+                $changed[] = $claim;
+            }
         }
-        if (strlen($password) > self::MAXIMUM_PASSWORD_BYTES) {
-            throw new InvalidArgumentException(sprintf('A password is at most %d bytes long.', self::MAXIMUM_PASSWORD_BYTES));
+        if (($phoneNumber !== null || $phoneNumberVerified) && ($phoneNumber !== $user->phoneNumber || $phoneNumberVerified !== $user->phoneNumberVerified)) {
+            $changed[] = 'phone_number';
         }
+        if ($address !== null && $address->toDocument() !== $user->address?->toDocument()) {
+            $changed[] = 'address';
+        }
+
+        return $changed;
+    }
+
+    /**
+     * @throws PasswordRefusedException when a list counts this password, or could not be asked
+     * @throws CredentialEnrolmentFailedException when the tenant's floor admits no password, or the person's
+     *                                             domain is federated
+     */
+    public function setPassword(User $user, #[SensitiveParameter] PlainPassword $password): PasswordCredential
+    {
+        $this->enrolments->assertTheFloorAdmits($user->tenant, 'password', [PasswordCredential::method()]);
+        $this->enrolments->assertTheirDomainAdmits($user, 'password');
+        $count = $this->breaches->count($password);
         $now = $this->clock->now();
-        $hash = $this->hasher->hash($password);
-        $credential = $this->credentials->findByUser($user, PasswordCredential::class)[0] ?? null;
+        $hash = $this->hasher->hash($password->value);
+        $credential = $this->activePassword->of($user);
         if ($credential === null) {
-            $credential = new PasswordCredential(Uuid::v7(), $user, $hash, $now);
+            $credential = new PasswordCredential($this->uuids->timeOrdered(), $user, $hash, $now);
         } else {
             $credential->changePassword($hash, $now);
+        }
+        if ($count->wasAsked()) {
+            $credential->notFoundInABreach($now);
         }
         $this->credentials->save($credential);
 

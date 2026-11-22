@@ -2,13 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine\Host;
+namespace App\Tests\Symfony\Functional\Doctrine\Host;
 
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * The "User" of the host application: the bundle never hooks onto it (decision 0002), its table sits next
- * to heidi_user and neither knows the other.
+ * Decision 0002
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'app_user')]

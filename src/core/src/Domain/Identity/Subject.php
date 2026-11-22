@@ -2,17 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Domain\Identity;
+namespace Beffroi\Core\Domain\Identity;
 
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use function preg_match;
 use function sprintf;
 use Stringable;
 use function strlen;
 
 /**
- * The "sub" claim (OIDC Core §2): at most 255 ASCII characters, never changed, never reassigned, distinct
- * from the technical id so that an import keeps it.
+ * OIDC Core §2
+ *
+ * Distinct from the technical id, so that an import keeps the subjects it brings.
  */
 final readonly class Subject implements Stringable
 {
@@ -22,7 +23,7 @@ final readonly class Subject implements Stringable
         if ($value === '' || strlen($value) > 255) {
             throw new InvalidArgumentException('A subject is 1 to 255 characters long.');
         }
-        if (preg_match('/^[\x21-\x7E]+$/', $value) !== 1) {
+        if (preg_match('/^[\x21-\x7E]+$/D', $value) !== 1) {
             throw new InvalidArgumentException(sprintf('The subject "%s" must be made of printable ASCII characters without spaces.', $value));
         }
     }

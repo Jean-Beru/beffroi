@@ -1,9 +1,9 @@
 {
-    "alias": "heidi",
-    "description": "Heidi: the OpenID Connect certification plans of the OP (Basic OP, Config OP, Form Post OP, RP-Initiated Logout OP) against the development OP",
+    "alias": "beffroi",
+    "description": "Beffroi: the OpenID Connect certification plans of the OP (Basic OP, Config OP, Form Post OP, RP-Initiated Logout OP) against the development OP",
     "server": {
-        "discoveryUrl": "{HEIDI_ISSUER}/.well-known/openid-configuration",
-        "login_hint": "{HEIDI_DEV_USERNAME}",
+        "discoveryUrl": "{BEFFROI_ISSUER}/.well-known/openid-configuration",
+        "login_hint": "{BEFFROI_DEV_USERNAME}",
         "ui_locales": "fr"
     },
     "client": {
@@ -21,563 +21,689 @@
     "browser": [
         {
             "comment": "The happy path: sign in when the OP asks, allow when it asks, land on the callback of the suite.",
-            "match": "{HEIDI_ISSUER}/authorize*",
+            "match": "{BEFFROI_ISSUER}/authorize*",
             "tasks": [
+                {
+                    "task": "Pass the address",
+                    "optional": true,
+                    "match": "{BEFFROI_ISSUER}/login*",
+                    "commands": [
+                        [
+                            "text",
+                            "id",
+                            "address",
+                            "{BEFFROI_DEV_USERNAME}"
+                        ],
+                        [
+                            "click",
+                            "css",
+                            "form[data-step=\"address\"] button[type=submit]"
+                        ]
+                    ]
+                },
                 {
                     "task": "Sign in",
                     "optional": true,
-                    "match": "{HEIDI_ISSUER}/login*",
+                    "match": "{BEFFROI_ISSUER}/login*",
                     "commands": [
-                        ["text", "id", "username", "{HEIDI_DEV_USERNAME}"],
-                        ["text", "id", "password", "{HEIDI_DEV_USER_PASSWORD}"],
-                        ["click", "css", "form button[type=submit]"]
+                        [
+                            "text",
+                            "id",
+                            "username",
+                            "{BEFFROI_DEV_USERNAME}"
+                        ],
+                        [
+                            "text",
+                            "id",
+                            "password",
+                            "{BEFFROI_DEV_USER_PASSWORD}"
+                        ],
+                        [
+                            "click",
+                            "css",
+                            "form[action^=\"/login\"] button[type=submit]"
+                        ]
                     ]
                 },
                 {
                     "task": "Allow",
                     "optional": true,
-                    "match": "{HEIDI_ISSUER}/consent*",
+                    "match": "{BEFFROI_ISSUER}/consent*",
                     "commands": [
-                        ["click", "css", "button[name=answer][value=allow]"]
+                        [
+                            "click",
+                            "css",
+                            "button[name=answer][value=allow]"
+                        ]
                     ]
                 },
                 {
                     "task": "Verify complete",
-                    "match": "*/test/a/heidi/callback*",
+                    "match": "*/test/a/beffroi/callback*",
                     "commands": [
-                        ["wait", "id", "submission_complete", 10]
+                        [
+                            "wait",
+                            "id",
+                            "submission_complete",
+                            10
+                        ]
                     ]
                 }
             ]
         },
         {
             "comment": "RP-Initiated Logout: a verified id_token_hint ends the session and sends the browser straight to the post_logout_redirect_uri; without one the OP asks first.",
-            "match": "{HEIDI_ISSUER}/logout*",
+            "match": "{BEFFROI_ISSUER}/logout*",
             "tasks": [
                 {
                     "task": "Confirm",
                     "optional": true,
-                    "match": "{HEIDI_ISSUER}/logout*",
+                    "match": "{BEFFROI_ISSUER}/logout*",
                     "commands": [
-                        ["click", "css", "button[name=confirm][value=yes]", "optional"]
+                        [
+                            "click",
+                            "css",
+                            "button[name=confirm][value=yes]",
+                            "optional"
+                        ]
                     ]
                 },
                 {
                     "task": "Verify complete",
-                    "match": "*/test/a/heidi/post_logout_redirect*"
+                    "match": "*/test/a/beffroi/post_logout_redirect*"
                 }
             ]
         }
     ],
     "override": {
-        "oidcc-prompt-login": {
+        "fapi2-security-profile-final-ensure-unsigned-authorization-request-without-using-par-fails": {
             "browser": [
                 {
-                    "comment": "The second authorization must show the login page again; its text fills the screenshot placeholder of the module.",
-                    "match": "{HEIDI_ISSUER}/authorize*",
-                    "tasks": [
-                        {
-                            "task": "Sign in",
-                            "optional": true,
-                            "match": "{HEIDI_ISSUER}/login*",
-                            "commands": [
-                                ["wait", "xpath", "//*", 10, "Sign in|Connexion", "update-image-placeholder-optional"],
-                                ["text", "id", "username", "{HEIDI_DEV_USERNAME}"],
-                                ["text", "id", "password", "{HEIDI_DEV_USER_PASSWORD}"],
-                                ["click", "css", "form button[type=submit]"]
-                            ]
-                        },
-                        {
-                            "task": "Allow",
-                            "optional": true,
-                            "match": "{HEIDI_ISSUER}/consent*",
-                            "commands": [
-                                ["click", "css", "button[name=answer][value=allow]"]
-                            ]
-                        },
-                        {
-                            "task": "Verify complete",
-                            "match": "*/test/a/heidi/callback*",
-                            "commands": [
-                                ["wait", "id", "submission_complete", 10]
-                            ]
-                        }
-                    ]
-                }
-            ]
-        },
-        "oidcc-max-age-1": {
-            "browser": [
-                {
-                    "comment": "Same as prompt=login: the second authorization, one second later with max_age=1, shows the login page again.",
-                    "match": "{HEIDI_ISSUER}/authorize*",
-                    "tasks": [
-                        {
-                            "task": "Sign in",
-                            "optional": true,
-                            "match": "{HEIDI_ISSUER}/login*",
-                            "commands": [
-                                ["wait", "xpath", "//*", 10, "Sign in|Connexion", "update-image-placeholder-optional"],
-                                ["text", "id", "username", "{HEIDI_DEV_USERNAME}"],
-                                ["text", "id", "password", "{HEIDI_DEV_USER_PASSWORD}"],
-                                ["click", "css", "form button[type=submit]"]
-                            ]
-                        },
-                        {
-                            "task": "Allow",
-                            "optional": true,
-                            "match": "{HEIDI_ISSUER}/consent*",
-                            "commands": [
-                                ["click", "css", "button[name=answer][value=allow]"]
-                            ]
-                        },
-                        {
-                            "task": "Verify complete",
-                            "match": "*/test/a/heidi/callback*",
-                            "commands": [
-                                ["wait", "id", "submission_complete", 10]
-                            ]
-                        }
-                    ]
-                }
-            ]
-        },
-        "oidcc-ensure-registered-redirect-uri": {
-            "browser": [
-                {
-                    "comment": "An unregistered redirect_uri: the OP shows its error page and sends nothing anywhere (RFC 6749 §3.1.2.4); the page fills the screenshot placeholder.",
-                    "match": "{HEIDI_ISSUER}/authorize*",
+                    "comment": "The request cannot be honoured and nothing of it reaches the browser it came from: a request URI already used, expired, or issued to another client (RFC 9126 §2.2), or an authorization request the client did not push although it must (§6). The OP shows its error page; the page fills the screenshot placeholder.",
+                    "match": "{BEFFROI_ISSUER}/authorize*",
                     "tasks": [
                         {
                             "task": "Expect the error page",
-                            "match": "{HEIDI_ISSUER}/authorize*",
+                            "match": "{BEFFROI_ISSUER}/authorize*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Request refused|Requête refusée", "update-image-placeholder"]
+                                [
+                                    "wait",
+                                    "xpath",
+                                    "//*",
+                                    10,
+                                    "Request refused|Requête refusée",
+                                    "update-image-placeholder"
+                                ]
                             ]
                         }
                     ]
                 }
             ]
         },
-        "oidcc-ensure-request-object-with-redirect-uri": {
+        "fapi2-security-profile-final-par-attempt-reuse-request_uri": {
             "browser": [
                 {
-                    "comment": "The redirect_uri outside the request object is unregistered: the OP shows its error page before it looks at the request object it does not support.",
-                    "match": "{HEIDI_ISSUER}/authorize*",
+                    "comment": "RFC 9126 §4: a request_uri is spent once. The first visit signs in and completes on the callback; the second presents the same reference, which the provider has already spent, and it answers with its error page rather than sending anything to a redirect URI it has not read.",
+                    "match": "{BEFFROI_ISSUER}/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Pass the address",
+                            "optional": true,
+                            "match": "{BEFFROI_ISSUER}/login*",
+                            "commands": [
+                                [
+                                    "text",
+                                    "id",
+                                    "address",
+                                    "{BEFFROI_DEV_USERNAME}"
+                                ],
+                                [
+                                    "click",
+                                    "css",
+                                    "form[data-step=\"address\"] button[type=submit]"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Sign in",
+                            "optional": true,
+                            "match": "{BEFFROI_ISSUER}/login*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "xpath",
+                                    "//*",
+                                    10,
+                                    "Sign in|Connexion",
+                                    "update-image-placeholder-optional"
+                                ],
+                                [
+                                    "text",
+                                    "id",
+                                    "username",
+                                    "{BEFFROI_DEV_USERNAME}"
+                                ],
+                                [
+                                    "text",
+                                    "id",
+                                    "password",
+                                    "{BEFFROI_DEV_USER_PASSWORD}"
+                                ],
+                                [
+                                    "click",
+                                    "css",
+                                    "form[action^=\"/login\"] button[type=submit]"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Allow",
+                            "optional": true,
+                            "match": "{BEFFROI_ISSUER}/consent*",
+                            "commands": [
+                                [
+                                    "click",
+                                    "css",
+                                    "button[name=answer][value=allow]"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Verify complete",
+                            "optional": true,
+                            "match": "*/test/a/beffroi/callback?*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "id",
+                                    "submission_complete",
+                                    10
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Expect the error page",
+                            "optional": true,
+                            "match": "{BEFFROI_ISSUER}/authorize*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "xpath",
+                                    "//*",
+                                    10,
+                                    "Request refused|Requête refusée",
+                                    "update-image-placeholder-optional"
+                                ]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "fapi2-security-profile-final-par-attempt-to-use-expired-request_uri": {
+            "browser": [
+                {
+                    "comment": "The request cannot be honoured and nothing of it reaches the browser it came from: a request URI already used, expired, or issued to another client (RFC 9126 §2.2), or an authorization request the client did not push although it must (§6). The OP shows its error page; the page fills the screenshot placeholder.",
+                    "match": "{BEFFROI_ISSUER}/authorize*",
                     "tasks": [
                         {
                             "task": "Expect the error page",
-                            "match": "{HEIDI_ISSUER}/authorize*",
+                            "match": "{BEFFROI_ISSUER}/authorize*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Request refused|Requête refusée", "update-image-placeholder"]
+                                [
+                                    "wait",
+                                    "xpath",
+                                    "//*",
+                                    10,
+                                    "Request refused|Requête refusée",
+                                    "update-image-placeholder"
+                                ]
                             ]
                         }
                     ]
                 }
             ]
         },
-        "oidcc-rp-initiated-logout-no-params": {
+        "fapi2-security-profile-final-par-attempt-to-use-request_uri-for-different-client": {
             "browser": [
                 {
-                    "comment": "The happy path: sign in when the OP asks, allow when it asks, land on the callback of the suite.",
-                    "match": "{HEIDI_ISSUER}/authorize*",
-                    "tasks": [
-                        {
-                            "task": "Sign in",
-                            "optional": true,
-                            "match": "{HEIDI_ISSUER}/login*",
-                            "commands": [
-                                ["text", "id", "username", "{HEIDI_DEV_USERNAME}"],
-                                ["text", "id", "password", "{HEIDI_DEV_USER_PASSWORD}"],
-                                ["click", "css", "form button[type=submit]"]
-                            ]
-                        },
-                        {
-                            "task": "Allow",
-                            "optional": true,
-                            "match": "{HEIDI_ISSUER}/consent*",
-                            "commands": [
-                                ["click", "css", "button[name=answer][value=allow]"]
-                            ]
-                        },
-                        {
-                            "task": "Verify complete",
-                            "match": "*/test/a/heidi/callback*",
-                            "commands": [
-                                ["wait", "id", "submission_complete", 10]
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "comment": "Nowhere to send the browser after the logout: the OP asks when the request carries no verified id_token_hint, then shows its signed-out page, whose text fills the screenshot placeholder of the module.",
-                    "match": "{HEIDI_ISSUER}/logout*",
-                    "tasks": [
-                        {
-                            "task": "Confirm",
-                            "optional": true,
-                            "match": "{HEIDI_ISSUER}/logout*",
-                            "commands": [
-                                ["click", "css", "button[name=confirm][value=yes]", "optional"]
-                            ]
-                        },
-                        {
-                            "task": "Expect the signed-out page",
-                            "match": "{HEIDI_ISSUER}/logout*",
-                            "commands": [
-                                ["wait", "xpath", "//*", 10, "You are signed out|Session fermée", "update-image-placeholder"]
-                            ]
-                        }
-                    ]
-                }
-            ]
-        },
-        "oidcc-rp-initiated-logout-only-state": {
-            "browser": [
-                {
-                    "comment": "The happy path: sign in when the OP asks, allow when it asks, land on the callback of the suite.",
-                    "match": "{HEIDI_ISSUER}/authorize*",
-                    "tasks": [
-                        {
-                            "task": "Sign in",
-                            "optional": true,
-                            "match": "{HEIDI_ISSUER}/login*",
-                            "commands": [
-                                ["text", "id", "username", "{HEIDI_DEV_USERNAME}"],
-                                ["text", "id", "password", "{HEIDI_DEV_USER_PASSWORD}"],
-                                ["click", "css", "form button[type=submit]"]
-                            ]
-                        },
-                        {
-                            "task": "Allow",
-                            "optional": true,
-                            "match": "{HEIDI_ISSUER}/consent*",
-                            "commands": [
-                                ["click", "css", "button[name=answer][value=allow]"]
-                            ]
-                        },
-                        {
-                            "task": "Verify complete",
-                            "match": "*/test/a/heidi/callback*",
-                            "commands": [
-                                ["wait", "id", "submission_complete", 10]
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "comment": "Nowhere to send the browser after the logout: the OP asks when the request carries no verified id_token_hint, then shows its signed-out page, whose text fills the screenshot placeholder of the module.",
-                    "match": "{HEIDI_ISSUER}/logout*",
-                    "tasks": [
-                        {
-                            "task": "Confirm",
-                            "optional": true,
-                            "match": "{HEIDI_ISSUER}/logout*",
-                            "commands": [
-                                ["click", "css", "button[name=confirm][value=yes]", "optional"]
-                            ]
-                        },
-                        {
-                            "task": "Expect the signed-out page",
-                            "match": "{HEIDI_ISSUER}/logout*",
-                            "commands": [
-                                ["wait", "xpath", "//*", 10, "You are signed out|Session fermée", "update-image-placeholder"]
-                            ]
-                        }
-                    ]
-                }
-            ]
-        },
-        "oidcc-rp-initiated-logout-no-post-logout-redirect-uri": {
-            "browser": [
-                {
-                    "comment": "The happy path: sign in when the OP asks, allow when it asks, land on the callback of the suite.",
-                    "match": "{HEIDI_ISSUER}/authorize*",
-                    "tasks": [
-                        {
-                            "task": "Sign in",
-                            "optional": true,
-                            "match": "{HEIDI_ISSUER}/login*",
-                            "commands": [
-                                ["text", "id", "username", "{HEIDI_DEV_USERNAME}"],
-                                ["text", "id", "password", "{HEIDI_DEV_USER_PASSWORD}"],
-                                ["click", "css", "form button[type=submit]"]
-                            ]
-                        },
-                        {
-                            "task": "Allow",
-                            "optional": true,
-                            "match": "{HEIDI_ISSUER}/consent*",
-                            "commands": [
-                                ["click", "css", "button[name=answer][value=allow]"]
-                            ]
-                        },
-                        {
-                            "task": "Verify complete",
-                            "match": "*/test/a/heidi/callback*",
-                            "commands": [
-                                ["wait", "id", "submission_complete", 10]
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "comment": "Nowhere to send the browser after the logout: the OP asks when the request carries no verified id_token_hint, then shows its signed-out page, whose text fills the screenshot placeholder of the module.",
-                    "match": "{HEIDI_ISSUER}/logout*",
-                    "tasks": [
-                        {
-                            "task": "Confirm",
-                            "optional": true,
-                            "match": "{HEIDI_ISSUER}/logout*",
-                            "commands": [
-                                ["click", "css", "button[name=confirm][value=yes]", "optional"]
-                            ]
-                        },
-                        {
-                            "task": "Expect the signed-out page",
-                            "match": "{HEIDI_ISSUER}/logout*",
-                            "commands": [
-                                ["wait", "xpath", "//*", 10, "You are signed out|Session fermée", "update-image-placeholder"]
-                            ]
-                        }
-                    ]
-                }
-            ]
-        },
-        "oidcc-rp-initiated-logout-bad-post-logout-redirect-uri": {
-            "browser": [
-                {
-                    "comment": "The happy path: sign in when the OP asks, allow when it asks, land on the callback of the suite.",
-                    "match": "{HEIDI_ISSUER}/authorize*",
-                    "tasks": [
-                        {
-                            "task": "Sign in",
-                            "optional": true,
-                            "match": "{HEIDI_ISSUER}/login*",
-                            "commands": [
-                                ["text", "id", "username", "{HEIDI_DEV_USERNAME}"],
-                                ["text", "id", "password", "{HEIDI_DEV_USER_PASSWORD}"],
-                                ["click", "css", "form button[type=submit]"]
-                            ]
-                        },
-                        {
-                            "task": "Allow",
-                            "optional": true,
-                            "match": "{HEIDI_ISSUER}/consent*",
-                            "commands": [
-                                ["click", "css", "button[name=answer][value=allow]"]
-                            ]
-                        },
-                        {
-                            "task": "Verify complete",
-                            "match": "*/test/a/heidi/callback*",
-                            "commands": [
-                                ["wait", "id", "submission_complete", 10]
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "comment": "The request cannot be honoured (RP-Initiated Logout 1.0 §2: unregistered post_logout_redirect_uri, id_token_hint invalid or issued to no client, post_logout_redirect_uri without id_token_hint or client_id): the OP shows its error page and sends nothing anywhere; the page fills the screenshot placeholder.",
-                    "match": "{HEIDI_ISSUER}/logout*",
+                    "comment": "The request cannot be honoured and nothing of it reaches the browser it came from: a request URI already used, expired, or issued to another client (RFC 9126 §2.2), or an authorization request the client did not push although it must (§6). The OP shows its error page; the page fills the screenshot placeholder.",
+                    "match": "{BEFFROI_ISSUER}/authorize*",
                     "tasks": [
                         {
                             "task": "Expect the error page",
-                            "match": "{HEIDI_ISSUER}/logout*",
+                            "match": "{BEFFROI_ISSUER}/authorize*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Request refused|Requête refusée", "update-image-placeholder"]
+                                [
+                                    "wait",
+                                    "xpath",
+                                    "//*",
+                                    10,
+                                    "Request refused|Requête refusée",
+                                    "update-image-placeholder"
+                                ]
                             ]
                         }
                     ]
                 }
             ]
         },
-        "oidcc-rp-initiated-logout-query-added-to-post-logout-redirect-uri": {
+        "fapi2-security-profile-final-user-rejects-authentication": {
             "browser": [
                 {
-                    "comment": "The happy path: sign in when the OP asks, allow when it asks, land on the callback of the suite.",
-                    "match": "{HEIDI_ISSUER}/authorize*",
+                    "comment": "The user refuses on the consent page, which is what the module asks a human to do: the answer is \"access_denied\" on the redirect URI (OIDC Core §3.1.2.6).",
+                    "match": "{BEFFROI_ISSUER}/authorize*",
                     "tasks": [
                         {
-                            "task": "Sign in",
+                            "task": "Pass the address",
                             "optional": true,
-                            "match": "{HEIDI_ISSUER}/login*",
+                            "match": "{BEFFROI_ISSUER}/login*",
                             "commands": [
-                                ["text", "id", "username", "{HEIDI_DEV_USERNAME}"],
-                                ["text", "id", "password", "{HEIDI_DEV_USER_PASSWORD}"],
-                                ["click", "css", "form button[type=submit]"]
+                                [
+                                    "text",
+                                    "id",
+                                    "address",
+                                    "{BEFFROI_DEV_USERNAME}"
+                                ],
+                                [
+                                    "click",
+                                    "css",
+                                    "form[data-step=\"address\"] button[type=submit]"
+                                ]
                             ]
                         },
                         {
-                            "task": "Allow",
+                            "task": "Sign in",
                             "optional": true,
-                            "match": "{HEIDI_ISSUER}/consent*",
+                            "match": "{BEFFROI_ISSUER}/login*",
                             "commands": [
-                                ["click", "css", "button[name=answer][value=allow]"]
+                                [
+                                    "text",
+                                    "id",
+                                    "username",
+                                    "{BEFFROI_DEV_USERNAME}"
+                                ],
+                                [
+                                    "text",
+                                    "id",
+                                    "password",
+                                    "{BEFFROI_DEV_USER_PASSWORD}"
+                                ],
+                                [
+                                    "click",
+                                    "css",
+                                    "form[action^=\"/login\"] button[type=submit]"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Deny",
+                            "match": "{BEFFROI_ISSUER}/consent*",
+                            "commands": [
+                                [
+                                    "click",
+                                    "css",
+                                    "button[name=answer][value=deny]"
+                                ]
                             ]
                         },
                         {
                             "task": "Verify complete",
-                            "match": "*/test/a/heidi/callback*",
+                            "match": "*/test/a/beffroi/callback*",
                             "commands": [
-                                ["wait", "id", "submission_complete", 10]
+                                [
+                                    "wait",
+                                    "id",
+                                    "submission_complete",
+                                    10
+                                ]
                             ]
                         }
                     ]
-                },
+                }
+            ]
+        },
+        "fapi2-message-signing-final-ensure-unsigned-authorization-request-without-using-par-fails": {
+            "browser": [
                 {
-                    "comment": "The request cannot be honoured (RP-Initiated Logout 1.0 §2: unregistered post_logout_redirect_uri, id_token_hint invalid or issued to no client, post_logout_redirect_uri without id_token_hint or client_id): the OP shows its error page and sends nothing anywhere; the page fills the screenshot placeholder.",
-                    "match": "{HEIDI_ISSUER}/logout*",
+                    "comment": "The request cannot be honoured and nothing of it reaches the browser it came from: a request URI already used, expired, or issued to another client (RFC 9126 §2.2), or an authorization request the client did not push although it must (§6). The OP shows its error page; the page fills the screenshot placeholder.",
+                    "match": "{BEFFROI_ISSUER}/authorize*",
                     "tasks": [
                         {
                             "task": "Expect the error page",
-                            "match": "{HEIDI_ISSUER}/logout*",
+                            "match": "{BEFFROI_ISSUER}/authorize*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Request refused|Requête refusée", "update-image-placeholder"]
+                                [
+                                    "wait",
+                                    "xpath",
+                                    "//*",
+                                    10,
+                                    "Request refused|Requête refusée",
+                                    "update-image-placeholder"
+                                ]
                             ]
                         }
                     ]
                 }
             ]
         },
-        "oidcc-rp-initiated-logout-modified-id-token-hint": {
+        "fapi2-message-signing-final-par-attempt-reuse-request_uri": {
             "browser": [
                 {
-                    "comment": "The happy path: sign in when the OP asks, allow when it asks, land on the callback of the suite.",
-                    "match": "{HEIDI_ISSUER}/authorize*",
+                    "comment": "The first visit with the request URI: the ordinary sign-in and consent, which completes the authorization.",
+                    "match": "{BEFFROI_ISSUER}/authorize*",
                     "tasks": [
+                        {
+                            "task": "Pass the address",
+                            "optional": true,
+                            "match": "{BEFFROI_ISSUER}/login*",
+                            "commands": [
+                                [
+                                    "text",
+                                    "id",
+                                    "address",
+                                    "{BEFFROI_DEV_USERNAME}"
+                                ],
+                                [
+                                    "click",
+                                    "css",
+                                    "form[data-step=\"address\"] button[type=submit]"
+                                ]
+                            ]
+                        },
                         {
                             "task": "Sign in",
                             "optional": true,
-                            "match": "{HEIDI_ISSUER}/login*",
+                            "match": "{BEFFROI_ISSUER}/login*",
                             "commands": [
-                                ["text", "id", "username", "{HEIDI_DEV_USERNAME}"],
-                                ["text", "id", "password", "{HEIDI_DEV_USER_PASSWORD}"],
-                                ["click", "css", "form button[type=submit]"]
+                                [
+                                    "text",
+                                    "id",
+                                    "username",
+                                    "{BEFFROI_DEV_USERNAME}"
+                                ],
+                                [
+                                    "text",
+                                    "id",
+                                    "password",
+                                    "{BEFFROI_DEV_USER_PASSWORD}"
+                                ],
+                                [
+                                    "click",
+                                    "css",
+                                    "form[action^=\"/login\"] button[type=submit]"
+                                ]
                             ]
                         },
                         {
                             "task": "Allow",
                             "optional": true,
-                            "match": "{HEIDI_ISSUER}/consent*",
+                            "match": "{BEFFROI_ISSUER}/consent*",
                             "commands": [
-                                ["click", "css", "button[name=answer][value=allow]"]
+                                [
+                                    "click",
+                                    "css",
+                                    "button[name=answer][value=allow]"
+                                ]
                             ]
                         },
                         {
                             "task": "Verify complete",
-                            "match": "*/test/a/heidi/callback*",
+                            "match": "*/test/a/beffroi/callback*",
                             "commands": [
-                                ["wait", "id", "submission_complete", 10]
+                                [
+                                    "wait",
+                                    "id",
+                                    "submission_complete",
+                                    10
+                                ]
                             ]
                         }
                     ]
                 },
                 {
-                    "comment": "The request cannot be honoured (RP-Initiated Logout 1.0 §2: unregistered post_logout_redirect_uri, id_token_hint invalid or issued to no client, post_logout_redirect_uri without id_token_hint or client_id): the OP shows its error page and sends nothing anywhere; the page fills the screenshot placeholder.",
-                    "match": "{HEIDI_ISSUER}/logout*",
+                    "comment": "The second visit with the same request URI: a request URI is used once (RFC 9126 §2.2), the OP shows its error page and sends nothing anywhere; the page fills the screenshot placeholder.",
+                    "match": "{BEFFROI_ISSUER}/authorize*",
                     "tasks": [
                         {
                             "task": "Expect the error page",
-                            "match": "{HEIDI_ISSUER}/logout*",
+                            "match": "{BEFFROI_ISSUER}/authorize*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Request refused|Requête refusée", "update-image-placeholder"]
+                                [
+                                    "wait",
+                                    "xpath",
+                                    "//*",
+                                    10,
+                                    "Request refused|Requête refusée",
+                                    "update-image-placeholder"
+                                ]
                             ]
                         }
                     ]
                 }
             ]
         },
-        "oidcc-rp-initiated-logout-bad-id-token-hint": {
+        "fapi2-message-signing-final-par-attempt-to-use-expired-request_uri": {
             "browser": [
                 {
-                    "comment": "The happy path: sign in when the OP asks, allow when it asks, land on the callback of the suite.",
-                    "match": "{HEIDI_ISSUER}/authorize*",
-                    "tasks": [
-                        {
-                            "task": "Sign in",
-                            "optional": true,
-                            "match": "{HEIDI_ISSUER}/login*",
-                            "commands": [
-                                ["text", "id", "username", "{HEIDI_DEV_USERNAME}"],
-                                ["text", "id", "password", "{HEIDI_DEV_USER_PASSWORD}"],
-                                ["click", "css", "form button[type=submit]"]
-                            ]
-                        },
-                        {
-                            "task": "Allow",
-                            "optional": true,
-                            "match": "{HEIDI_ISSUER}/consent*",
-                            "commands": [
-                                ["click", "css", "button[name=answer][value=allow]"]
-                            ]
-                        },
-                        {
-                            "task": "Verify complete",
-                            "match": "*/test/a/heidi/callback*",
-                            "commands": [
-                                ["wait", "id", "submission_complete", 10]
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "comment": "A signed JWT the OP cannot verify is an invalid id_token_hint (RP-Initiated Logout 1.0 §2, §6): the OP identifies no client from it, drops the post_logout_redirect_uri and asks the user; the confirmation page fills the screenshot placeholder, and nobody answers it.",
-                    "match": "{HEIDI_ISSUER}/logout*",
-                    "tasks": [
-                        {
-                            "task": "Expect the confirmation page",
-                            "match": "{HEIDI_ISSUER}/logout*",
-                            "commands": [
-                                ["wait", "xpath", "//*", 10, "Do you want to sign out|Voulez-vous vous déconnecter", "update-image-placeholder"]
-                            ]
-                        }
-                    ]
-                }
-            ]
-        },
-        "oidcc-rp-initiated-logout-no-id-token-hint": {
-            "browser": [
-                {
-                    "comment": "The happy path: sign in when the OP asks, allow when it asks, land on the callback of the suite.",
-                    "match": "{HEIDI_ISSUER}/authorize*",
-                    "tasks": [
-                        {
-                            "task": "Sign in",
-                            "optional": true,
-                            "match": "{HEIDI_ISSUER}/login*",
-                            "commands": [
-                                ["text", "id", "username", "{HEIDI_DEV_USERNAME}"],
-                                ["text", "id", "password", "{HEIDI_DEV_USER_PASSWORD}"],
-                                ["click", "css", "form button[type=submit]"]
-                            ]
-                        },
-                        {
-                            "task": "Allow",
-                            "optional": true,
-                            "match": "{HEIDI_ISSUER}/consent*",
-                            "commands": [
-                                ["click", "css", "button[name=answer][value=allow]"]
-                            ]
-                        },
-                        {
-                            "task": "Verify complete",
-                            "match": "*/test/a/heidi/callback*",
-                            "commands": [
-                                ["wait", "id", "submission_complete", 10]
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "comment": "The request cannot be honoured (RP-Initiated Logout 1.0 §2: unregistered post_logout_redirect_uri, id_token_hint invalid or issued to no client, post_logout_redirect_uri without id_token_hint or client_id): the OP shows its error page and sends nothing anywhere; the page fills the screenshot placeholder.",
-                    "match": "{HEIDI_ISSUER}/logout*",
+                    "comment": "The request cannot be honoured and nothing of it reaches the browser it came from: a request URI already used, expired, or issued to another client (RFC 9126 §2.2), or an authorization request the client did not push although it must (§6). The OP shows its error page; the page fills the screenshot placeholder.",
+                    "match": "{BEFFROI_ISSUER}/authorize*",
                     "tasks": [
                         {
                             "task": "Expect the error page",
-                            "match": "{HEIDI_ISSUER}/logout*",
+                            "match": "{BEFFROI_ISSUER}/authorize*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Request refused|Requête refusée", "update-image-placeholder"]
+                                [
+                                    "wait",
+                                    "xpath",
+                                    "//*",
+                                    10,
+                                    "Request refused|Requête refusée",
+                                    "update-image-placeholder"
+                                ]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "fapi2-message-signing-final-par-attempt-to-use-request_uri-for-different-client": {
+            "browser": [
+                {
+                    "comment": "The request cannot be honoured and nothing of it reaches the browser it came from: a request URI already used, expired, or issued to another client (RFC 9126 §2.2), or an authorization request the client did not push although it must (§6). The OP shows its error page; the page fills the screenshot placeholder.",
+                    "match": "{BEFFROI_ISSUER}/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect the error page",
+                            "match": "{BEFFROI_ISSUER}/authorize*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "xpath",
+                                    "//*",
+                                    10,
+                                    "Request refused|Requête refusée",
+                                    "update-image-placeholder"
+                                ]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "fapi2-message-signing-final-user-rejects-authentication": {
+            "browser": [
+                {
+                    "comment": "The user refuses on the consent page, which is what the module asks a human to do: the answer is \"access_denied\" on the redirect URI (OIDC Core §3.1.2.6).",
+                    "match": "{BEFFROI_ISSUER}/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Pass the address",
+                            "optional": true,
+                            "match": "{BEFFROI_ISSUER}/login*",
+                            "commands": [
+                                [
+                                    "text",
+                                    "id",
+                                    "address",
+                                    "{BEFFROI_DEV_USERNAME}"
+                                ],
+                                [
+                                    "click",
+                                    "css",
+                                    "form[data-step=\"address\"] button[type=submit]"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Sign in",
+                            "optional": true,
+                            "match": "{BEFFROI_ISSUER}/login*",
+                            "commands": [
+                                [
+                                    "text",
+                                    "id",
+                                    "username",
+                                    "{BEFFROI_DEV_USERNAME}"
+                                ],
+                                [
+                                    "text",
+                                    "id",
+                                    "password",
+                                    "{BEFFROI_DEV_USER_PASSWORD}"
+                                ],
+                                [
+                                    "click",
+                                    "css",
+                                    "form[action^=\"/login\"] button[type=submit]"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Deny",
+                            "match": "{BEFFROI_ISSUER}/consent*",
+                            "commands": [
+                                [
+                                    "click",
+                                    "css",
+                                    "button[name=answer][value=deny]"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Verify complete",
+                            "match": "*/test/a/beffroi/callback*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "id",
+                                    "submission_complete",
+                                    10
+                                ]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "fapi2-security-profile-final-par-ensure-reused-request-uri-prior-to-auth-completion-succeeds": {
+            "browser": [
+                {
+                    "comment": "FAPI 2.0 Security Profile §5.3.1: the reference is spent when the request is granted, not when it is read. The first visit must go no further than the page the provider shows, so this block only looks at it; the second visit, on the same reference, signs in and completes.",
+                    "match": "{BEFFROI_ISSUER}/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Look at the login page without using it",
+                            "match": "{BEFFROI_ISSUER}/login*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "xpath",
+                                    "//*",
+                                    10,
+                                    "Sign in|Connexion",
+                                    "update-image-placeholder-optional"
+                                ]
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "comment": "The second visit, on the reference the first one left unspent.",
+                    "match": "{BEFFROI_ISSUER}/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Pass the address",
+                            "optional": true,
+                            "match": "{BEFFROI_ISSUER}/login*",
+                            "commands": [
+                                [
+                                    "text",
+                                    "id",
+                                    "address",
+                                    "{BEFFROI_DEV_USERNAME}"
+                                ],
+                                [
+                                    "click",
+                                    "css",
+                                    "form[data-step=\"address\"] button[type=submit]"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Sign in",
+                            "optional": true,
+                            "match": "{BEFFROI_ISSUER}/login*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "xpath",
+                                    "//*",
+                                    10,
+                                    "Sign in|Connexion",
+                                    "update-image-placeholder-optional"
+                                ],
+                                [
+                                    "text",
+                                    "id",
+                                    "username",
+                                    "{BEFFROI_DEV_USERNAME}"
+                                ],
+                                [
+                                    "text",
+                                    "id",
+                                    "password",
+                                    "{BEFFROI_DEV_USER_PASSWORD}"
+                                ],
+                                [
+                                    "click",
+                                    "css",
+                                    "form[action^=\"/login\"] button[type=submit]"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Allow",
+                            "optional": true,
+                            "match": "{BEFFROI_ISSUER}/consent*",
+                            "commands": [
+                                [
+                                    "click",
+                                    "css",
+                                    "button[name=answer][value=allow]"
+                                ]
+                            ]
+                        },
+                        {
+                            "task": "Verify complete",
+                            "match": "*/test/a/beffroi/callback*",
+                            "commands": [
+                                [
+                                    "wait",
+                                    "id",
+                                    "submission_complete",
+                                    10
+                                ]
                             ]
                         }
                     ]

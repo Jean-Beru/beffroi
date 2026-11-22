@@ -2,14 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Oidc\Domain\EndSession\LogoutChannel;
+use Beffroi\Oidc\Domain\EndSession\LogoutChannel;
 
-/**
- * A list of logout channels a data provider can name, typed, because a provider hands its cases over as
- * plain arrays and a list of enumeration cases is not one PHPStan can read from there.
- */
 final readonly class LogoutChannels
 {
     /**

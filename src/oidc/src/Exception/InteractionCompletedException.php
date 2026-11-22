@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Exception;
+namespace Beffroi\Oidc\Exception;
 
 use RuntimeException;
 use function sprintf;
 
 /**
- * Resumed after it was granted, denied or failed; shown to the user, never sent to the client.
+ * Shown to the user, never sent to the client.
  */
 final class InteractionCompletedException extends RuntimeException implements ExceptionInterface
 {

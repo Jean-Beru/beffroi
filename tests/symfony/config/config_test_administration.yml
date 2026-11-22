@@ -1,0 +1,19 @@
+# The kernel of a process whose plane is the administration API (decision 0038), beside the kernel of the suite that
+# plays the provider: the routes of the API and none of the provider's, the plane the guard of the API reads, and the
+# database and the signing keys of the provider kernel of the same run, so that a token the one issues is the token
+# the other is asked to honour.
+framework:
+    router:
+        resource: '%kernel.project_dir%/config/routing_administration.yml'
+
+parameters:
+    beffroi.plane: !php/enum App\Plane\Plane::Administration
+    beffroi_test.database: '%kernel.cache_dir%/../test/beffroi.sqlite'
+    # The routes of the provider, which this process reads to write the URLs of the provider and never to serve them
+    # (App\Routing\ProviderRoutes), as the kernel of the application says where they are in that plane.
+    beffroi.provider_routes.resource: '%kernel.project_dir%/config/routing.yml'
+    beffroi.provider_routes.type: ~
+
+beffroi:
+    keys:
+        storage: '%kernel.cache_dir%/../test/keys'

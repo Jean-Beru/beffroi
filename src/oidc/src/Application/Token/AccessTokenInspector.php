@@ -2,34 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Application\Token;
+namespace Beffroi\Oidc\Application\Token;
 
 use DateTimeImmutable;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
-use Heidi\Oidc\Domain\Token\InspectedAccessToken;
-use Heidi\Oidc\Exception\InvalidTokenException;
-use Heidi\Oidc\Port\AuthorizationCodeRepositoryInterface;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Oidc\Domain\Token\InspectedAccessToken;
+use Beffroi\Oidc\Exception\InvalidTokenException;
+use Beffroi\Oidc\Port\RecordedGrantsInterface;
 use SensitiveParameter;
 
 /**
- * What the provider's own resources ask of an access token (architecture §4.6, §4.7, §4.12): verified,
- * descending from a session that has not ended and from a grant still alive, naming a user still served.
- *
- * The three questions are asked here, in one way for both shapes of token: what an "at+jwt" carries as
- * "sid" and "grant_id" is what the record of an opaque token carries as a row, and a resource of the
- * provider is the one reader able to resolve either. A resource server that holds the token and the
- * published keys and nothing else cannot ask them, which is what verifying offline means (RFC 9068 §4);
- * the provider never has that excuse.
+ * Verifies an access token and that its session has not ended, its grant is alive and its person is still served.
  */
 final readonly class AccessTokenInspector
 {
     public function __construct(
         private AccessTokenVerifier $tokens,
         private AuthenticationSessionRepositoryInterface $sessions,
-        private AuthorizationCodeRepositoryInterface $grants,
-        private UserRepositoryInterface $users,
+        private RecordedGrantsInterface $grants,
+        private PersonOfAnAccessToken $persons,
     ) {
     }
 
@@ -39,15 +31,21 @@ final readonly class AccessTokenInspector
     public function inspect(Tenant $tenant, #[SensitiveParameter] string $accessToken, DateTimeImmutable $now): InspectedAccessToken
     {
         $token = $this->tokens->verify($tenant, $accessToken, $now);
-        $session = $this->sessions->find($token->sessionId);
-        if ($session === null || $session->hasEnded()) {
-            throw new InvalidTokenException('The access token descends from a session this provider ended.');
+        $signIn = $token->signIn;
+        if ($signIn !== null) {
+            $session = $this->sessions->find($signIn->sessionId);
+            if ($session === null || $session->hasEnded()) {
+                throw new InvalidTokenException('The access token descends from a session this provider ended.');
+            }
+            $grant = $this->grants->findByGrantId($token->grantId);
+            if ($grant === null || $grant->isRevoked()) {
+                throw new InvalidTokenException('The access token descends from a grant this provider revoked.');
+            }
         }
-        $grant = $this->grants->findByGrantId($token->grantId);
-        if ($grant === null || $grant->isRevoked()) {
-            throw new InvalidTokenException('The access token descends from a grant this provider revoked.');
+        if (! $token->namesAPerson()) {
+            return new InspectedAccessToken($token, null);
         }
-        $user = $this->users->findBySubject($tenant, $token->subject);
+        $user = $this->persons->of($token);
         if ($user === null || ! $user->isEnabled()) {
             throw new InvalidTokenException('The access token names a user this provider no longer serves.');
         }

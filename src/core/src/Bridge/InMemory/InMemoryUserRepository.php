@@ -2,17 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Bridge\InMemory;
+namespace Beffroi\Core\Bridge\InMemory;
 
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Port\UserRepositoryInterface;
+use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * For tests and for the examples: nothing here survives the process.
- */
 final class InMemoryUserRepository implements UserRepositoryInterface
 {
     /**
@@ -45,6 +43,18 @@ final class InMemoryUserRepository implements UserRepositoryInterface
         }
 
         return null;
+    }
+
+    public function findAllByEmail(Tenant $tenant, EmailAddress $email): array
+    {
+        $holders = [];
+        foreach ($this->users as $user) {
+            if ($user->belongsTo($tenant) && $user->email?->isTheSameMailboxAs($email) === true) {
+                $holders[] = $user;
+            }
+        }
+
+        return $holders;
     }
 
     public function save(User $user): void

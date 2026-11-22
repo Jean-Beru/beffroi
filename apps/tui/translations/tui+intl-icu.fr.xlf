@@ -1,0 +1,1315 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="fr" datatype="plaintext" original="tui">
+    <header>
+      <note>Every string the terminal administration shows, and the page of the loopback interface the browser is answered with once it brought the authorization response back. ICU message format: {issuer} is the issuer of the tenant, {profile} the name the profile of the instance was kept under, {administrator} the name of who signed in, {acr} the class of their authentication, {url} the address of the authorization endpoint, {redirect_uri} the redirect URI of the client, {reason} why the sign-in or a read of the administration API failed, {minutes} and {time} how long the access token is worth and until when, {time} also when a session was authenticated, {days} a number of days, {count} a number of rows, {client} the identifier of a client, {username} the username the administrator typed or the API answered, {kind} and {name} the kind and the name of a credential, {address} the address a session was last seen from, {since} the start of the window the statistics count over. value.more is a printf pattern, %d being how many items were left out. A string named refusal.&lt;error&gt; is what the screen says to do when the provider refuses a sign-in with that error, api.refusal.&lt;error&gt; when the administration API refuses a request with it, act.&lt;name&gt; how the screen names an act of the journal, and key.status.&lt;state&gt; how it names the state of a signing key.</note>
+    </header>
+    <body>
+      <trans-unit id="4a92db3047" resname="keys.sign_in">
+        <source>keys.sign_in</source>
+        <target>se connecter</target>
+      </trans-unit>
+      <trans-unit id="8a7f64aec2" resname="keys.again">
+        <source>keys.again</source>
+        <target>réessayer</target>
+      </trans-unit>
+      <trans-unit id="c98f6a2f5e" resname="keys.quit">
+        <source>keys.quit</source>
+        <target>quitter</target>
+      </trans-unit>
+      <trans-unit id="edfc7f486e" resname="keys.choose">
+        <source>keys.choose</source>
+        <target>choisir</target>
+      </trans-unit>
+      <trans-unit id="383bba8aea" resname="keys.enter">
+        <source>keys.enter</source>
+        <target>entrer</target>
+      </trans-unit>
+      <trans-unit id="6f0d427562" resname="keys.reload">
+        <source>keys.reload</source>
+        <target>relire</target>
+      </trans-unit>
+      <trans-unit id="c25602ecdc" resname="keys.revoke">
+        <source>keys.revoke</source>
+        <target>révoquer</target>
+      </trans-unit>
+      <trans-unit id="95381c9d35" resname="keys.end_session">
+        <source>keys.end_session</source>
+        <target>terminer la session</target>
+      </trans-unit>
+      <trans-unit id="368694274b" resname="keys.take_back">
+        <source>keys.take_back</source>
+        <target>retirer</target>
+      </trans-unit>
+      <trans-unit id="00d2372d2b" resname="keys.search">
+        <source>keys.search</source>
+        <target>chercher</target>
+      </trans-unit>
+      <trans-unit id="d1cf58543b" resname="keys.next">
+        <source>keys.next</source>
+        <target>suivant</target>
+      </trans-unit>
+      <trans-unit id="27d80b7633" resname="keys.back">
+        <source>keys.back</source>
+        <target>retour</target>
+      </trans-unit>
+      <trans-unit id="d22dbad5b5" resname="keys.browse">
+        <source>keys.browse</source>
+        <target>parcourir</target>
+      </trans-unit>
+      <trans-unit id="99e01ce64c" resname="keys.open">
+        <source>keys.open</source>
+        <target>ouvrir</target>
+      </trans-unit>
+      <trans-unit id="730290dff1" resname="header.title">
+        <source>header.title</source>
+        <target>Administration · {issuer}</target>
+      </trans-unit>
+      <trans-unit id="4fd2c7c325" resname="header.administrator">
+        <source>header.administrator</source>
+        <target>{administrator} · {acr}</target>
+      </trans-unit>
+      <trans-unit id="785fa52478" resname="home.title">
+        <source>home.title</source>
+        <target>Administrer l'instance</target>
+      </trans-unit>
+      <trans-unit id="33b43cc52b" resname="home.instance">
+        <source>home.instance</source>
+        <target>{issuer}
+Profil {profile}</target>
+      </trans-unit>
+      <trans-unit id="a2df7e1152" resname="home.invitation">
+        <source>home.invitation</source>
+        <target>Entrée ouvre la page de connexion de l'instance dans le navigateur. Un administrateur s'y connecte par passkey.</target>
+      </trans-unit>
+      <trans-unit id="06ffb53ff8" resname="signin.reading">
+        <source>signin.reading</source>
+        <target>Lecture des métadonnées de {issuer}…</target>
+      </trans-unit>
+      <trans-unit id="13c5da18c6" resname="signin.waiting">
+        <source>signin.waiting</source>
+        <target>Connectez-vous dans le navigateur qui vient de s'ouvrir. S'il ne s'est pas ouvert, ouvrez :
+
+{url}
+
+La réponse revient à {redirect_uri}.</target>
+      </trans-unit>
+      <trans-unit id="be233d7539" resname="signin.failed">
+        <source>signin.failed</source>
+        <target>La connexion a échoué : {reason}</target>
+      </trans-unit>
+      <trans-unit id="750008db4b" resname="section.instance">
+        <source>section.instance</source>
+        <target>Instance</target>
+      </trans-unit>
+      <trans-unit id="47dacd4022" resname="section.session">
+        <source>section.session</source>
+        <target>Session</target>
+      </trans-unit>
+      <trans-unit id="b2191eb9e0" resname="section.tenant">
+        <source>section.tenant</source>
+        <target>Tenant</target>
+      </trans-unit>
+      <trans-unit id="5d488579dd" resname="section.clients">
+        <source>section.clients</source>
+        <target>Clients</target>
+      </trans-unit>
+      <trans-unit id="f07b158e20" resname="section.keys">
+        <source>section.keys</source>
+        <target>Clés de signature</target>
+      </trans-unit>
+      <trans-unit id="51689c9630" resname="section.users">
+        <source>section.users</source>
+        <target>Utilisateurs</target>
+      </trans-unit>
+      <trans-unit id="f41c331b14" resname="section.groups">
+        <source>section.groups</source>
+        <target>Groupes</target>
+      </trans-unit>
+      <trans-unit id="a8ac3cbb42" resname="section.monitoring">
+        <source>section.monitoring</source>
+        <target>Supervision</target>
+      </trans-unit>
+      <trans-unit id="d204016e73" resname="section.read_at">
+        <source>section.read_at</source>
+        <target>lu à {time}</target>
+      </trans-unit>
+      <trans-unit id="00d2ac00ba" resname="instance.note">
+        <source>instance.note</source>
+        <target>ce poste, client de l'instance</target>
+      </trans-unit>
+      <trans-unit id="893a715a19" resname="instance.provider">
+        <source>instance.provider</source>
+        <target>Fournisseur</target>
+      </trans-unit>
+      <trans-unit id="47152062d3" resname="instance.this_client">
+        <source>instance.this_client</source>
+        <target>Ce client</target>
+      </trans-unit>
+      <trans-unit id="dabe208357" resname="instance.endpoints">
+        <source>instance.endpoints</source>
+        <target>Points de la connexion</target>
+      </trans-unit>
+      <trans-unit id="f38b6a964a" resname="instance.issuer">
+        <source>instance.issuer</source>
+        <target>Émetteur</target>
+      </trans-unit>
+      <trans-unit id="d6ca1ec114" resname="instance.administration">
+        <source>instance.administration</source>
+        <target>API d'administration</target>
+      </trans-unit>
+      <trans-unit id="912519f539" resname="instance.client">
+        <source>instance.client</source>
+        <target>Client</target>
+      </trans-unit>
+      <trans-unit id="337b642048" resname="instance.redirect_uri">
+        <source>instance.redirect_uri</source>
+        <target>URI de redirection</target>
+      </trans-unit>
+      <trans-unit id="931db6a1bb" resname="instance.client_key">
+        <source>instance.client_key</source>
+        <target>Clé du client</target>
+      </trans-unit>
+      <trans-unit id="f78783c21f" resname="instance.bound_key">
+        <source>instance.bound_key</source>
+        <target>Jetons liés à</target>
+      </trans-unit>
+      <trans-unit id="b4c93c8fd9" resname="instance.pushed_requests">
+        <source>instance.pushed_requests</source>
+        <target>Requêtes poussées</target>
+      </trans-unit>
+      <trans-unit id="0b724f1aaa" resname="instance.token_endpoint">
+        <source>instance.token_endpoint</source>
+        <target>Token endpoint</target>
+      </trans-unit>
+      <trans-unit id="10d7f06ead" resname="session.administrator">
+        <source>session.administrator</source>
+        <target>Administrateur</target>
+      </trans-unit>
+      <trans-unit id="f9dd5e9e1f" resname="session.subject">
+        <source>session.subject</source>
+        <target>Sujet</target>
+      </trans-unit>
+      <trans-unit id="d2b4237ec3" resname="session.authentication">
+        <source>session.authentication</source>
+        <target>Authentification</target>
+      </trans-unit>
+      <trans-unit id="c2030f6791" resname="session.authenticated_at">
+        <source>session.authenticated_at</source>
+        <target>Authentifié le</target>
+      </trans-unit>
+      <trans-unit id="4e99766046" resname="session.scope">
+        <source>session.scope</source>
+        <target>Scope</target>
+      </trans-unit>
+      <trans-unit id="f10adb6d10" resname="session.expires">
+        <source>session.expires</source>
+        <target>Jeton d'accès</target>
+      </trans-unit>
+      <trans-unit id="4a9826a68e" resname="session.no_expiry">
+        <source>session.no_expiry</source>
+        <target>le fournisseur n'a pas dit jusqu'à quand</target>
+      </trans-unit>
+      <trans-unit id="6ecbe4f30e" resname="session.expires_in">
+        <source>session.expires_in</source>
+        <target>{minutes, plural, =0 {expire dans moins d'une minute} one {expire dans # minute} other {expire dans # minutes}} ({time})</target>
+      </trans-unit>
+      <trans-unit id="0312212e32" resname="api.reading">
+        <source>api.reading</source>
+        <target>Lecture de l'API d'administration…</target>
+      </trans-unit>
+      <trans-unit id="085bf71d8b" resname="api.writing">
+        <source>api.writing</source>
+        <target>Écriture dans l'API d'administration…</target>
+      </trans-unit>
+      <trans-unit id="9d028fc03b" resname="api.failed">
+        <source>api.failed</source>
+        <target>L'API d'administration n'a pas pu être lue. {reason}</target>
+      </trans-unit>
+      <trans-unit id="f2b1087743" resname="api.unreadable">
+        <source>api.unreadable</source>
+        <target>L'API d'administration a répondu un document que ce programme ne sait pas lire : {reason}</target>
+      </trans-unit>
+      <trans-unit id="c9e7f73bfc" resname="api.refusal.invalid_token">
+        <source>api.refusal.invalid_token</source>
+        <target>L'API d'administration n'accepte plus les jetons de cette session : quittez, puis reconnectez-vous.</target>
+      </trans-unit>
+      <trans-unit id="8c09aca3b1" resname="value.yes">
+        <source>value.yes</source>
+        <target>oui</target>
+      </trans-unit>
+      <trans-unit id="68a582bed6" resname="value.no">
+        <source>value.no</source>
+        <target>non</target>
+      </trans-unit>
+      <trans-unit id="c05cb0530e" resname="value.none">
+        <source>value.none</source>
+        <target>aucun</target>
+      </trans-unit>
+      <trans-unit id="4634422a7a" resname="value.more">
+        <source>value.more</source>
+        <target>%d de plus</target>
+      </trans-unit>
+      <trans-unit id="e166f86075" resname="value.days">
+        <source>value.days</source>
+        <target>{days, plural, one {# jour} other {# jours}}</target>
+      </trans-unit>
+      <trans-unit id="6dde3b6389" resname="tenant.settings">
+        <source>tenant.settings</source>
+        <target>Réglages</target>
+      </trans-unit>
+      <trans-unit id="930f8bc866" resname="tenant.classes">
+        <source>tenant.classes</source>
+        <target>Classes d'authentification</target>
+      </trans-unit>
+      <trans-unit id="6e74b84647" resname="tenant.acr">
+        <source>tenant.acr</source>
+        <target>acr</target>
+      </trans-unit>
+      <trans-unit id="5fe21e6ed4" resname="tenant.predicate">
+        <source>tenant.predicate</source>
+        <target>Prédicat</target>
+      </trans-unit>
+      <trans-unit id="71e242925b" resname="tenant.name">
+        <source>tenant.name</source>
+        <target>Nom</target>
+      </trans-unit>
+      <trans-unit id="aa973ea8b4" resname="tenant.slug">
+        <source>tenant.slug</source>
+        <target>Identifiant</target>
+      </trans-unit>
+      <trans-unit id="04348b697c" resname="tenant.issuer">
+        <source>tenant.issuer</source>
+        <target>Émetteur</target>
+      </trans-unit>
+      <trans-unit id="8f2b8f5937" resname="tenant.created_at">
+        <source>tenant.created_at</source>
+        <target>Créé le</target>
+      </trans-unit>
+      <trans-unit id="29c76e9234" resname="tenant.login_floor">
+        <source>tenant.login_floor</source>
+        <target>Plancher de connexion</target>
+      </trans-unit>
+      <trans-unit id="d0baf6c0be" resname="tenant.administrators">
+        <source>tenant.administrators</source>
+        <target>Groupes d'administration</target>
+      </trans-unit>
+      <trans-unit id="f1af2acb9a" resname="tenant.administration_api">
+        <source>tenant.administration_api</source>
+        <target>API d'administration</target>
+      </trans-unit>
+      <trans-unit id="c58373cbd4" resname="tenant.journal">
+        <source>tenant.journal</source>
+        <target>Journal conservé</target>
+      </trans-unit>
+      <trans-unit id="558a3c83aa" resname="clients.list">
+        <source>clients.list</source>
+        <target>Clients du tenant</target>
+      </trans-unit>
+      <trans-unit id="8e14caf86a" resname="clients.detail">
+        <source>clients.detail</source>
+        <target>Client</target>
+      </trans-unit>
+      <trans-unit id="94e431bad6" resname="clients.detail_of">
+        <source>clients.detail_of</source>
+        <target>Client {client}</target>
+      </trans-unit>
+      <trans-unit id="a38983f00d" resname="clients.choose">
+        <source>clients.choose</source>
+        <target>Entrée sur un client lit ce qu'il a enregistré.</target>
+      </trans-unit>
+      <trans-unit id="511a9666e9" resname="clients.none">
+        <source>clients.none</source>
+        <target>Le tenant n'a aucun client.</target>
+      </trans-unit>
+      <trans-unit id="6f068168a0" resname="clients.count">
+        <source>clients.count</source>
+        <target>{count, plural, one {# client} other {# clients}} · lus à {time}</target>
+      </trans-unit>
+      <trans-unit id="67d8d51819" resname="client.client_id">
+        <source>client.client_id</source>
+        <target>Identifiant</target>
+      </trans-unit>
+      <trans-unit id="fadbea25bd" resname="client.client_name">
+        <source>client.client_name</source>
+        <target>Nom</target>
+      </trans-unit>
+      <trans-unit id="68b52f541b" resname="client.source">
+        <source>client.source</source>
+        <target>Origine</target>
+      </trans-unit>
+      <trans-unit id="400c3957cd" resname="client.registered_at">
+        <source>client.registered_at</source>
+        <target>Enregistré (UTC)</target>
+      </trans-unit>
+      <trans-unit id="ce447d1359" resname="client.last_used_at">
+        <source>client.last_used_at</source>
+        <target>Dernier usage (UTC)</target>
+      </trans-unit>
+      <trans-unit id="30fec92a9f" resname="client.administration">
+        <source>client.administration</source>
+        <target>Client de l'administration</target>
+      </trans-unit>
+      <trans-unit id="c982ae51d5" resname="client.metadata">
+        <source>client.metadata</source>
+        <target>Ce qu'il a enregistré</target>
+      </trans-unit>
+      <trans-unit id="6240ef01ca" resname="client.assigned">
+        <source>client.assigned</source>
+        <target>Ce que la politique d'enregistrement lui a donné</target>
+      </trans-unit>
+      <trans-unit id="17d13cd4d6" resname="clients.views">
+        <source>clients.views</source>
+        <target>c clients · i jetons initiaux</target>
+      </trans-unit>
+      <trans-unit id="8f09de3f8f" resname="client.granted">
+        <source>client.granted</source>
+        <target>Ce que son jeton initial lui a donné</target>
+      </trans-unit>
+      <trans-unit id="0cd9d479ac" resname="clients.delete_asked">
+        <source>clients.delete_asked</source>
+        <target>Supprimer le client {client} ? Plus rien de ce qui lui a été émis ne pourra servir. y confirme, toute autre touche annule.</target>
+      </trans-unit>
+      <trans-unit id="5034c9b5d0" resname="clients.deleted_now">
+        <source>clients.deleted_now</source>
+        <target>Le client {client} est supprimé : plus rien de ce qui lui a été émis ne peut servir. L'acte vous nomme dans le journal du tenant.</target>
+      </trans-unit>
+      <trans-unit id="6571ca7bcd" resname="initial_access_tokens.list">
+        <source>initial_access_tokens.list</source>
+        <target>Jetons initiaux du tenant</target>
+      </trans-unit>
+      <trans-unit id="df868d1b5e" resname="initial_access_tokens.none">
+        <source>initial_access_tokens.none</source>
+        <target>Le tenant n'a émis aucun jeton initial.</target>
+      </trans-unit>
+      <trans-unit id="3b9ee1ace4" resname="initial_access_token.name">
+        <source>initial_access_token.name</source>
+        <target>Nom</target>
+      </trans-unit>
+      <trans-unit id="12a8bdafb0" resname="initial_access_token.state">
+        <source>initial_access_token.state</source>
+        <target>État</target>
+      </trans-unit>
+      <trans-unit id="e82f300123" resname="initial_access_token.registrations">
+        <source>initial_access_token.registrations</source>
+        <target>Inscriptions</target>
+      </trans-unit>
+      <trans-unit id="c557284f1a" resname="initial_access_token.expires_at">
+        <source>initial_access_token.expires_at</source>
+        <target>Expire (UTC)</target>
+      </trans-unit>
+      <trans-unit id="283f38314f" resname="initial_access_token.administration">
+        <source>initial_access_token.administration</source>
+        <target>Administration</target>
+      </trans-unit>
+      <trans-unit id="03798da172" resname="initial_access_token.served_of">
+        <source>initial_access_token.served_of</source>
+        <target>{served} sur {allowed}</target>
+      </trans-unit>
+      <trans-unit id="0fdd715c2b" resname="initial_access_token.revoked_on">
+        <source>initial_access_token.revoked_on</source>
+        <target>révoqué le {time}</target>
+      </trans-unit>
+      <trans-unit id="0bbb72f031" resname="initial_access_token.spent">
+        <source>initial_access_token.spent</source>
+        <target>épuisé</target>
+      </trans-unit>
+      <trans-unit id="f1b6743b8b" resname="initial_access_token.expired">
+        <source>initial_access_token.expired</source>
+        <target>expiré</target>
+      </trans-unit>
+      <trans-unit id="488e2600da" resname="initial_access_token.authorises">
+        <source>initial_access_token.authorises</source>
+        <target>autorise une inscription</target>
+      </trans-unit>
+      <trans-unit id="fd2666f088" resname="initial_access_token.value">
+        <source>initial_access_token.value</source>
+        <target>Valeur</target>
+      </trans-unit>
+      <trans-unit id="6a4cccf786" resname="initial_access_tokens.revoke_asked">
+        <source>initial_access_tokens.revoke_asked</source>
+        <target>Révoquer le jeton initial {name} ? Il n'autorise plus aucune inscription, et les clients qu'il a inscrits restent. y confirme, toute autre touche annule.</target>
+      </trans-unit>
+      <trans-unit id="a7c0331050" resname="initial_access_tokens.revoked_now">
+        <source>initial_access_tokens.revoked_now</source>
+        <target>Le jeton initial {name} est révoqué : il n'autorise plus aucune inscription, et les clients qu'il a inscrits restent. L'acte vous nomme dans le journal du tenant.</target>
+      </trans-unit>
+      <trans-unit id="bec2317c6e" resname="initial_access_tokens.issued_title">
+        <source>initial_access_tokens.issued_title</source>
+        <target>Jeton initial {name}</target>
+      </trans-unit>
+      <trans-unit id="71363590e7" resname="initial_access_tokens.issued_shown">
+        <source>initial_access_tokens.issued_shown</source>
+        <target>Sa valeur n'est montrée qu'ici, une fois, et plus jamais : copiez-la pour qui inscrit le client. Entrée la ferme, comme le focus qui s'en va. L'acte vous nomme dans le journal du tenant.</target>
+      </trans-unit>
+      <trans-unit id="7f8f03b5a3" resname="token_form.title">
+        <source>token_form.title</source>
+        <target>Nouveau jeton initial</target>
+      </trans-unit>
+      <trans-unit id="84fac4128c" resname="token_form.notice">
+        <source>token_form.notice</source>
+        <target>Entrée change le membre choisi, et s émet le jeton : sa valeur n'est alors montrée qu'une fois, et plus jamais.</target>
+      </trans-unit>
+      <trans-unit id="e5dda30b89" resname="token_form.member">
+        <source>token_form.member</source>
+        <target>Membre</target>
+      </trans-unit>
+      <trans-unit id="ba8e6111af" resname="token_form.value">
+        <source>token_form.value</source>
+        <target>Valeur</target>
+      </trans-unit>
+      <trans-unit id="6b1ba0a08e" resname="keys.delete">
+        <source>keys.delete</source>
+        <target>supprimer</target>
+      </trans-unit>
+      <trans-unit id="404cacfca3" resname="keys.initial_access_tokens">
+        <source>keys.initial_access_tokens</source>
+        <target>jetons initiaux</target>
+      </trans-unit>
+      <trans-unit id="247da2c2aa" resname="keys.clients">
+        <source>keys.clients</source>
+        <target>clients</target>
+      </trans-unit>
+      <trans-unit id="53e39a517a" resname="keys.new_token">
+        <source>keys.new_token</source>
+        <target>nouveau jeton</target>
+      </trans-unit>
+      <trans-unit id="9796721a60" resname="keys.issue">
+        <source>keys.issue</source>
+        <target>émettre</target>
+      </trans-unit>
+      <trans-unit id="966747a5a7" resname="change.refused">
+        <source>change.refused</source>
+        <target>Rien n'a changé : {reason}</target>
+      </trans-unit>
+      <trans-unit id="1342831ceb" resname="keys.none">
+        <source>keys.none</source>
+        <target>Le tenant n'a aucune clé de signature : rien ne peut être signé.</target>
+      </trans-unit>
+      <trans-unit id="787664176f" resname="keys.count">
+        <source>keys.count</source>
+        <target>{count, plural, one {# clé} other {# clés}} · lues à {time}</target>
+      </trans-unit>
+      <trans-unit id="a43104daf4" resname="key.state">
+        <source>key.state</source>
+        <target>État</target>
+      </trans-unit>
+      <trans-unit id="7ab87fc935" resname="key.algorithm">
+        <source>key.algorithm</source>
+        <target>Algorithme</target>
+      </trans-unit>
+      <trans-unit id="87017c66ae" resname="key.kid">
+        <source>key.kid</source>
+        <target>Identifiant</target>
+      </trans-unit>
+      <trans-unit id="e143731ff3" resname="key.use">
+        <source>key.use</source>
+        <target>Usage</target>
+      </trans-unit>
+      <trans-unit id="e5ef91d4e1" resname="key.created_at">
+        <source>key.created_at</source>
+        <target>Créée (UTC)</target>
+      </trans-unit>
+      <trans-unit id="cfc32dafb5" resname="key.activated_at">
+        <source>key.activated_at</source>
+        <target>Active depuis</target>
+      </trans-unit>
+      <trans-unit id="be9f33ee1f" resname="key.retiring_at">
+        <source>key.retiring_at</source>
+        <target>En retrait depuis</target>
+      </trans-unit>
+      <trans-unit id="e1bb0bdbb6" resname="key.retired_at">
+        <source>key.retired_at</source>
+        <target>Retirée</target>
+      </trans-unit>
+      <trans-unit id="6f0914702a" resname="key.past_its_age">
+        <source>key.past_its_age</source>
+        <target>Âge dépassé</target>
+      </trans-unit>
+      <trans-unit id="508fce03cd" resname="key.status.active">
+        <source>key.status.active</source>
+        <target>active</target>
+      </trans-unit>
+      <trans-unit id="6971c5f51b" resname="key.status.staged">
+        <source>key.status.staged</source>
+        <target>en attente</target>
+      </trans-unit>
+      <trans-unit id="e61de0285c" resname="key.status.retiring">
+        <source>key.status.retiring</source>
+        <target>en retrait</target>
+      </trans-unit>
+      <trans-unit id="87874f8fbd" resname="key.status.retired">
+        <source>key.status.retired</source>
+        <target>retirée</target>
+      </trans-unit>
+      <trans-unit id="cf86daa8b4" resname="users.prompt">
+        <source>users.prompt</source>
+        <target>Nom d'utilisateur : </target>
+      </trans-unit>
+      <trans-unit id="74585bf6c6" resname="users.notice">
+        <source>users.notice</source>
+        <target>Tapez un nom d'utilisateur, puis Entrée. Lire une personne, ses sessions ou son journal est un acte écrit dans son journal, qui vous nomme (décisions 0022 et 0038) : rien n'est lu avant que vous le demandiez.</target>
+      </trans-unit>
+      <trans-unit id="5bda661977" resname="users.none">
+        <source>users.none</source>
+        <target>Personne dans le tenant ne porte le nom d'utilisateur {username}.</target>
+      </trans-unit>
+      <trans-unit id="4112d6dac9" resname="users.person">
+        <source>users.person</source>
+        <target>Personne {username}</target>
+      </trans-unit>
+      <trans-unit id="8077bbff29" resname="users.view.credentials">
+        <source>users.view.credentials</source>
+        <target>Credentials</target>
+      </trans-unit>
+      <trans-unit id="7ffa95b07a" resname="users.view.sessions">
+        <source>users.view.sessions</source>
+        <target>Sessions ouvertes · lecture inscrite à son journal</target>
+      </trans-unit>
+      <trans-unit id="66ef14d4ce" resname="users.view.journal">
+        <source>users.view.journal</source>
+        <target>Derniers actes · lecture inscrite à son journal</target>
+      </trans-unit>
+      <trans-unit id="f52346556b" resname="users.view.consents">
+        <source>users.view.consents</source>
+        <target>Applications autorisées · lecture inscrite à son journal</target>
+      </trans-unit>
+      <trans-unit id="5006d0443c" resname="users.views">
+        <source>users.views</source>
+        <target>c credentials · s sessions · j journal · a applications · e modifier · d désactiver ou réactiver · t lien d'enrôlement · p lien de mot de passe · o lien d'OTP</target>
+      </trans-unit>
+      <trans-unit id="d1c1ad850b" resname="groups.list">
+        <source>groups.list</source>
+        <target>Groupes du tenant</target>
+      </trans-unit>
+      <trans-unit id="583029616d" resname="groups.members">
+        <source>groups.members</source>
+        <target>Membres</target>
+      </trans-unit>
+      <trans-unit id="96076d39b5" resname="groups.members_of">
+        <source>groups.members_of</source>
+        <target>Membres de {group}</target>
+      </trans-unit>
+      <trans-unit id="7588f71eef" resname="groups.notice">
+        <source>groups.notice</source>
+        <target>Entrée sur un groupe lit ses membres. Lire un membre est un acte écrit dans son journal qui vous nomme (décisions 0022 et 0038) : rien n'est lu avant que vous le demandiez.</target>
+      </trans-unit>
+      <trans-unit id="f691ac20d4" resname="groups.none">
+        <source>groups.none</source>
+        <target>Le tenant ne tient aucun groupe.</target>
+      </trans-unit>
+      <trans-unit id="6a13210d18" resname="groups.no_member">
+        <source>groups.no_member</source>
+        <target>Personne n'est membre de ce groupe.</target>
+      </trans-unit>
+      <trans-unit id="cdca9ec5e4" resname="groups.count">
+        <source>groups.count</source>
+        <target>{count, plural, one {# groupe} other {# groupes}} · lus à {time}</target>
+      </trans-unit>
+      <trans-unit id="c9628abd2c" resname="groups.name_prompt">
+        <source>groups.name_prompt</source>
+        <target>Nouveau groupe : </target>
+      </trans-unit>
+      <trans-unit id="fd522a4caf" resname="groups.member_prompt">
+        <source>groups.member_prompt</source>
+        <target>Membre de {group} : </target>
+      </trans-unit>
+      <trans-unit id="5f3ff834ea" resname="groups.created">
+        <source>groups.created</source>
+        <target>Le groupe {group} est créé. L'acte vous nomme dans le journal du tenant.</target>
+      </trans-unit>
+      <trans-unit id="26fecbddc7" resname="groups.member_added">
+        <source>groups.member_added</source>
+        <target>{username} est membre de {group}. L'acte vous nomme dans son journal.</target>
+      </trans-unit>
+      <trans-unit id="40b0875ec2" resname="groups.take_out_asked">
+        <source>groups.take_out_asked</source>
+        <target>Retirer {username} de {group} ? y confirme, toute autre touche annule.</target>
+      </trans-unit>
+      <trans-unit id="f1544a2a6a" resname="groups.take_out_administrator_asked">
+        <source>groups.take_out_administrator_asked</source>
+        <target>Retirer {username} de {group} ? Hors du dernier groupe qui administre le tenant, cette personne ne l'administre plus. y confirme, toute autre touche annule.</target>
+      </trans-unit>
+      <trans-unit id="45ef216650" resname="groups.taken_out">
+        <source>groups.taken_out</source>
+        <target>{username} n'est plus membre de {group}. L'acte vous nomme dans son journal.</target>
+      </trans-unit>
+      <trans-unit id="37e17bee8c" resname="group.name">
+        <source>group.name</source>
+        <target>nom</target>
+      </trans-unit>
+      <trans-unit id="cf84aef056" resname="group.source">
+        <source>group.source</source>
+        <target>source</target>
+      </trans-unit>
+      <trans-unit id="48090be2ad" resname="group.members">
+        <source>group.members</source>
+        <target>membres</target>
+      </trans-unit>
+      <trans-unit id="e3c710da29" resname="group.administers">
+        <source>group.administers</source>
+        <target>administre</target>
+      </trans-unit>
+      <trans-unit id="533d4c7de2" resname="group.created_at">
+        <source>group.created_at</source>
+        <target>créé</target>
+      </trans-unit>
+      <trans-unit id="935f411817" resname="member.username">
+        <source>member.username</source>
+        <target>nom d'utilisateur</target>
+      </trans-unit>
+      <trans-unit id="f6ae47d049" resname="member.source">
+        <source>member.source</source>
+        <target>source</target>
+      </trans-unit>
+      <trans-unit id="6a8154aa2b" resname="member.added_at">
+        <source>member.added_at</source>
+        <target>ajouté</target>
+      </trans-unit>
+      <trans-unit id="19149f28ff" resname="keys.members">
+        <source>keys.members</source>
+        <target>membres</target>
+      </trans-unit>
+      <trans-unit id="fc0a25294d" resname="keys.new_group">
+        <source>keys.new_group</source>
+        <target>nouveau groupe</target>
+      </trans-unit>
+      <trans-unit id="09cb6d940e" resname="keys.add_member">
+        <source>keys.add_member</source>
+        <target>ajouter un membre</target>
+      </trans-unit>
+      <trans-unit id="c434872d8b" resname="keys.take_out">
+        <source>keys.take_out</source>
+        <target>retirer</target>
+      </trans-unit>
+      <trans-unit id="5b18f73fa3" resname="keys.add">
+        <source>keys.add</source>
+        <target>ajouter</target>
+      </trans-unit>
+      <trans-unit id="76f48b0e4e" resname="user.username">
+        <source>user.username</source>
+        <target>Nom d'utilisateur</target>
+      </trans-unit>
+      <trans-unit id="952a972d89" resname="user.id">
+        <source>user.id</source>
+        <target>Identifiant</target>
+      </trans-unit>
+      <trans-unit id="31eaebb1cb" resname="user.subject">
+        <source>user.subject</source>
+        <target>Sujet</target>
+      </trans-unit>
+      <trans-unit id="e5d3db12d6" resname="user.enabled">
+        <source>user.enabled</source>
+        <target>Actif</target>
+      </trans-unit>
+      <trans-unit id="3a97fcf2a0" resname="user.source">
+        <source>user.source</source>
+        <target>Origine</target>
+      </trans-unit>
+      <trans-unit id="5d0d346a3e" resname="user.created_at">
+        <source>user.created_at</source>
+        <target>Créé le</target>
+      </trans-unit>
+      <trans-unit id="64be74445b" resname="user.groups">
+        <source>user.groups</source>
+        <target>Groupes</target>
+      </trans-unit>
+      <trans-unit id="a561efbb33" resname="user.claims">
+        <source>user.claims</source>
+        <target>Claims</target>
+      </trans-unit>
+      <trans-unit id="4859efd371" resname="user.no_credential">
+        <source>user.no_credential</source>
+        <target>Aucun credential.</target>
+      </trans-unit>
+      <trans-unit id="7d0f9f4141" resname="credential.kind">
+        <source>credential.kind</source>
+        <target>Sorte</target>
+      </trans-unit>
+      <trans-unit id="b80d10e063" resname="credential.name">
+        <source>credential.name</source>
+        <target>Nom</target>
+      </trans-unit>
+      <trans-unit id="31b26f1c57" resname="credential.authenticator">
+        <source>credential.authenticator</source>
+        <target>Authentificateur</target>
+      </trans-unit>
+      <trans-unit id="b7c5eed5af" resname="credential.created_at">
+        <source>credential.created_at</source>
+        <target>Enrôlé (UTC)</target>
+      </trans-unit>
+      <trans-unit id="b24187d2ec" resname="credential.last_used_at">
+        <source>credential.last_used_at</source>
+        <target>Dernier usage</target>
+      </trans-unit>
+      <trans-unit id="c3ceaee6fc" resname="credential.revoked_at">
+        <source>credential.revoked_at</source>
+        <target>Révoqué</target>
+      </trans-unit>
+      <trans-unit id="175d0f2f6f" resname="credential.revoke_asked">
+        <source>credential.revoke_asked</source>
+        <target>Révoquer le credential {kind} {name} de {username} ? Il ne servira plus jamais à se connecter. y confirme, toute autre touche annule.</target>
+      </trans-unit>
+      <trans-unit id="007d52a0ec" resname="user.disable_asked">
+        <source>user.disable_asked</source>
+        <target>Désactiver {username} ? Cette personne ne peut plus se connecter, et chacune de ses sessions prend fin, les applications où elle s'était connectée en étant averties par le back-channel. y confirme, toute autre touche annule.</target>
+      </trans-unit>
+      <trans-unit id="2d34b34147" resname="user.enable_asked">
+        <source>user.enable_asked</source>
+        <target>Réactiver {username} ? Cette personne peut de nouveau se connecter, et aucune de ses sessions ne revient. y confirme, toute autre touche annule.</target>
+      </trans-unit>
+      <trans-unit id="d1fecc6b7f" resname="user.disabled_now">
+        <source>user.disabled_now</source>
+        <target>Le compte de {username} est désactivé, et chacune de ses sessions a pris fin. L'acte vous nomme dans son journal.</target>
+      </trans-unit>
+      <trans-unit id="57a28227e3" resname="user.enabled_now">
+        <source>user.enabled_now</source>
+        <target>Le compte de {username} est réactivé. L'acte vous nomme dans son journal.</target>
+      </trans-unit>
+      <trans-unit id="3e0dd68604" resname="credential.revoked_now">
+        <source>credential.revoked_now</source>
+        <target>Le credential {kind} {name} de {username} est révoqué : il ne servira plus jamais à se connecter. L'acte vous nomme dans son journal.</target>
+      </trans-unit>
+      <trans-unit id="8c01143ee9" resname="credential.not_revocable">
+        <source>credential.not_revocable</source>
+        <target>Un mot de passe se remplace, il ne se révoque pas, et un credential révoqué le reste.</target>
+      </trans-unit>
+      <trans-unit id="73e96ee47c" resname="user_sessions.none">
+        <source>user_sessions.none</source>
+        <target>Aucune session n'est ouverte à son nom.</target>
+      </trans-unit>
+      <trans-unit id="09b25a4110" resname="user_sessions.proof">
+        <source>user_sessions.proof</source>
+        <target>Preuve</target>
+      </trans-unit>
+      <trans-unit id="33cab86d23" resname="user_sessions.authenticated_at">
+        <source>user_sessions.authenticated_at</source>
+        <target>Connexion (UTC)</target>
+      </trans-unit>
+      <trans-unit id="a3ae6571f4" resname="user_sessions.last_seen_at">
+        <source>user_sessions.last_seen_at</source>
+        <target>Dernière activité</target>
+      </trans-unit>
+      <trans-unit id="d0df095ef8" resname="user_sessions.expires_at">
+        <source>user_sessions.expires_at</source>
+        <target>Expire</target>
+      </trans-unit>
+      <trans-unit id="76fa0fb8d7" resname="user_sessions.end_asked">
+        <source>user_sessions.end_asked</source>
+        <target>Terminer la session de {username} authentifiée le {time} depuis {address} ? Les applications où elle s'est connectée en sont averties par le back-channel. y confirme, toute autre touche annule.</target>
+      </trans-unit>
+      <trans-unit id="e92672de75" resname="user_sessions.ended_now">
+        <source>user_sessions.ended_now</source>
+        <target>La session de {username} est terminée, et les applications où elle s'était connectée en sont averties par le back-channel. L'acte vous nomme dans son journal.</target>
+      </trans-unit>
+      <trans-unit id="2263941e06" resname="user_consents.none">
+        <source>user_consents.none</source>
+        <target>Aucune application ne tient de consentement de cette personne.</target>
+      </trans-unit>
+      <trans-unit id="00d691bb9b" resname="user_consents.application">
+        <source>user_consents.application</source>
+        <target>Application</target>
+      </trans-unit>
+      <trans-unit id="ecc69cff80" resname="user_consents.client">
+        <source>user_consents.client</source>
+        <target>Client</target>
+      </trans-unit>
+      <trans-unit id="b32ccd0a71" resname="user_consents.scope">
+        <source>user_consents.scope</source>
+        <target>Portée</target>
+      </trans-unit>
+      <trans-unit id="c8ce920326" resname="user_consents.granted_at">
+        <source>user_consents.granted_at</source>
+        <target>Accordé</target>
+      </trans-unit>
+      <trans-unit id="b44de7a1b4" resname="user_consents.renewable">
+        <source>user_consents.renewable</source>
+        <target>Renouvelables</target>
+      </trans-unit>
+      <trans-unit id="c941eddde8" resname="user_consents.awaiting">
+        <source>user_consents.awaiting</source>
+        <target>En attente</target>
+      </trans-unit>
+      <trans-unit id="409cc43649" resname="user_consents.revoke_asked">
+        <source>user_consents.revoke_asked</source>
+        <target>Retirer ce que {username} a accordé à {application} ? Ce qui lui a été émis sous ce consentement est révoqué, un access token déjà émis vit jusqu'à son expiration, et sa prochaine demande redemande à cette personne. y confirme, toute autre touche annule.</target>
+      </trans-unit>
+      <trans-unit id="24195785e7" resname="user_consents.revoked_now">
+        <source>user_consents.revoked_now</source>
+        <target>Ce que {username} avait accordé à {application} est retiré, et ce qui lui a été émis sous ce consentement est révoqué. L'acte vous nomme dans son journal.</target>
+      </trans-unit>
+      <trans-unit id="6212d9308b" resname="provenance.address">
+        <source>provenance.address</source>
+        <target>Adresse</target>
+      </trans-unit>
+      <trans-unit id="da8f94e2dc" resname="provenance.user_agent">
+        <source>provenance.user_agent</source>
+        <target>Navigateur</target>
+      </trans-unit>
+      <trans-unit id="e9f6e11e2a" resname="provenance.place">
+        <source>provenance.place</source>
+        <target>Lieu</target>
+      </trans-unit>
+      <trans-unit id="cd716f827a" resname="journal.none">
+        <source>journal.none</source>
+        <target>Aucun acte dans ce que le journal garde.</target>
+      </trans-unit>
+      <trans-unit id="9d57b0f689" resname="journal.when">
+        <source>journal.when</source>
+        <target>Quand (UTC)</target>
+      </trans-unit>
+      <trans-unit id="dac0455ba7" resname="journal.act">
+        <source>journal.act</source>
+        <target>Acte</target>
+      </trans-unit>
+      <trans-unit id="464ed9b759" resname="journal.client">
+        <source>journal.client</source>
+        <target>Application</target>
+      </trans-unit>
+      <trans-unit id="b5ad81b00f" resname="journal.author">
+        <source>journal.author</source>
+        <target>Fait par</target>
+      </trans-unit>
+      <trans-unit id="263f097f48" resname="health.heading">
+        <source>health.heading</source>
+        <target>Santé</target>
+      </trans-unit>
+      <trans-unit id="595e3fe3fa" resname="health.holds">
+        <source>health.holds</source>
+        <target>ok</target>
+      </trans-unit>
+      <trans-unit id="4e43fee7ae" resname="health.fails">
+        <source>health.fails</source>
+        <target>échec</target>
+      </trans-unit>
+      <trans-unit id="5cb84362c7" resname="health.none">
+        <source>health.none</source>
+        <target>Rien n'est branché pour examiner ce déploiement.</target>
+      </trans-unit>
+      <trans-unit id="59f33622cb" resname="statistics.acts">
+        <source>statistics.acts</source>
+        <target>Actes</target>
+      </trans-unit>
+      <trans-unit id="afa891f386" resname="statistics.since">
+        <source>statistics.since</source>
+        <target>depuis le {since} UTC</target>
+      </trans-unit>
+      <trans-unit id="0fee7747ac" resname="statistics.users">
+        <source>statistics.users</source>
+        <target>personnes</target>
+      </trans-unit>
+      <trans-unit id="164284012e" resname="statistics.clients">
+        <source>statistics.clients</source>
+        <target>clients</target>
+      </trans-unit>
+      <trans-unit id="bfda41ee4f" resname="statistics.open_sessions">
+        <source>statistics.open_sessions</source>
+        <target>sessions ouvertes</target>
+      </trans-unit>
+      <trans-unit id="6a0ef5af95" resname="statistics.active_keys">
+        <source>statistics.active_keys</source>
+        <target>clés actives</target>
+      </trans-unit>
+      <trans-unit id="61cfb2a565" resname="statistics.staged_keys">
+        <source>statistics.staged_keys</source>
+        <target>clés en attente</target>
+      </trans-unit>
+      <trans-unit id="20550315f0" resname="statistics.waiting">
+        <source>statistics.waiting</source>
+        <target>messages en attente</target>
+      </trans-unit>
+      <trans-unit id="1d1a133b0a" resname="act.user.authenticated">
+        <source>act.user.authenticated</source>
+        <target>connexions</target>
+      </trans-unit>
+      <trans-unit id="413c99606a" resname="act.authentication.failed">
+        <source>act.authentication.failed</source>
+        <target>connexions refusées</target>
+      </trans-unit>
+      <trans-unit id="d57ce9d9d1" resname="act.tokens.issued">
+        <source>act.tokens.issued</source>
+        <target>jetons délivrés</target>
+      </trans-unit>
+      <trans-unit id="da687a7aa8" resname="act.authorization_code.issued">
+        <source>act.authorization_code.issued</source>
+        <target>codes délivrés</target>
+      </trans-unit>
+      <trans-unit id="2d61183424" resname="act.refresh_token.rotated">
+        <source>act.refresh_token.rotated</source>
+        <target>jetons rafraîchis</target>
+      </trans-unit>
+      <trans-unit id="51bade8056" resname="act.passkey.used">
+        <source>act.passkey.used</source>
+        <target>passkeys utilisées</target>
+      </trans-unit>
+      <trans-unit id="cf4d092f81" resname="act.password.used">
+        <source>act.password.used</source>
+        <target>mots de passe utilisés</target>
+      </trans-unit>
+      <trans-unit id="d08d2db29d" resname="act.totp.used">
+        <source>act.totp.used</source>
+        <target>codes à usage unique utilisés</target>
+      </trans-unit>
+      <trans-unit id="f9a054d109" resname="act.backup_code.used">
+        <source>act.backup_code.used</source>
+        <target>codes de secours utilisés</target>
+      </trans-unit>
+      <trans-unit id="6b5624662b" resname="act.session.ended">
+        <source>act.session.ended</source>
+        <target>sessions terminées</target>
+      </trans-unit>
+      <trans-unit id="84aae6eedc" resname="act.consent.granted">
+        <source>act.consent.granted</source>
+        <target>consentements donnés</target>
+      </trans-unit>
+      <trans-unit id="6b8071ed94" resname="act.consent.revoked">
+        <source>act.consent.revoked</source>
+        <target>consentements retirés</target>
+      </trans-unit>
+      <trans-unit id="42c3cee5b1" resname="act.userinfo.answered">
+        <source>act.userinfo.answered</source>
+        <target>réponses UserInfo</target>
+      </trans-unit>
+      <trans-unit id="4cab434525" resname="act.introspection.answered">
+        <source>act.introspection.answered</source>
+        <target>introspections</target>
+      </trans-unit>
+      <trans-unit id="6570d11b99" resname="act.token.revoked">
+        <source>act.token.revoked</source>
+        <target>jetons révoqués</target>
+      </trans-unit>
+      <trans-unit id="be09720fb6" resname="act.client_authentication.failed">
+        <source>act.client_authentication.failed</source>
+        <target>clients refusés</target>
+      </trans-unit>
+      <trans-unit id="211d179909" resname="act.pushed_request.refused">
+        <source>act.pushed_request.refused</source>
+        <target>requêtes poussées refusées</target>
+      </trans-unit>
+      <trans-unit id="ad8b40ff15" resname="act.authorization_code.replayed">
+        <source>act.authorization_code.replayed</source>
+        <target>codes rejoués</target>
+      </trans-unit>
+      <trans-unit id="c02d1e5f29" resname="act.refresh_token.reuse_detected">
+        <source>act.refresh_token.reuse_detected</source>
+        <target>jetons de rafraîchissement réutilisés</target>
+      </trans-unit>
+      <trans-unit id="79df2ef3c6" resname="act.load.budget_spent">
+        <source>act.load.budget_spent</source>
+        <target>budgets de charge épuisés</target>
+      </trans-unit>
+      <trans-unit id="f7e2d4f831" resname="act.kms.unavailable">
+        <source>act.kms.unavailable</source>
+        <target>KMS indisponible</target>
+      </trans-unit>
+      <trans-unit id="690548fd99" resname="act.logout_token.issued">
+        <source>act.logout_token.issued</source>
+        <target>jetons de déconnexion émis</target>
+      </trans-unit>
+      <trans-unit id="8eb3485de0" resname="act.logout_token.given_up">
+        <source>act.logout_token.given_up</source>
+        <target>jetons de déconnexion abandonnés</target>
+      </trans-unit>
+      <trans-unit id="46166caffb" resname="act.credential.enrolled">
+        <source>act.credential.enrolled</source>
+        <target>credentials enrôlés</target>
+      </trans-unit>
+      <trans-unit id="7385452647" resname="act.credential.revoked">
+        <source>act.credential.revoked</source>
+        <target>credentials révoqués</target>
+      </trans-unit>
+      <trans-unit id="c3e6a8d96e" resname="act.administration.person_read">
+        <source>act.administration.person_read</source>
+        <target>personnes lues par un administrateur</target>
+      </trans-unit>
+      <trans-unit id="7143da48ab" resname="act.administration.sessions_read">
+        <source>act.administration.sessions_read</source>
+        <target>sessions lues par un administrateur</target>
+      </trans-unit>
+      <trans-unit id="799cc1da68" resname="act.administration.membership_read">
+        <source>act.administration.membership_read</source>
+        <target>membres lus par un administrateur</target>
+      </trans-unit>
+      <trans-unit id="782779451c" resname="act.administration.consents_read">
+        <source>act.administration.consents_read</source>
+        <target>consentements lus par un administrateur</target>
+      </trans-unit>
+      <trans-unit id="b4a4247bb4" resname="act.administration.journal_read">
+        <source>act.administration.journal_read</source>
+        <target>journaux lus par un administrateur</target>
+      </trans-unit>
+      <trans-unit id="8e808543fd" resname="act.person.created">
+        <source>act.person.created</source>
+        <target>personnes créées</target>
+      </trans-unit>
+      <trans-unit id="cef843d8c4" resname="act.person.provisioned">
+        <source>act.person.provisioned</source>
+        <target>personnes provisionnées</target>
+      </trans-unit>
+      <trans-unit id="46f4760a34" resname="act.person.described_themselves">
+        <source>act.person.described_themselves</source>
+        <target>informations changées par la personne</target>
+      </trans-unit>
+      <trans-unit id="78942d9b8c" resname="act.person.described">
+        <source>act.person.described</source>
+        <target>informations changées par un administrateur</target>
+      </trans-unit>
+      <trans-unit id="ce3c8d864e" resname="act.person.disabled">
+        <source>act.person.disabled</source>
+        <target>personnes désactivées</target>
+      </trans-unit>
+      <trans-unit id="e0532219d9" resname="act.person.enabled">
+        <source>act.person.enabled</source>
+        <target>personnes réactivées</target>
+      </trans-unit>
+      <trans-unit id="f1199f6b4b" resname="act.group.created">
+        <source>act.group.created</source>
+        <target>groupes créés</target>
+      </trans-unit>
+      <trans-unit id="c5dfdf3bce" resname="act.group_membership.added">
+        <source>act.group_membership.added</source>
+        <target>appartenances données</target>
+      </trans-unit>
+      <trans-unit id="aa74f756fa" resname="act.group_membership.removed">
+        <source>act.group_membership.removed</source>
+        <target>appartenances retirées</target>
+      </trans-unit>
+      <trans-unit id="ee56b59992" resname="act.enrolment_ticket.issued">
+        <source>act.enrolment_ticket.issued</source>
+        <target>liens d'enrôlement émis</target>
+      </trans-unit>
+      <trans-unit id="96ae4a0753" resname="act.password_ticket.issued">
+        <source>act.password_ticket.issued</source>
+        <target>liens de mot de passe émis</target>
+      </trans-unit>
+      <trans-unit id="30df9766db" resname="act.totp_ticket.issued">
+        <source>act.totp_ticket.issued</source>
+        <target>liens d'OTP émis</target>
+      </trans-unit>
+      <trans-unit id="fd7a017a36" resname="act.password.changed">
+        <source>act.password.changed</source>
+        <target>mots de passe changés</target>
+      </trans-unit>
+      <trans-unit id="25af7fdd91" resname="act.password.rehashed">
+        <source>act.password.rehashed</source>
+        <target>mots de passe hachés à nouveau</target>
+      </trans-unit>
+      <trans-unit id="d7310f0c95" resname="act.credential.renamed">
+        <source>act.credential.renamed</source>
+        <target>credentials renommés</target>
+      </trans-unit>
+      <trans-unit id="f41d9a364d" resname="act.credential.forgotten">
+        <source>act.credential.forgotten</source>
+        <target>credentials oubliés</target>
+      </trans-unit>
+      <trans-unit id="07e482ce81" resname="act.backup_codes.renewed">
+        <source>act.backup_codes.renewed</source>
+        <target>codes de secours renouvelés</target>
+      </trans-unit>
+      <trans-unit id="44eb3dd840" resname="act.archive.asked">
+        <source>act.archive.asked</source>
+        <target>dossiers de données demandés</target>
+      </trans-unit>
+      <trans-unit id="79712a8c78" resname="act.archive.taken">
+        <source>act.archive.taken</source>
+        <target>dossiers de données téléchargés</target>
+      </trans-unit>
+      <trans-unit id="399667f18a" resname="act.archive.dropped">
+        <source>act.archive.dropped</source>
+        <target>dossiers de données supprimés</target>
+      </trans-unit>
+      <trans-unit id="171ab1fc56" resname="act.backchannel_request.answered">
+        <source>act.backchannel_request.answered</source>
+        <target>réponses aux demandes en canal arrière</target>
+      </trans-unit>
+      <trans-unit id="4b387fc63e" resname="act.refresh_token.outlived_its_session">
+        <source>act.refresh_token.outlived_its_session</source>
+        <target>jetons de rafraîchissement après leur session</target>
+      </trans-unit>
+      <trans-unit id="774c2cb006" resname="act.registered_client.deleted">
+        <source>act.registered_client.deleted</source>
+        <target>clients inscrits supprimés</target>
+      </trans-unit>
+      <trans-unit id="b5680cc74a" resname="act.initial_access_token.issued">
+        <source>act.initial_access_token.issued</source>
+        <target>jetons initiaux émis</target>
+      </trans-unit>
+      <trans-unit id="d490ca5b4f" resname="act.initial_access_token.revoked">
+        <source>act.initial_access_token.revoked</source>
+        <target>jetons initiaux révoqués</target>
+      </trans-unit>
+      <trans-unit id="a02f3415a0" resname="act.saml.service_provider.signed_in">
+        <source>act.saml.service_provider.signed_in</source>
+        <target>connexions à un fournisseur de services SAML</target>
+      </trans-unit>
+      <trans-unit id="3db6fd3fe3" resname="act.tenant.key_staged">
+        <source>act.tenant.key_staged</source>
+        <target>clés mises en attente</target>
+      </trans-unit>
+      <trans-unit id="c1e76c1957" resname="act.tenant.key_rotated">
+        <source>act.tenant.key_rotated</source>
+        <target>rotations de clés</target>
+      </trans-unit>
+      <trans-unit id="45a154bf67" resname="act.tenant.key_retired">
+        <source>act.tenant.key_retired</source>
+        <target>clés retirées</target>
+      </trans-unit>
+      <trans-unit id="6e12a7a981" resname="act.tenant.data_keys_rewrapped">
+        <source>act.tenant.data_keys_rewrapped</source>
+        <target>clés de données réemballées</target>
+      </trans-unit>
+      <trans-unit id="c8f485de36" resname="act.tenant.data_keys_destroyed">
+        <source>act.tenant.data_keys_destroyed</source>
+        <target>clés de données détruites</target>
+      </trans-unit>
+      <trans-unit id="055e3e45e9" resname="page.title">
+        <source>page.title</source>
+        <target>Revenir au terminal</target>
+      </trans-unit>
+      <trans-unit id="47027a26a6" resname="page.back_to_the_terminal">
+        <source>page.back_to_the_terminal</source>
+        <target>Vous pouvez fermer cette fenêtre et revenir au terminal.</target>
+      </trans-unit>
+      <trans-unit id="a359e78581" resname="refusal.unmet_authentication_requirements">
+        <source>refusal.unmet_authentication_requirements</source>
+        <target>Un administrateur se connecte par passkey : sur la page de connexion, choisissez la passkey, un mot de passe seul étant refusé. Une passkey s'ajoute sur la page des passkeys de votre compte.</target>
+      </trans-unit>
+      <trans-unit id="0f0b1e980f" resname="refusal.access_denied">
+        <source>refusal.access_denied</source>
+        <target>Ce compte n'administre pas l'instance : un administrateur est membre d'un groupe que le déploiement de l'instance nomme (BEFFROI_TENANT_ADMINISTRATORS). Si la page de consentement a été refusée, recommencez et acceptez-la.</target>
+      </trans-unit>
+      <trans-unit id="4cb6dccf46" resname="refusal.invalid_target">
+        <source>refusal.invalid_target</source>
+        <target>L'instance ne laisse pas ce client demander son API d'administration : enregistrez de nouveau ce poste avec l'identifiant que le déploiement de l'instance nomme (BEFFROI_TENANT_ADMINISTRATION_RESOURCE).</target>
+      </trans-unit>
+      <trans-unit id="d294c4e880" resname="users.create_prompt">
+        <source>users.create_prompt</source>
+        <target>Nouvelle personne : </target>
+      </trans-unit>
+      <trans-unit id="90b9aa9fcf" resname="keys.create">
+        <source>keys.create</source>
+        <target>créer</target>
+      </trans-unit>
+      <trans-unit id="ec96e2480b" resname="users.created">
+        <source>users.created</source>
+        <target>{username} est créée, sans credential : t émet le lien qui lui fait poser une passkey. L'acte vous nomme dans son journal.</target>
+      </trans-unit>
+      <trans-unit id="ca31f9ed2c" resname="users.taken">
+        <source>users.taken</source>
+        <target>Le tenant a déjà une personne du nom d'utilisateur {username}.</target>
+      </trans-unit>
+      <trans-unit id="9efde57f13" resname="keys.ticket">
+        <source>keys.ticket</source>
+        <target>lien d'enrôlement</target>
+      </trans-unit>
+      <trans-unit id="4f217845f9" resname="keys.close">
+        <source>keys.close</source>
+        <target>fermer</target>
+      </trans-unit>
+      <trans-unit id="7e9fa6ef26" resname="ticket.issue_asked">
+        <source>ticket.issue_asked</source>
+        <target>Émettre un lien qui permet à {username} de poser une passkey ? Qui le détient en pose une sur son compte jusqu'à son expiration, et un lien émis avant pour cette personne n'ouvre plus rien. y confirme, toute autre touche annule.</target>
+      </trans-unit>
+      <trans-unit id="ed47535515" resname="ticket.title">
+        <source>ticket.title</source>
+        <target>Lien d'enrôlement de {username}</target>
+      </trans-unit>
+      <trans-unit id="86b6d0f5ff" resname="ticket.shown">
+        <source>ticket.shown</source>
+        <target>{link} ouvre jusqu'au {time}. Scannez le code avec l'appareil qui tiendra la passkey : le lien quitte l'écran avec le focus. L'acte vous nomme dans son journal.</target>
+      </trans-unit>
+      <trans-unit id="32368ee43d" resname="ticket.too_small">
+        <source>ticket.too_small</source>
+        <target>Le terminal est trop petit pour le code : il lui faut {columns} colonnes et {rows} lignes.</target>
+      </trans-unit>
+      <trans-unit id="ad6876c7a6" resname="keys.password_ticket">
+        <source>keys.password_ticket</source>
+        <target>lien de mot de passe</target>
+      </trans-unit>
+      <trans-unit id="6adf121ad1" resname="keys.totp_ticket">
+        <source>keys.totp_ticket</source>
+        <target>lien d'OTP</target>
+      </trans-unit>
+      <trans-unit id="3b3ae070bb" resname="keys.edit">
+        <source>keys.edit</source>
+        <target>modifier</target>
+      </trans-unit>
+      <trans-unit id="8c49e12437" resname="keys.disable">
+        <source>keys.disable</source>
+        <target>désactiver</target>
+      </trans-unit>
+      <trans-unit id="0b81272754" resname="keys.enable">
+        <source>keys.enable</source>
+        <target>réactiver</target>
+      </trans-unit>
+      <trans-unit id="94d7be3f7b" resname="keys.change">
+        <source>keys.change</source>
+        <target>changer</target>
+      </trans-unit>
+      <trans-unit id="eae2f7f4eb" resname="keys.keep">
+        <source>keys.keep</source>
+        <target>garder</target>
+      </trans-unit>
+      <trans-unit id="a431a6a9aa" resname="keys.save">
+        <source>keys.save</source>
+        <target>enregistrer</target>
+      </trans-unit>
+      <trans-unit id="30bca564e9" resname="password_ticket.issue_asked">
+        <source>password_ticket.issue_asked</source>
+        <target>Émettre un lien qui permet à {username} de poser un nouveau mot de passe ? Qui le détient en pose un sur son compte jusqu'à son expiration, ce qui termine chacune de ses sessions, et un lien de mot de passe émis avant pour cette personne n'ouvre plus rien. y confirme, toute autre touche annule.</target>
+      </trans-unit>
+      <trans-unit id="a4f1bff86b" resname="password_ticket.title">
+        <source>password_ticket.title</source>
+        <target>Lien de mot de passe de {username}</target>
+      </trans-unit>
+      <trans-unit id="7b95b18006" resname="password_ticket.shown">
+        <source>password_ticket.shown</source>
+        <target>{link} ouvre jusqu'au {time}. Scannez le code avec l'appareil où la personne tapera son nouveau mot de passe : le lien quitte l'écran avec le focus. L'acte vous nomme dans son journal.</target>
+      </trans-unit>
+      <trans-unit id="d281743a63" resname="totp_ticket.issue_asked">
+        <source>totp_ticket.issue_asked</source>
+        <target>Émettre un lien qui permet à {username} de configurer une application d'authentification à la place de la sienne ? Qui le détient en configure une sur son compte jusqu'à son expiration, ce qui révoque l'application que la personne tenait et termine chacune de ses sessions, et un lien d'OTP émis avant pour cette personne n'ouvre plus rien. y confirme, toute autre touche annule.</target>
+      </trans-unit>
+      <trans-unit id="9b777ad67c" resname="totp_ticket.title">
+        <source>totp_ticket.title</source>
+        <target>Lien d'OTP de {username}</target>
+      </trans-unit>
+      <trans-unit id="4acbe4a398" resname="totp_ticket.shown">
+        <source>totp_ticket.shown</source>
+        <target>{link} ouvre jusqu'au {time}. Scannez le code avec l'appareil où la personne configurera son application : le lien quitte l'écran avec le focus. L'acte vous nomme dans son journal.</target>
+      </trans-unit>
+      <trans-unit id="e753982b5c" resname="account_form.title">
+        <source>account_form.title</source>
+        <target>Compte de {username}</target>
+      </trans-unit>
+      <trans-unit id="a7ea433390" resname="account_form.member">
+        <source>account_form.member</source>
+        <target>Membre</target>
+      </trans-unit>
+      <trans-unit id="bb2dbcf2f6" resname="account_form.value">
+        <source>account_form.value</source>
+        <target>Valeur</target>
+      </trans-unit>
+      <trans-unit id="a29936e2fa" resname="account_form.change">
+        <source>account_form.change</source>
+        <target>Changement</target>
+      </trans-unit>
+      <trans-unit id="1ed7ccddec" resname="account_form.changed">
+        <source>account_form.changed</source>
+        <target>à enregistrer</target>
+      </trans-unit>
+      <trans-unit id="e43460ecaf" resname="account_form.unchanged">
+        <source>account_form.unchanged</source>
+        <target>Rien n'est encore changé : Entrée change le membre choisi, s enregistre ce qui a changé.</target>
+      </trans-unit>
+      <trans-unit id="9d2de71d7f" resname="account_form.refused">
+        <source>account_form.refused</source>
+        <target>Rien n'a été enregistré : {reason}</target>
+      </trans-unit>
+      <trans-unit id="9ad5bd91d2" resname="account_form.saved">
+        <source>account_form.saved</source>
+        <target>Le compte de {username} est enregistré. Le changement est un acte qui vous nomme dans son journal.</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

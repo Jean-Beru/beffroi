@@ -2,29 +2,52 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
+use Beffroi\Core\Tests\Fixture\Keys;
 use DateTimeImmutable;
-use Heidi\Oidc\Domain\Token\AccessToken;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
-use Heidi\Oidc\Port\IdTokenIssuerInterface;
+use Beffroi\Oidc\Application\Claims\OpenedPublicSubjectIdentifier;
+use Beffroi\Oidc\Domain\Client\AddressedFormat;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ResponseFormat;
+use Beffroi\Oidc\Domain\Token\AccessToken;
+use Beffroi\Oidc\Domain\Token\AddressedIdToken;
+use Beffroi\Oidc\Domain\Token\UserAuthorizationInterface;
+use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
+use Beffroi\Oidc\Port\IdTokenIssuerInterface;
 use function sprintf;
 
-/**
- * An issuer whose ID tokens say what they would carry, in clear. Never leaves the test suite: the real
- * one, JwtIdTokenIssuer, writes a signed JWT.
- */
 final class FakeIdTokenIssuer implements IdTokenIssuerInterface
 {
     /**
-     * @var list<array{GrantedAuthorization, AccessToken}>
+     * @var list<array{UserAuthorizationInterface, AccessToken}>
      */
     public private(set) array $issued = [];
 
-    public function issue(GrantedAuthorization $authorization, AccessToken $accessToken, DateTimeImmutable $now): string
+    public ?ClientKeysUnavailableException $unreadableKeys = null;
+
+    public function address(Client $client): AddressedIdToken
+    {
+        if ($this->unreadableKeys !== null) {
+            throw $this->unreadableKeys;
+        }
+
+        return new AddressedIdToken(
+            new AddressedFormat(ResponseFormat::signed(), Keys::openedSigningKey($client->tenant)),
+            new OpenedPublicSubjectIdentifier(),
+        );
+    }
+
+    public function issue(UserAuthorizationInterface $authorization, AccessToken $accessToken, AddressedIdToken $addressed, DateTimeImmutable $now): string
     {
         $this->issued[] = [$authorization, $accessToken];
 
-        return sprintf('id:%s:%s:%s:%d', $authorization->client->clientId, $authorization->user->subject, $authorization->nonce ?? '-', $now->getTimestamp());
+        return sprintf(
+            'id:%s:%s:%s:%d',
+            $authorization->client->registration->clientId,
+            $authorization->user->subject,
+            $authorization->nonce ?? '-',
+            $now->getTimestamp(),
+        );
     }
 }

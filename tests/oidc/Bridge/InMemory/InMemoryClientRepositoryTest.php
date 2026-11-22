@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Bridge\InMemory;
+namespace Beffroi\Oidc\Tests\Bridge\InMemory;
 
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
-use Heidi\Oidc\Domain\Client\AccessTokenFormat;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use function array_map;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientRegistration;
+use Beffroi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -23,13 +23,16 @@ final class InMemoryClientRepositoryTest extends TestCase
 
     private InMemoryClientRepository $repository;
 
+    private Tenant $other;
+
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
+        $this->other = Fixtures::tenant('other', 'https://id.other.example');
         $this->repository = new InMemoryClientRepository();
         $this->client = Clients::public($this->tenant);
         $this->repository->save($this->client);
-        $this->repository->save(Clients::public(Fixtures::tenant('other', 'https://id.other.example'), 'elsewhere'));
+        $this->repository->save(Clients::public($this->other, 'elsewhere'));
     }
 
     #[Test]
@@ -70,27 +73,31 @@ final class InMemoryClientRepositoryTest extends TestCase
     }
 
     #[Test]
-    public function theTenantIssuesTheFormatAClientOfItsIsRegisteredFor(): void
-    {
-        // When / Then
-        static::assertTrue($this->repository->issuesAccessTokensIn($this->tenant, AccessTokenFormat::Jwt));
-    }
-
-    #[Test]
-    public function theTenantDoesNotIssueAFormatNoneOfItsClientsIsRegisteredFor(): void
-    {
-        // When / Then
-        static::assertFalse($this->repository->issuesAccessTokensIn($this->tenant, AccessTokenFormat::Opaque));
-    }
-
-    #[Test]
-    public function theClientsOfAnotherTenantDoNotCount(): void
+    public function itHoldsTheRegistrationsOfItsTenant(): void
     {
         // Given
-        $other = Fixtures::tenant('other', 'https://id.other.example');
-        $this->repository->save(Clients::confidential($other, new FakePasswordHasher()->hash(Clients::SECRET), clientId: 'api', accessTokenFormat: AccessTokenFormat::Opaque));
+        $this->repository->save(Clients::public($this->tenant, 'second-spa'));
 
-        // When / Then
-        static::assertFalse($this->repository->issuesAccessTokensIn($this->tenant, AccessTokenFormat::Opaque));
+        // When
+        $registrations = [...$this->repository->registrationsIn($this->tenant)];
+
+        // Then
+        static::assertSame(
+            ['spa', 'second-spa'],
+            array_map(static fn (ClientRegistration $registration): string => $registration->clientId, $registrations),
+        );
+    }
+
+    #[Test]
+    public function itHoldsTheRegistrationsOfAnotherTenantForThatTenantAlone(): void
+    {
+        // When
+        $registrations = [...$this->repository->registrationsIn($this->other)];
+
+        // Then
+        static::assertSame(
+            ['elsewhere'],
+            array_map(static fn (ClientRegistration $registration): string => $registration->clientId, $registrations),
+        );
     }
 }

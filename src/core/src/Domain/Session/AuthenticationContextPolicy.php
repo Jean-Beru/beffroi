@@ -2,27 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Domain\Session;
+namespace Beffroi\Core\Domain\Session;
 
 use function array_all;
-use function array_any;
 use function array_filter;
 use function array_map;
 use function array_values;
 use function count;
-use DateTimeImmutable;
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use function in_array;
 use function sprintf;
 
-/**
- * The "acr" vocabulary of a tenant (decision 0010): an ordered list of classes, each a name on one of the
- * predicates of the provider. No hierarchy: a session satisfies every class whose predicate holds, the
- * order only says which one it is answered with when nothing is requested. What decision 0006 forbids a
- * policy is refused here: "0" (OIDC Core §2 defines it as no confidence at all), "phr" or "phrh" on a
- * predicate that is not their meaning (§2 forbids a registered name in another sense), an empty policy,
- * and a policy without a class on the single factor, since every session has an "acr" (architecture §4.6).
- */
 final readonly class AuthenticationContextPolicy
 {
     /**
@@ -39,7 +29,7 @@ final readonly class AuthenticationContextPolicy
             throw new InvalidArgumentException('An authentication context policy names at least one class.');
         }
         $names = [];
-        $singleFactor = false;
+        $everyLogin = false;
         foreach ($classes as $class) {
             if ($class->value === '0') {
                 throw new InvalidArgumentException('"0" is not a class a policy may name: OIDC Core section 2 defines it as no confidence that the same person is there.');
@@ -47,20 +37,15 @@ final readonly class AuthenticationContextPolicy
             if (in_array($class->value, $names, true)) {
                 throw new InvalidArgumentException(sprintf('An authentication context policy names "%s" once.', $class->value));
             }
-            self::assertRegisteredMeaning($class);
             $names[] = $class->value;
-            $singleFactor = $singleFactor || $class->predicate === AuthenticationPredicate::SingleFactor;
+            $everyLogin = $everyLogin || $class->predicate->holdsOnEveryLogin();
         }
-        if (! $singleFactor) {
-            throw new InvalidArgumentException('An authentication context policy names a class on the single factor: every session has an "acr".');
+        if (! $everyLogin) {
+            throw new InvalidArgumentException('An authentication context policy names a class on a predicate that every login satisfies: every session has an "acr".');
         }
         $this->classes = $classes;
     }
 
-    /**
-     * What a tenant that configures nothing speaks, strongest first: the two names of OpenID Connect EAP
-     * ACR Values 1.0 and the two levels Keycloak emits by default.
-     */
     public static function default(): self
     {
         return new self([
@@ -71,10 +56,6 @@ final readonly class AuthenticationContextPolicy
         ]);
     }
 
-    /**
-     * The class of a name of this policy; null for a name the tenant did not declare, which the provider
-     * never asserts (OIDC Core §2).
-     */
     public function named(string $name): ?AuthenticationContextClass
     {
         foreach ($this->classes as $class) {
@@ -86,34 +67,25 @@ final readonly class AuthenticationContextPolicy
         return null;
     }
 
-    /**
-     * What a session is answered with when no class is requested: the first class it satisfies.
-     */
     public function classOf(AuthenticationProofs $proofs): AuthenticationContextClass
     {
         foreach ($this->classes as $class) {
-            if ($class->isSatisfiedBy($proofs)) {
+            if ($class->isSatisfiedBy($proofs->methods())) {
                 return $class;
             }
         }
 
-        throw new InvalidArgumentException('Proofs satisfy no class of the policy, which names the single factor.');
+        throw new InvalidArgumentException('Proofs satisfy no class of the policy, which names a class on a predicate that every login satisfies.');
     }
 
     /**
-     * The classes a login able to prove these methods, all of them together, can satisfy: what the
-     * discovery announces as "acr_values_supported" and what a step-up may ask for (decision 0010). A
-     * predicate never stops holding when a proof is added, so proving everything at once is the question.
-     *
      * @param non-empty-list<AuthenticationMethod> $methods
      *
      * @return list<AuthenticationContextClass> in the order of the policy
      */
     public function provableWith(array $methods): array
     {
-        $proofs = AuthenticationProofs::ofAll($methods, new DateTimeImmutable('@0'));
-
-        return array_values(array_filter($this->classes, static fn (AuthenticationContextClass $class): bool => $class->isSatisfiedBy($proofs)));
+        return array_values(array_filter($this->classes, static fn (AuthenticationContextClass $class): bool => $class->isSatisfiedBy($methods)));
     }
 
     /**
@@ -124,9 +96,6 @@ final readonly class AuthenticationContextPolicy
         return array_map(static fn (AuthenticationContextClass $class): string => $class->value, $this->classes);
     }
 
-    /**
-     * Same names on the same predicates, in the same order.
-     */
     public function equals(self $other): bool
     {
         if (count($this->classes) !== count($other->classes)) {
@@ -135,23 +104,10 @@ final readonly class AuthenticationContextPolicy
 
         return array_all(
             $this->classes,
-            static fn (AuthenticationContextClass $class, int $index): bool => $class->equals($other->classes[$index]) && $class->predicate === $other->classes[$index]->predicate,
+            static fn (AuthenticationContextClass $class, int $index): bool => (
+                $class->equals($other->classes[$index])
+                && $class->predicate->name() === $other->classes[$index]->predicate->name()
+            ),
         );
-    }
-
-    /**
-     * OIDC Core §2: a registered name keeps its meaning. "phr" is any phishing-resistant proof, in
-     * hardware or not; "phrh" is the hardware one only.
-     */
-    private static function assertRegisteredMeaning(AuthenticationContextClass $class): void
-    {
-        $allowed = match ($class->value) {
-            AuthenticationContextClass::PHISHING_RESISTANT => [AuthenticationPredicate::PhishingResistant, AuthenticationPredicate::PhishingResistantHardware],
-            AuthenticationContextClass::PHISHING_RESISTANT_HARDWARE => [AuthenticationPredicate::PhishingResistantHardware],
-            default => null,
-        };
-        if ($allowed !== null && ! array_any($allowed, static fn (AuthenticationPredicate $predicate): bool => $predicate === $class->predicate)) {
-            throw new InvalidArgumentException(sprintf('"%s" is a registered name (OpenID Connect EAP ACR Values 1.0) and keeps its meaning: it cannot be named on the "%s" predicate.', $class->value, $class->predicate->value));
-        }
     }
 }

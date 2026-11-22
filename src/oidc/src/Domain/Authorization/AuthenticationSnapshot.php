@@ -2,35 +2,31 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Authorization;
+namespace Beffroi\Oidc\Domain\Authorization;
 
 use function array_is_list;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Session\AuthenticationContextClass;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Exception\InvalidArgumentException as CoreInvalidArgumentException;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Core\Domain\Session\AuthenticationContextClass;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Exception\InvalidArgumentException as CoreInvalidArgumentException;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use function is_array;
 use function is_int;
 use function is_string;
 
 /**
- * What the session had proven when the authorization was granted, frozen: the "auth_time", "amr" and
- * "acr" of every token descending from the grant (OIDC Core §2, RFC 8176 §2; architecture §4.6). A later
- * re-authentication or step-up moves the session, never the tokens already issued. One value, carried by
- * the code, the refresh token, the stored and the verified access token, written and read as claims here.
+ * OIDC Core §2, RFC 8176 §2
  */
 final readonly class AuthenticationSnapshot
 {
     /**
-     * @var non-empty-list<string> the "amr" values
+     * @var non-empty-list<string>
      */
     public array $methods;
 
     /**
-     * @param list<string> $methods the "amr" values, at least one, each well formed (RFC 8176 §2)
-     * @param string $contextClass the "acr" value, well formed (OIDC Core §2)
+     * @param list<string> $methods at least one
      */
     public function __construct(
         public DateTimeImmutable $authenticatedAt,
@@ -53,18 +49,12 @@ final readonly class AuthenticationSnapshot
         $this->methods = $methods;
     }
 
-    /**
-     * The session as it stands, with the class answered to the request (architecture §4.3: the first one
-     * requested that the session satisfies, or the strongest one).
-     */
     public static function ofSession(AuthenticationSession $session, AuthenticationContextClass $contextClass): self
     {
         return new self($session->authenticatedAt(), $session->methodReferences(), $contextClass->value);
     }
 
     /**
-     * From the claims of a token this provider wrote, read strictly: anything else was not issued here.
-     *
      * @param array<array-key, mixed> $claims
      *
      * @throws InvalidArgumentException
@@ -93,8 +83,6 @@ final readonly class AuthenticationSnapshot
     }
 
     /**
-     * The three claims, in the order every token of the provider writes them.
-     *
      * @return array{auth_time: int, acr: string, amr: non-empty-list<string>}
      */
     public function toClaims(): array

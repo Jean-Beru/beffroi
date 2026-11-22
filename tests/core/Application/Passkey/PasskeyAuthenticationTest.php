@@ -2,31 +2,39 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Application\Passkey;
+namespace Beffroi\Core\Tests\Application\Passkey;
 
+use Beffroi\Core\Domain\Identity\UpstreamProvider;
+use Beffroi\Core\Domain\Identity\EmailDomain;
+use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Bridge\InMemory\InMemoryUpstreamProviders;
+use Beffroi\Core\Application\Identity\FederatedDomains;
 use DateInterval;
-use Heidi\Core\Application\Authentication\AuthenticationFailedException;
-use Heidi\Core\Application\Authentication\SessionOpener;
-use Heidi\Core\Application\Passkey\PasskeyAuthentication;
-use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
-use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Event\AuthenticationFailed;
-use Heidi\Core\Domain\Event\AuthenticationFailureReason;
-use Heidi\Core\Domain\Event\PasskeyUsed;
-use Heidi\Core\Domain\Event\UserAuthenticated;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\FakePasskeyAuthenticator;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Authentication\AuthenticationFailedException;
+use Beffroi\Core\Application\Authentication\AuthenticationRefusal;
+use Beffroi\Core\Application\Authentication\SessionOpener;
+use Beffroi\Core\Application\Passkey\PasskeyAuthentication;
+use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
+use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Domain\Event\AuthenticationFailed;
+use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
+use Beffroi\Core\Domain\Event\PasskeyUsed;
+use Beffroi\Core\Domain\Event\UserAuthenticated;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\FakePasskeyAuthenticator;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Webauthn\PublicKeyCredentialRequestOptions;
 
 /**
- * Architecture §3.2, §3.4: a session opened on what an assertion proved, WebAuthn Level 3 §7.2.
+ * Architecture §3.2, §3.4, WebAuthn Level 3 §7.2
  */
 final class PasskeyAuthenticationTest extends TestCase
 {
@@ -50,6 +58,8 @@ final class PasskeyAuthenticationTest extends TestCase
 
     private PublicKeyCredentialRequestOptions $options;
 
+    private InMemoryUpstreamProviders $upstreamProviders;
+
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
@@ -61,7 +71,24 @@ final class PasskeyAuthenticationTest extends TestCase
         $this->ceremony = new FakePasskeyAuthenticator();
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-19T12:00:00+00:00');
-        $this->authentication = new PasskeyAuthentication($this->credentials, $this->ceremony, new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')), $this->clock, $this->events);
+        $this->upstreamProviders = new InMemoryUpstreamProviders();
+        $this->authentication = new PasskeyAuthentication(
+            $this->credentials,
+            new ActiveCredentials($this->credentials),
+            $this->ceremony,
+            new SessionOpener(
+                $this->sessions,
+                new SymfonyUuidGenerator(),
+                $this->clock,
+                $this->events,
+                new AuthenticationRefusal($this->clock, $this->events),
+                new DateInterval('PT8H'),
+            ),
+            new AuthenticationRefusal($this->clock, $this->events),
+            $this->clock,
+            $this->events,
+            new FederatedDomains($this->upstreamProviders),
+        );
         $this->options = $this->authentication->requestOptions($this->tenant);
     }
 
@@ -154,26 +181,50 @@ final class PasskeyAuthenticationTest extends TestCase
         $used = $this->events->of(PasskeyUsed::class)[0];
         static::assertSame($this->passkey, $used->credential);
         static::assertSame($context, $used->context);
-        static::assertFalse($used->signCountRegressed);
         static::assertSame($session, $this->events->of(UserAuthenticated::class)[0]->session);
     }
 
     /**
-     * WebAuthn Level 3 §6.1.1: a count that did not grow is told, never refused, a synced passkey keeps it at zero.
+     * WebAuthn Level 3 §6.1.1, Decision 0034
      */
     #[Test]
-    public function aSignCountThatDidNotGrowIsToldNotRefused(): void
+    public function aSignCountThatDidNotGrowIsRefusedWithItsUser(): void
     {
         // Given
         $this->passkey->recordUse(Fixtures::authenticatorData(signCount: 5), Fixtures::now());
         $this->ceremony->verifies($this->passkey, Fixtures::authenticatorData(signCount: 5));
 
         // When
+        try {
+            $this->authentication->authenticate($this->tenant, $this->options, '{}', Fixtures::context($this->clock->now()));
+            static::fail('Authentication should have failed.');
+        } catch (AuthenticationFailedException $exception) {
+            // Then
+            static::assertSame(AuthenticationFailureReason::InvalidCredential, $exception->reason);
+            $failed = $this->events->of(AuthenticationFailed::class)[0];
+            static::assertSame($this->alice, $failed->user);
+            static::assertSame([], $this->events->of(PasskeyUsed::class));
+            static::assertSame(5, $this->passkey->signCount);
+        }
+    }
+
+    /**
+     * WebAuthn Level 3 §7.2
+     */
+    #[Test]
+    public function aPasskeyThatKeepsItsCountAtZeroSignsIn(): void
+    {
+        // Given
+        $synced = Fixtures::passkey($this->alice, 'The phone', 'alice-phone', backupEligible: true, backedUp: true);
+        $this->credentials->save($synced);
+        $this->ceremony->verifies($synced, Fixtures::authenticatorData(signCount: 0, backupEligible: true, backedUp: true));
+
+        // When
         $session = $this->authentication->authenticate($this->tenant, $this->options, '{}', Fixtures::context($this->clock->now()));
 
         // Then
         static::assertSame($this->alice, $session->user);
-        static::assertTrue($this->events->of(PasskeyUsed::class)[0]->signCountRegressed);
+        static::assertCount(1, $this->events->of(PasskeyUsed::class));
     }
 
     #[Test]
@@ -204,7 +255,7 @@ final class PasskeyAuthenticationTest extends TestCase
     {
         // Given
         $this->passkey->revoke(Fixtures::now());
-        $this->ceremony->verifies($this->passkey, Fixtures::authenticatorData(backupEligible: true));
+        $this->ceremony->verifies($this->passkey, Fixtures::authenticatorData());
 
         // When
         try {
@@ -214,9 +265,35 @@ final class PasskeyAuthenticationTest extends TestCase
             // Then
             static::assertSame(AuthenticationFailureReason::RevokedCredential, $exception->reason);
             $failed = $this->events->of(AuthenticationFailed::class)[0];
-            static::assertSame('swk', $failed->method?->value);
+            static::assertSame('hwk', $failed->method?->value);
             static::assertSame($this->alice, $failed->user);
             static::assertNull($this->passkey->lastUsedAt);
+        }
+    }
+
+    /**
+     * WebAuthn Level 3 §6.1.3
+     */
+    #[Test]
+    public function anAssertionThatChangedItsBackupEligibilityIsRefused(): void
+    {
+        // Given
+        $synced = Fixtures::passkey($this->alice, 'The phone', 'alice-phone', backupEligible: true, backedUp: true);
+        $this->credentials->save($synced);
+        $this->ceremony->verifies($synced, Fixtures::authenticatorData(signCount: 4));
+
+        // When
+        try {
+            $this->authentication->authenticate($this->tenant, $this->options, '{}', Fixtures::context($this->clock->now()));
+            static::fail('Authentication should have failed.');
+        } catch (AuthenticationFailedException $exception) {
+            // Then
+            static::assertSame(AuthenticationFailureReason::InvalidCredential, $exception->reason);
+            $failed = $this->events->of(AuthenticationFailed::class)[0];
+            static::assertSame('swk', $failed->method?->value);
+            static::assertSame($this->alice, $failed->user);
+            static::assertNull($synced->lastUsedAt);
+            static::assertSame(0, $synced->signCount);
         }
     }
 
@@ -237,6 +314,29 @@ final class PasskeyAuthenticationTest extends TestCase
             $failed = $this->events->of(AuthenticationFailed::class)[0];
             static::assertSame('hwk', $failed->method?->value);
             static::assertSame($this->alice, $failed->user);
+        }
+    }
+
+    /**
+     * Decision 0029, spec/saml.md S-63
+     */
+    #[Test]
+    public function aPersonOfAFederatedDomainIsRefused(): void
+    {
+        // Given
+        $this->upstreamProviders->declare($this->tenant, new UpstreamProvider('https://idp.acme.example/saml', [new EmailDomain('acme.example')]));
+        $this->alice->changeEmail(new EmailAddress('alice@acme.example'), true, Fixtures::now());
+        $this->ceremony->verifies($this->passkey, Fixtures::authenticatorData());
+
+        // When
+        try {
+            $this->authentication->authenticate($this->tenant, $this->options, '{}', Fixtures::context($this->clock->now()));
+            static::fail('Authentication should have failed.');
+        } catch (AuthenticationFailedException $exception) {
+            // Then
+            static::assertSame(AuthenticationFailureReason::FederatedDomain, $exception->reason);
+            static::assertSame($this->alice, $this->events->of(AuthenticationFailed::class)[0]->user);
+            static::assertSame([], $this->sessions->findActiveByUser($this->alice, $this->clock->now()));
         }
     }
 

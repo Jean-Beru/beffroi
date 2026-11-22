@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Http\Tls;
+namespace App\Tests\Symfony\Unit\Http\Tls;
 
-use Heidi\Bundle\Http\Tls\EdgeClientCertificateResolver;
-use Heidi\Bundle\Http\Tls\ForgedClientCertificateException;
+use App\Http\Tls\EdgeClientCertificateResolver;
+use App\Http\Tls\ForgedClientCertificateException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -13,15 +13,10 @@ use function sprintf;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * The rule of decision 0006 at the edge: the certificate comes from the variable the listener fills from
- * the handshake it carried out, and from nowhere else. A client controls every header of its request and
- * no variable of the process that serves it, so a header carrying a certificate is somebody trying.
+ * Decision 0006
  */
 final class EdgeClientCertificateResolverTest extends TestCase
 {
-    /**
-     * The leaf a client presented, as Caddy writes it into SSL_CLIENT_CERT.
-     */
     private const string PEM = <<<'PEM'
         -----BEGIN CERTIFICATE-----
         MIICBzCCAaygAwIBAgIBATAKBggqhkjOPQQDAjBhMRowGAYDVQQDDBFoZWlkaS10
@@ -49,29 +44,28 @@ final class EdgeClientCertificateResolverTest extends TestCase
         ]);
 
         // When
-        $certificate = new EdgeClientCertificateResolver()
-            ->ofRequest($request);
+        $certificate = new EdgeClientCertificateResolver()->ofRequest($request);
 
         // Then
         static::assertSame(self::X5T_S256, $certificate?->x5tS256());
     }
 
-    /**
-     * The ordinary host of a deployment sets the variable nowhere, and the listener that asks for a
-     * certificate leaves the envelope empty when the client presented none: both are "no certificate".
-     */
     #[Test]
     #[DataProvider('provideRequestsWithoutACertificate')]
     public function aRequestMadeWithoutACertificateHasNone(string $variable): void
     {
         // Given
-        $request = Request::create('/', server: $variable === '' ? [] : [
-            EdgeClientCertificateResolver::VARIABLE => $variable,
-        ]);
+        $request = Request::create(
+            '/',
+            server: $variable === ''
+                ? []
+                : [
+                    EdgeClientCertificateResolver::VARIABLE => $variable,
+                ],
+        );
 
         // When
-        $certificate = new EdgeClientCertificateResolver()
-            ->ofRequest($request);
+        $certificate = new EdgeClientCertificateResolver()->ofRequest($request);
 
         // Then
         static::assertNull($certificate);
@@ -88,8 +82,7 @@ final class EdgeClientCertificateResolverTest extends TestCase
     }
 
     /**
-     * Decision 0006: a certificate carried in a header is refused, whichever header carries it, because
-     * nothing in front of this application sets one.
+     * Decision 0006
      */
     #[Test]
     #[DataProvider('provideRefusedHeaders')]
@@ -102,11 +95,13 @@ final class EdgeClientCertificateResolverTest extends TestCase
 
         // Then
         $this->expectException(ForgedClientCertificateException::class);
-        $this->expectExceptionMessageIs(sprintf('The request carries a client certificate in the "%s" header, which nothing in front of this application sets.', $header));
+        $this->expectExceptionMessageIs(sprintf(
+            'The request carries a client certificate in the "%s" header, which nothing in front of this application sets.',
+            $header,
+        ));
 
         // When
-        new EdgeClientCertificateResolver()
-            ->ofRequest($request);
+        new EdgeClientCertificateResolver()->ofRequest($request);
     }
 
     /**
@@ -119,10 +114,6 @@ final class EdgeClientCertificateResolverTest extends TestCase
         }
     }
 
-    /**
-     * The refusal comes first: a request that presents a real certificate at the handshake and carries
-     * another in a header is somebody trying, and is not served the one of the handshake either.
-     */
     #[Test]
     public function aForgedHeaderIsRefusedEvenBesideARealCertificate(): void
     {
@@ -136,7 +127,6 @@ final class EdgeClientCertificateResolverTest extends TestCase
         $this->expectException(ForgedClientCertificateException::class);
 
         // When
-        new EdgeClientCertificateResolver()
-            ->ofRequest($request);
+        new EdgeClientCertificateResolver()->ofRequest($request);
     }
 }

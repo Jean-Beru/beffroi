@@ -2,27 +2,40 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Application\Passkey;
+namespace Beffroi\Core\Tests\Application\Passkey;
 
-use Heidi\Core\Application\Passkey\PasskeyEnrolment;
-use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Credential\PasskeyUserHandle;
-use Heidi\Core\Domain\Event\CredentialEnrolled;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Exception\CredentialEnrolmentFailedException;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Exception\PasskeyCeremonyFailedException;
-use Heidi\Core\Tests\Fixture\FakePasskeyRegistrar;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Core\Domain\Identity\UpstreamProvider;
+use Beffroi\Core\Domain\Identity\EmailDomain;
+use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Bridge\InMemory\InMemoryUpstreamProviders;
+use Beffroi\Core\Application\Identity\FederatedDomains;
+use Beffroi\Core\Domain\Session\PhishingResistantHardware;
+use Beffroi\Core\Bridge\Random\PlatformRandomness;
+use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
+use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Application\Credential\EnrolmentRefusal;
+use Beffroi\Core\Domain\Credential\Attestation\AttestationEvidence;
+use Beffroi\Core\Domain\Credential\Attestation\ModelProof;
+use Beffroi\Core\Domain\Credential\Attestation\PasskeyAttestationRefusal;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Domain\Credential\PasskeyUserHandle;
+use Beffroi\Core\Domain\Event\CredentialEnrolled;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Exception\CredentialEnrolmentFailedException;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\PasskeyAttestationRefusedException;
+use Beffroi\Core\Exception\PasskeyCeremonyFailedException;
+use Beffroi\Core\Tests\Fixture\FakePasskeyRegistrar;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function strlen;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Architecture §3.4: a passkey enrolled from a session the user already holds, WebAuthn Level 3 §7.1.
+ * Architecture §3.4, WebAuthn Level 3 §7.1
  */
 final class PasskeyEnrolmentTest extends TestCase
 {
@@ -38,6 +51,8 @@ final class PasskeyEnrolmentTest extends TestCase
 
     private PasskeyEnrolment $enrolment;
 
+    private InMemoryUpstreamProviders $upstreamProviders;
+
     protected function setUp(): void
     {
         $this->alice = Fixtures::user();
@@ -45,7 +60,16 @@ final class PasskeyEnrolmentTest extends TestCase
         $this->registrar = new FakePasskeyRegistrar();
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-19T12:00:00+00:00');
-        $this->enrolment = new PasskeyEnrolment($this->credentials, $this->registrar, $this->clock, $this->events);
+        $this->upstreamProviders = new InMemoryUpstreamProviders();
+        $this->enrolment = new PasskeyEnrolment(
+            $this->credentials,
+            new EnrolmentRefusal(new FederatedDomains($this->upstreamProviders)),
+            new SymfonyUuidGenerator(),
+            new PlatformRandomness(),
+            $this->registrar,
+            $this->clock,
+            $this->events,
+        );
     }
 
     #[Test]
@@ -61,7 +85,7 @@ final class PasskeyEnrolmentTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §14.6.1: one handle per user, whatever the number of passkeys.
+     * WebAuthn Level 3 §14.6.1
      */
     #[Test]
     public function aSecondPasskeyReusesTheHandleAndExcludesTheFirstEvenRevoked(): void
@@ -107,8 +131,47 @@ final class PasskeyEnrolmentTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §6.1.3: the model refuses a record whose backup flags contradict each other, and
-     * the enrolment refuses it as it refuses anything else, by the one exception its contract names.
+     * Decision 0046
+     */
+    #[Test]
+    public function thePasskeyKeepsWhatItsEnrolmentProved(): void
+    {
+        // Given
+        $options = $this->enrolment->begin($this->alice);
+        $this->registrar->returns(FakePasskeyRegistrar::record($options), AttestationEvidence::enterprise('0a1b', underSecurityAlert: true));
+
+        // When
+        $passkey = $this->enrolment->complete($this->alice, 'YubiKey', $options, '{"id":"credential-id"}', Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame(ModelProof::Enterprise, $passkey->modelProof);
+        static::assertSame('0a1b', $passkey->serialNumber);
+        static::assertTrue($passkey->underSecurityAlert);
+    }
+
+    /**
+     * Decision 0046
+     */
+    #[Test]
+    public function aPasskeyThePolicyOfTheTenantRefusesIsNotStored(): void
+    {
+        // Given
+        $options = $this->enrolment->begin($this->alice);
+        $this->registrar->refusesUnderThePolicy(PasskeyAttestationRefusal::OrganisationKeysOnly);
+
+        // When
+        try {
+            $this->enrolment->complete($this->alice, 'YubiKey', $options, '{"id":"credential-id"}', Fixtures::context($this->clock->now()));
+            static::fail('The passkey was enrolled.');
+        } catch (PasskeyAttestationRefusedException $exception) {
+            // Then
+            static::assertSame(PasskeyAttestationRefusal::OrganisationKeysOnly, $exception->refusal);
+            static::assertSame([], $this->credentials->findByUser($this->alice, PasskeyCredential::class));
+        }
+    }
+
+    /**
+     * WebAuthn Level 3 §6.1.3
      */
     #[Test]
     public function aRecordTheModelRefusesFailsTheEnrolment(): void
@@ -165,7 +228,7 @@ final class PasskeyEnrolmentTest extends TestCase
     }
 
     /**
-     * WebAuthn Level 3 §7.1, step 26.
+     * WebAuthn Level 3 §7.1, step 26
      */
     #[Test]
     public function aCredentialIdKnownInTheTenantIsRefused(): void
@@ -197,5 +260,57 @@ final class PasskeyEnrolmentTest extends TestCase
 
         // When
         $this->enrolment->complete($this->alice, 'Pixel', $options, '{}', Fixtures::context());
+    }
+
+    #[Test]
+    public function aSyncedPasskeyIsRefusedByATenantThatAsksForHardware(): void
+    {
+        // Given
+        $carol = Fixtures::user(Fixtures::tenant('acme', 'https://id.acme.example', new PhishingResistantHardware()));
+        $options = $this->enrolment->begin($carol);
+        $this->registrar->returns(FakePasskeyRegistrar::record($options, 'synced', backupEligible: true, backedUp: true));
+
+        // Then
+        $this->expectException(CredentialEnrolmentFailedException::class);
+        $this->expectExceptionMessageIs('A passkey proves no login of the tenant "acme", whose logins prove "phishing_resistant_hardware" at the least: it is not enrolled here. What it would prove is swk, user.');
+
+        // When
+        $this->enrolment->complete($carol, 'The phone', $options, '{"id":"synced"}', Fixtures::context());
+    }
+
+    #[Test]
+    public function aPasskeyBoundToItsAuthenticatorIsEnrolledByATenantThatAsksForHardware(): void
+    {
+        // Given
+        $carol = Fixtures::user(Fixtures::tenant('acme', 'https://id.acme.example', new PhishingResistantHardware()));
+        $options = $this->enrolment->begin($carol);
+        $this->registrar->returns(FakePasskeyRegistrar::record($options, 'bound'));
+
+        // When
+        $passkey = $this->enrolment->complete($carol, 'YubiKey 5', $options, '{"id":"bound"}', Fixtures::context());
+
+        // Then
+        static::assertSame([$passkey], $this->credentials->findByUser($carol));
+    }
+
+    /**
+     * Decision 0029, spec/saml.md S-63
+     */
+    #[Test]
+    public function aPasskeyIsPosedForNobodyOfAFederatedDomain(): void
+    {
+        // Given
+        $user = $this->alice;
+        $this->upstreamProviders->declare($user->tenant, new UpstreamProvider('https://idp.acme.example/saml', [new EmailDomain('acme.example')]));
+        $user->changeEmail(new EmailAddress('alice@acme.example'), true, Fixtures::now());
+        $options = $this->enrolment->begin($user);
+        $this->registrar->returns(FakePasskeyRegistrar::record($options, 'bound'));
+
+        // Then
+        $this->expectException(CredentialEnrolmentFailedException::class);
+        $this->expectExceptionMessageIs('A passkey is posed for nobody of an e-mail domain the tenant "acme" federates to an upstream provider, through which alone they sign in.');
+
+        // When
+        $this->enrolment->complete($user, 'YubiKey 5', $options, '{"id":"bound"}', Fixtures::context());
     }
 }

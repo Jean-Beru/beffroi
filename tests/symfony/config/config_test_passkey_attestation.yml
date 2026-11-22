@@ -1,0 +1,16 @@
+# A tenant whose passkey enrolment asks its authenticator for an attestation (decision 0046): the policy and what it
+# reads are named by the environment, as a deployment names them, so a test names them before it boots this kernel and
+# synchronises the tenant again (DirectPasskeyAttestationTest, EnterprisePasskeyAttestationTest). Left alone, the
+# tenant asks for none, as the one of config_test.yml does.
+parameters:
+    env(BEFFROI_TEST_PASSKEY_ATTESTATION): none
+    env(BEFFROI_TEST_PASSKEY_ATTESTATION_ROOTS): '[]'
+    env(BEFFROI_TEST_PASSKEY_ATTESTATION_OWN_ROOTS): '[]'
+    env(BEFFROI_TEST_PASSKEY_COMPROMISED_MODELS): '{}'
+
+beffroi:
+    tenant:
+        passkey_attestation: '%env(BEFFROI_TEST_PASSKEY_ATTESTATION)%'
+        passkey_attestation_roots: '%env(json:BEFFROI_TEST_PASSKEY_ATTESTATION_ROOTS)%'
+        passkey_attestation_own_roots: '%env(json:BEFFROI_TEST_PASSKEY_ATTESTATION_OWN_ROOTS)%'
+        passkey_compromised_models: '%env(json:BEFFROI_TEST_PASSKEY_COMPROMISED_MODELS)%'

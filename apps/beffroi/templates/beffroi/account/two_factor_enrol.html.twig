@@ -1,0 +1,19 @@
+{# The enrolment of an authenticator app from the account (architecture §5.2), in the two steps of
+   account/_totp_enrol_steps.html.twig. "error" is a code of TotpEnrolmentController, shown when the code did not
+   match; the same QR code stays. #}
+{% extends '@Beffroi/layout.html.twig' %}
+{% trans_default_domain 'beffroi' %}
+
+{% block title %}{{ 'two_factor.enrol.title'|trans }}{% endblock %}
+
+{% block head %}
+    <script src="{{ path('beffroi_interaction_copy_script') }}" defer></script>
+{% endblock %}
+
+{% block content %}
+    {{ include('@Beffroi/account/back.html.twig') }}
+    {% if error is not null %}
+        <p data-error="{{ error }}">{{ ('two_factor.error.' ~ error)|trans }}</p>
+    {% endif %}
+    {{ include('@Beffroi/account/_totp_enrol_steps.html.twig', {action: path('beffroi_interaction_account_two_factor_enrol'), token_id: 'beffroi_two_factor_enrol'}) }}
+{% endblock %}

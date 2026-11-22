@@ -2,27 +2,29 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Interaction;
+namespace Beffroi\Oidc\Tests\Domain\Interaction;
 
+use Beffroi\Oidc\Tests\Fixture\Secrets;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Session\SessionEnd;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Consent\Consent;
-use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Exception\InteractionCompletedException;
-use Heidi\Oidc\Exception\InteractionExpiredException;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Exception\LogicException;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\Requests;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Domain\Interaction\Interaction;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Exception\InteractionCompletedException;
+use Beffroi\Oidc\Exception\InteractionExpiredException;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Exception\LogicException;
+use Beffroi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\Requests;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use function preg_match;
 use Symfony\Component\Uid\Uuid;
 
 final class InteractionTest extends TestCase
@@ -37,20 +39,6 @@ final class InteractionTest extends TestCase
         $this->client = Clients::confidential($this->user->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
     }
 
-    /**
-     * Architecture §4.3: the identifier is 256 random bits in base64url, never guessable.
-     */
-    #[Test]
-    public function itsIdentifierIsRandom(): void
-    {
-        // When
-        $id = Interaction::generateId();
-
-        // Then
-        static::assertSame(1, preg_match('/^[A-Za-z0-9_-]{43}$/', $id));
-        static::assertNotSame($id, Interaction::generateId());
-    }
-
     #[Test]
     public function itParksTheRequestWithTheLocale(): void
     {
@@ -58,12 +46,53 @@ final class InteractionTest extends TestCase
         $request = Requests::authorization($this->client);
 
         // When
-        $interaction = new Interaction(Interaction::generateId(), $this->user->tenant, $request, 'fr', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        $interaction = new Interaction(Secrets::draw(), $this->user->tenant, $request, 'fr', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
 
         // Then
         static::assertSame($request, $interaction->request);
-        static::assertSame($this->client->clientId, $interaction->clientId);
+        static::assertSame($this->client->registration->clientId, $interaction->clientId);
         static::assertSame('fr', $interaction->locale);
+    }
+
+    #[Test]
+    public function itRecordsTheLanguageAVisitorAsksFor(): void
+    {
+        // Given
+        $interaction = new Interaction(
+            Secrets::draw(),
+            $this->user->tenant,
+            Requests::authorization($this->client),
+            'en',
+            Fixtures::now(),
+            Fixtures::now()->modify('+10 minutes'),
+        );
+
+        // When
+        $interaction->readIn('fr');
+
+        // Then
+        static::assertSame('fr', $interaction->locale);
+    }
+
+    #[Test]
+    public function aLanguageItIsAskedToBeReadInIsNotEmpty(): void
+    {
+        // Given
+        $interaction = new Interaction(
+            Secrets::draw(),
+            $this->user->tenant,
+            Requests::authorization($this->client),
+            'en',
+            Fixtures::now(),
+            Fixtures::now()->modify('+10 minutes'),
+        );
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The locale of an interaction is either absent or non-empty.');
+
+        // When
+        $interaction->readIn('');
     }
 
     #[Test]
@@ -88,6 +117,31 @@ final class InteractionTest extends TestCase
         // When / Then
         static::assertFalse($interaction->isExpired(Fixtures::now()->modify('+9 minutes 59 seconds')));
         static::assertTrue($interaction->isExpired(Fixtures::now()->modify('+10 minutes')));
+    }
+
+    /**
+     * OIDC Core §3.1.2.1
+     */
+    #[Test]
+    #[DataProvider('provideLatestProofs')]
+    public function itSawTheLoginOfASessionProvenSinceItBegan(string $latestProof, bool $saw): void
+    {
+        // Given
+        $interaction = $this->interaction();
+        $session = Fixtures::session($this->user, Fixtures::now()->modify($latestProof));
+
+        // When / Then
+        static::assertSame($saw, $interaction->sawTheLoginOf($session));
+    }
+
+    /**
+     * @return iterable<string, array{string, bool}>
+     */
+    public static function provideLatestProofs(): iterable
+    {
+        yield 'a second before it began' => ['-1 second', false];
+        yield 'at the instant it began' => ['+0 seconds', true];
+        yield 'while it waits' => ['+5 minutes', true];
     }
 
     #[Test]
@@ -151,9 +205,6 @@ final class InteractionTest extends TestCase
         static::assertSame($consent, $interaction->consent);
     }
 
-    /**
-     * A consent recorded for one user does not carry over to a session of another.
-     */
     #[Test]
     public function aSessionOfAnotherUserDropsTheRecordedConsent(): void
     {
@@ -170,8 +221,6 @@ final class InteractionTest extends TestCase
     }
 
     /**
-     * Acceptance of #6: an interaction cannot be resumed after expiry.
-     *
      * @param callable(self, Interaction): void $resume
      */
     #[Test]
@@ -226,8 +275,6 @@ final class InteractionTest extends TestCase
     }
 
     /**
-     * Acceptance of #6: an interaction cannot be resumed twice.
-     *
      * @param callable(self, Interaction): void $resume
      */
     #[Test]
@@ -350,10 +397,22 @@ final class InteractionTest extends TestCase
     public static function provideConsentsOfSomeoneElse(): iterable
     {
         yield 'another user' => [
-            static fn (self $test): Consent => new Consent(Uuid::v7(), Fixtures::user($test->user->tenant, 'bob', 'bob-subject'), $test->client, [new Scope('openid'), new Scope('profile')], Fixtures::now()),
+            static fn (self $test): Consent => new Consent(
+                Uuid::v7(),
+                Fixtures::user($test->user->tenant, 'bob', 'bob-subject'),
+                $test->client,
+                new Scopes([new Scope('openid'), new Scope('profile')]),
+                Fixtures::now(),
+            ),
         ];
         yield 'another client' => [
-            static fn (self $test): Consent => new Consent(Uuid::v7(), $test->user, Clients::public($test->user->tenant), [new Scope('openid'), new Scope('profile')], Fixtures::now()),
+            static fn (self $test): Consent => new Consent(
+                Uuid::v7(),
+                $test->user,
+                Clients::public($test->user->tenant),
+                new Scopes([new Scope('openid'), new Scope('profile')]),
+                Fixtures::now(),
+            ),
         ];
     }
 
@@ -368,7 +427,32 @@ final class InteractionTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        $interaction->consent(new Consent(Uuid::v7(), $this->user, $this->client, [new Scope('openid')], Fixtures::now()), Fixtures::now());
+        $interaction->consent(new Consent(Uuid::v7(), $this->user, $this->client, new Scopes([new Scope('openid')]), Fixtures::now()), Fixtures::now());
+    }
+
+    /**
+     * RFC 9396 §7
+     */
+    #[Test]
+    public function itRefusesAConsentThatDoesNotCoverTheDetailsOfTheRequest(): void
+    {
+        // Given
+        $interaction = new Interaction(
+            Secrets::draw(),
+            $this->user->tenant,
+            Requests::authorization($this->client, ['openid', 'profile'], authorizationDetails: AuthorizationDetailTypes::details()),
+            null,
+            Fixtures::now(),
+            Fixtures::now()->modify('+10 minutes'),
+        );
+        $interaction->authenticate(Fixtures::session($this->user), Fixtures::now());
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A consent recorded on an interaction covers every authorization detail of the request (RFC 9396 section 7).');
+
+        // When
+        $interaction->consent($this->consent(), Fixtures::now());
     }
 
     #[Test]
@@ -390,8 +474,8 @@ final class InteractionTest extends TestCase
     {
         yield 'empty' => [''];
         yield 'short' => ['short'];
-        yield 'padded' => [Interaction::generateId() . '='];
-        yield 'too long' => [Interaction::generateId() . 'a'];
+        yield 'padded' => [Secrets::draw() . '='];
+        yield 'too long' => [Secrets::draw() . 'a'];
         yield 'standard base64 alphabet' => ['E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw+cM'];
     }
 
@@ -402,7 +486,14 @@ final class InteractionTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new Interaction(Interaction::generateId(), Fixtures::tenant('other', 'https://id.other.example'), Requests::authorization($this->client), null, Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        new Interaction(
+            Secrets::draw(),
+            Fixtures::tenant('other', 'https://id.other.example'),
+            Requests::authorization($this->client),
+            null,
+            Fixtures::now(),
+            Fixtures::now()->modify('+10 minutes'),
+        );
     }
 
     #[Test]
@@ -412,7 +503,14 @@ final class InteractionTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new Interaction(Interaction::generateId(), $this->user->tenant, Requests::authorization($this->client), '', Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+        new Interaction(
+            Secrets::draw(),
+            $this->user->tenant,
+            Requests::authorization($this->client),
+            '',
+            Fixtures::now(),
+            Fixtures::now()->modify('+10 minutes'),
+        );
     }
 
     #[Test]
@@ -422,14 +520,21 @@ final class InteractionTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new Interaction(Interaction::generateId(), $this->user->tenant, Requests::authorization($this->client), null, Fixtures::now(), Fixtures::now());
+        new Interaction(Secrets::draw(), $this->user->tenant, Requests::authorization($this->client), null, Fixtures::now(), Fixtures::now());
     }
 
     private function interaction(?DateTimeImmutable $createdAt = null): Interaction
     {
         $createdAt ??= Fixtures::now();
 
-        return new Interaction(Interaction::generateId(), $this->user->tenant, Requests::authorization($this->client, ['openid', 'profile']), null, $createdAt, $createdAt->modify('+10 minutes'));
+        return new Interaction(
+            Secrets::draw(),
+            $this->user->tenant,
+            Requests::authorization($this->client, ['openid', 'profile']),
+            null,
+            $createdAt,
+            $createdAt->modify('+10 minutes'),
+        );
     }
 
     private function completedInteraction(): Interaction
@@ -443,6 +548,6 @@ final class InteractionTest extends TestCase
 
     private function consent(): Consent
     {
-        return new Consent(Uuid::v7(), $this->user, $this->client, [new Scope('openid'), new Scope('profile')], Fixtures::now());
+        return new Consent(Uuid::v7(), $this->user, $this->client, new Scopes([new Scope('openid'), new Scope('profile')]), Fixtures::now());
     }
 }

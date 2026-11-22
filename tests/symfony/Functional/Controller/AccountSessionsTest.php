@@ -1,0 +1,276 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Tests\Symfony\Functional\Controller;
+
+use Beffroi\Core\Domain\Event\AuthenticationSessionEnded;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\DomCrawler\Crawler;
+use Symfony\Component\HttpFoundation\Response;
+
+/**
+ * Architecture §5.2
+ */
+final class AccountSessionsTest extends BrowserTestCase
+{
+    use TokensOfASession;
+
+    #[Test]
+    public function thePageListsTheSessionsOpenInTheirName(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $current = $this->signIn($alice);
+        self::session($alice, self::currentSecond()->modify('-1 hour'));
+
+        // When
+        $page = $this->sessionsPage();
+
+        // Then
+        static::assertSame('2', $page->filter('table[data-sessions]')->attr('data-sessions'));
+        static::assertSame('yes', $page->filter('tr[data-session="' . $current->id . '"]')->attr('data-current'));
+    }
+
+    #[Test]
+    public function endingAnotherSessionEndsItAndSaysSoOnce(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        $other = self::session($alice, self::currentSecond()->modify('-1 hour'));
+        $token = $this->token($other);
+
+        // When
+        $this->browser->request('POST', '/account/sessions/' . $other->id . '/revoke', ['_token' => $token]);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_SEE_OTHER, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertSame('/account/sessions', $response->headers->get('Location'));
+        static::assertTrue(self::reread($other)->hasEnded());
+        static::assertSame(SessionEnd::User, self::reread($other)->endedBy);
+        static::assertCount(1, self::events(AuthenticationSessionEnded::class));
+    }
+
+    #[Test]
+    public function endingASessionRevokesTheTokensIssuedUnderIt(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        $other = self::session($alice, self::currentSecond()->modify('-1 hour'));
+        $tokens = self::tokensIssuedIn($other);
+        $token = $this->token($other);
+
+        // When
+        $this->browser->request('POST', '/account/sessions/' . $other->id . '/revoke', ['_token' => $token]);
+
+        // Then
+        self::assertTheTokensAreRevoked($tokens);
+    }
+
+    #[Test]
+    public function endingTheirOwnSessionSignsThemOut(): void
+    {
+        // Given
+        $current = $this->signIn(self::user('alice'));
+        $token = $this->token($current);
+
+        // When
+        $crawler = $this->browser->request('POST', '/account/sessions/' . $current->id . '/revoke', ['_token' => $token]);
+
+        // Then
+        static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
+        static::assertSame('yes', $crawler->filter('[data-logged-out]')->attr('data-logged-out'));
+        static::assertTrue(self::reread($current)->hasEnded());
+    }
+
+    #[Test]
+    public function aBrowserWhoseSessionItEndedIsAskedToSignInAgain(): void
+    {
+        // Given
+        $current = $this->signIn(self::user('alice'));
+        $token = $this->token($current);
+        $this->browser->request('POST', '/account/sessions/' . $current->id . '/revoke', ['_token' => $token]);
+
+        // When
+        $crawler = $this->browser->request('GET', '/account/sessions');
+
+        // Then
+        static::assertSame(Response::HTTP_UNAUTHORIZED, $this->browser->getResponse()->getStatusCode());
+        static::assertSame('login_required', $crawler->filter('p[data-error]')->attr('data-error'));
+    }
+
+    #[Test]
+    public function theSessionOfSomebodyElseIsNotFound(): void
+    {
+        // Given
+        $current = $this->signIn(self::user('alice'));
+        $token = $this->token($current);
+        $theirs = self::session(self::user('bob', 'bob-subject'));
+
+        // When
+        $this->browser->request('POST', '/account/sessions/' . $theirs->id . '/revoke', ['_token' => $token]);
+
+        // Then
+        static::assertSame(Response::HTTP_NOT_FOUND, $this->browser->getResponse()->getStatusCode());
+        static::assertFalse(self::reread($theirs)->hasEnded());
+    }
+
+    #[Test]
+    public function aSessionEndedWithoutTheTokenOfItsFormIsRefused(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        $other = self::session($alice, self::currentSecond()->modify('-1 hour'));
+
+        // When
+        $this->browser->request('POST', '/account/sessions/' . $other->id . '/revoke');
+
+        // Then
+        static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode());
+        static::assertFalse(self::reread($other)->hasEnded());
+        static::assertSame([], self::events(AuthenticationSessionEnded::class));
+    }
+
+    /**
+     * Architecture §5.2
+     */
+    #[Test]
+    public function endingEveryOtherSessionLeavesTheOneBeingReadFrom(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $current = $this->signIn($alice);
+        $elsewhere = self::session($alice, self::currentSecond()->modify('-1 hour'));
+        $again = self::session($alice, self::currentSecond()->modify('-2 hours'));
+
+        // When
+        $this->endEveryOther();
+
+        // Then
+        static::assertTrue(self::reread($elsewhere)->hasEnded());
+        static::assertTrue(self::reread($again)->hasEnded());
+        static::assertFalse(self::reread($current)->hasEnded());
+    }
+
+    #[Test]
+    public function eachSessionEndedThatWayIsSaidOnce(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        self::session($alice, self::currentSecond()->modify('-1 hour'));
+        self::session($alice, self::currentSecond()->modify('-2 hours'));
+
+        // When
+        $this->endEveryOther();
+
+        // Then
+        static::assertCount(2, self::events(AuthenticationSessionEnded::class));
+    }
+
+    #[Test]
+    public function aPersonSignedInNowhereElseIsOfferedNothing(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $page = $this->sessionsPage();
+
+        // Then
+        static::assertCount(0, $page->filter('form[data-sessions="revoke-others"]'));
+    }
+
+    #[Test]
+    public function endingEveryOtherSessionWithoutTheTokenOfItsFormIsRefused(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        $elsewhere = self::session($alice, self::currentSecond()->modify('-1 hour'));
+
+        // When
+        $this->browser->request('POST', '/account/sessions/revoke-others', []);
+
+        // Then
+        static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode());
+        static::assertFalse(self::reread($elsewhere)->hasEnded());
+    }
+
+    /**
+     * Architecture §3.5
+     */
+    #[Test]
+    public function theLineSaysTheBrowserAndNotTheWholeUserAgent(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+
+        // When
+        $page = $this->sessionsPage();
+
+        // Then
+        $agent = $page->filter('tr[data-session] span[data-user-agent]');
+        static::assertSame('Firefox on Linux', $agent->text());
+        static::assertStringContainsString('X11; Linux x86_64', self::string($agent->attr('title')));
+        static::assertSame('Place unknown', $page->filter('tr[data-session] span[data-place="unknown"]')->text());
+    }
+
+    /**
+     * Architecture §5.2
+     */
+    #[Test]
+    public function thePeriodNarrowsTheSessionsToTheDaysItNames(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+
+        // When
+        $page = $this->browser->request('GET', '/account/sessions?to=' . self::currentSecond()->modify('-1 day')->format('Y-m-d'));
+
+        // Then
+        static::assertCount(0, $page->filter('tbody tr[data-session]'));
+        static::assertCount(1, $page->filter('tbody tr[data-empty]'));
+    }
+
+    private function endEveryOther(): void
+    {
+        $token = self::string(
+            $this->sessionsPage()->filter('form[data-sessions="revoke-others"] input[name="_token"]')->attr('value'),
+        );
+        $this->browser->request('POST', '/account/sessions/revoke-others', [
+            '_token' => $token,
+        ]);
+    }
+
+    private function sessionsPage(): Crawler
+    {
+        return $this->browser->request('GET', '/account/sessions');
+    }
+
+    private function token(AuthenticationSession $session): string
+    {
+        return self::string(
+            $this->sessionsPage()
+                ->filter('tr[data-session="' . $session->id . '"] input[name="_token"]')
+                ->attr('value'),
+        );
+    }
+
+    private static function reread(AuthenticationSession $session): AuthenticationSession
+    {
+        $reread = self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class)->find($session->id);
+        static::assertInstanceOf(AuthenticationSession::class, $reread);
+
+        return $reread;
+    }
+}

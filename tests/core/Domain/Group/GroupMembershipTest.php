@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Domain\Group;
+namespace Beffroi\Core\Tests\Domain\Group;
 
-use Heidi\Core\Domain\Group\Group;
-use Heidi\Core\Domain\Group\GroupMembership;
-use Heidi\Core\Domain\Group\GroupSource;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Domain\Group\Group;
+use Beffroi\Core\Domain\Group\GroupMembership;
+use Beffroi\Core\Domain\Group\GroupSource;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;

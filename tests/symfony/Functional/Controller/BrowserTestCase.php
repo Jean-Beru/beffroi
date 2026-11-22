@@ -2,36 +2,44 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
+use Beffroi\Oidc\Tests\Fixture\Secrets;
+use function array_filter;
 use function base64_decode;
 use function base64_encode;
 use Closure;
 use DateTimeImmutable;
 use function explode;
 use function hash;
-use Heidi\Bundle\Http\BrowserSession;
-use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Heidi\Core\Application\Key\SigningKeyRotator;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Key\SigningKey;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\SessionEnd;
-use Heidi\Core\Port\AuthenticationSessionRepositoryInterface;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\PasswordHasherInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Oidc\Domain\Authorization\AuthorizationRequest;
-use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
-use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\Interaction\Interaction;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Port\InteractionRepositoryInterface;
+use App\Http\BrowserSession;
+use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
+use App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler;
+use Beffroi\Core\Application\Key\KeyRetirement;
+use Beffroi\Core\Application\Key\KeyStaging;
+use Beffroi\Core\Application\Key\KeyTakeOver;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Domain\Credential\PasswordAlgorithmInterface;
+use Beffroi\Core\Bridge\Password\Algorithm\Bcrypt;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\PasswordHasherInterface;
+use Beffroi\Core\Port\UserRepositoryInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationRequest;
+use Beffroi\Oidc\Domain\Authorization\CodeChallenge;
+use Beffroi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
+use Beffroi\Oidc\Domain\Client\RedirectUri;
+use Beffroi\Oidc\Domain\Interaction\Interaction;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Port\InteractionRepositoryInterface;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use function parse_str;
@@ -42,6 +50,7 @@ use const PHP_URL_QUERY;
 use function rtrim;
 use function sprintf;
 use function str_starts_with;
+use function strtolower;
 use function strtr;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Component\BrowserKit\Cookie;
@@ -49,39 +58,47 @@ use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\DomCrawler\Crawler;
+use Symfony\Component\DomCrawler\Form;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionFactoryInterface;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\Uid\Uuid;
-use function sys_get_temp_dir;
 
-/**
- * A browser on the test kernel (architecture §7), with what a flow needs: a user with a password, or a
- * user signed in without the form, that is a session of the core the browser is bound to the way the
- * login of the firewall binds it; an interaction this browser began; a signing key; the PKCE pair of a
- * client.
- */
 abstract class BrowserTestCase extends DatabaseTestCase
 {
     use ClockSensitiveTrait;
 
     /**
-     * RFC 7636 §4.1: 43 to 128 unreserved characters.
+     * RFC 7636 §4.1
      */
     protected const string CODE_VERIFIER = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
+
+    /**
+     * Architecture §5.2
+     */
+    protected const string INTERACTION_POLICY = "frame-ancestors 'none'";
 
     protected KernelBrowser $browser;
 
     protected function setUp(): void
     {
-        $this->browser = self::browser($this->configureContainer());
-        new Filesystem()
-            ->remove(self::keyStorage());
+        $this->browser = self::browser($this->configureContainer(), static::kernelOptions());
+        // One kernel for the whole test, a reboot per request being much slower: services keep their state
+        // between requests, as in production, and the recorded events span the whole test.
+        $this->browser->disableReboot();
+        new Filesystem()->remove([self::keyStorage(), self::metadataStorage()]);
     }
 
     /**
-     * What a test replaces in the container behind its browser, on every boot; nothing by default.
-     *
+     * @return array<string, mixed>
+     */
+    protected static function kernelOptions(): array
+    {
+        return [];
+    }
+
+    /**
      * @return (Closure(ContainerInterface): void)|null
      */
     protected function configureContainer(): ?Closure
@@ -91,114 +108,111 @@ abstract class BrowserTestCase extends DatabaseTestCase
 
     protected function tearDown(): void
     {
+        // Before the parent shuts the kernel down, or reading the storage paths from the container boots it again.
+        new Filesystem()->remove([self::keyStorage(), self::metadataStorage()]);
         parent::tearDown();
-        new Filesystem()
-            ->remove(self::keyStorage());
     }
 
-    /**
-     * The rows keep seconds: what the kernel dates from now on is dated the second after what it dated
-     * so far, a login after the interaction it answers, a fresh login after the session it refreshes.
-     * The clock of the kernel is the global clock of the process (Symfony\Component\Clock\Clock), which
-     * the reboot the browser does between two requests keeps: the mock set here is what the next
-     * request reads, and the trait restores the real clock after the test.
-     */
+    protected function afterTheForm(): Crawler
+    {
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_SEE_OTHER, $response->getStatusCode(), self::string($response->getContent()));
+
+        return $this->browser->followRedirect();
+    }
+
     protected static function aSecondLater(): void
     {
         self::mockTime(Clock::get()->now()->modify('+1 second'));
     }
 
-    /**
-     * A user who can sign in on the form: the password hashed by the hasher of the core, or by bcrypt
-     * when the test wants a hash the policy of the core will want to replace.
-     */
-    protected static function userWithPassword(string $username, string $password, PasswordAlgorithm $algorithm = PasswordAlgorithm::Argon2id): User
+    protected static function userWithPassword(string $username, string $password, PasswordAlgorithmInterface $algorithm = new Argon2id()): User
     {
         $user = self::user($username, $username . '-subject');
-        $hash = match ($algorithm) {
-            PasswordAlgorithm::Argon2id => self::service('test.heidi.password_hasher', PasswordHasherInterface::class)->hash($password),
-            PasswordAlgorithm::Bcrypt => new PasswordHash(PasswordAlgorithm::Bcrypt, password_hash($password, PASSWORD_BCRYPT, [
+        $hash = match ($algorithm->name()) {
+            Argon2id::NAME => self::service('test.beffroi.password_hasher', PasswordHasherInterface::class)->hash($password),
+            Bcrypt::NAME => new PasswordHash(new Bcrypt(), password_hash($password, PASSWORD_BCRYPT, [
                 'cost' => 4,
             ])),
-            default => static::fail(sprintf('No fixture hashes with %s.', $algorithm->value)),
+            default => static::fail(sprintf('No fixture hashes with %s.', $algorithm->name())),
         };
-        self::service('test.heidi.credentials', CredentialRepositoryInterface::class)
-            ->save(new PasswordCredential(Uuid::v7(), $user, $hash, self::now()));
+        self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->save(new PasswordCredential(Uuid::v7(), $user, $hash, self::now()));
 
         return $user;
     }
 
-    /**
-     * Signs the user in without the form: a session of the core, and a fresh HTTP session bound to it,
-     * whose cookie the browser now carries. The session is established now, by the clock the kernel
-     * reads, not at the fixed moment of the fixtures: the kernel judges whether it is still active.
-     */
     protected function signIn(User $user, ?DateTimeImmutable $establishedAt = null): AuthenticationSession
     {
-        // the browser reboots the kernel between two requests: the user is read again from the rows
-        $managed = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
+        $managed = self::service('test.beffroi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
         $session = self::session($managed, $establishedAt ?? self::currentSecond());
         $this->httpSession(static fn (SessionInterface $httpSession, BrowserSession $browser) => $browser->bind($httpSession, $session));
 
         return $session;
     }
 
-    /**
-     * An interaction of the native client, begun by this browser, created at the given moment.
-     */
     protected function beginInteraction(DateTimeImmutable $createdAt, DateTimeImmutable $expiresAt): Interaction
     {
         $request = new AuthorizationRequest(
             self::client('native-app'),
             new RedirectUri('http://127.0.0.1/callback'),
-            [Scope::openid(), new Scope('profile')],
-            new CodeChallenge(self::codeChallenge(), CodeChallengeMethod::S256),
+            new Scopes([Scope::openid(), new Scope('profile')]),
+            new CodeChallenge(self::codeChallenge(), new Sha256CodeChallengeMethod()),
             'state-of-the-client',
             'nonce-of-the-client',
         );
-        $interaction = new Interaction(Interaction::generateId(), self::tenant(), $request, null, $createdAt, $expiresAt);
-        self::service('test.heidi.interactions', InteractionRepositoryInterface::class)
-            ->save($interaction);
+        $interaction = new Interaction(Secrets::draw(), self::tenant(), $request, null, $createdAt, $expiresAt);
+        self::service('test.beffroi.interactions', InteractionRepositoryInterface::class)->save($interaction);
         $this->httpSession(static fn (SessionInterface $httpSession, BrowserSession $browser) => $browser->begin($httpSession, $interaction));
 
         return $interaction;
     }
 
     /**
-     * A key the tenant signs with, so that the token endpoint can answer. Called again, it is a rotation:
-     * the key that signed starts retiring, this one signs (architecture §3.3).
+     * Called again, it is a rotation: the key that signed starts retiring, this one signs (architecture §3.3).
      */
-    protected static function signingKey(): SigningKey
+    protected static function signingKey(): TenantKey
     {
-        return self::rotator()
-            ->rotate(self::tenant(), Algorithms::rs256(), self::context());
+        return self::takeOver()->rotate(self::tenant(), Algorithms::rs256(), self::context());
     }
 
     /**
-     * A key published before it signs: the first half of a rotation.
+     * The key the tenant publishes for encryption (RFC 7517 §4.2); called again, it is a rotation.
      */
-    protected static function stagedKey(): SigningKey
+    protected static function encryptionKey(): TenantKey
     {
-        return self::rotator()
-            ->stage(self::tenant(), Algorithms::rs256(), self::context());
+        return self::takeOver()->rotate(self::tenant(), Algorithms::ecdhEsA256Kw(), self::context());
+    }
+
+    protected static function stagedKey(): TenantKey
+    {
+        return self::staging()->stage(self::tenant(), Algorithms::rs256(), self::context());
+    }
+
+    protected static function retireKey(TenantKey $key): void
+    {
+        self::service('test.beffroi.key_retirement', KeyRetirement::class)->retireBeforeItsDate(self::tenant(), $key->kid, self::context());
+    }
+
+    protected static function takeOver(): KeyTakeOver
+    {
+        return self::service('test.beffroi.key_take_over', KeyTakeOver::class);
+    }
+
+    protected static function staging(): KeyStaging
+    {
+        return self::service('test.beffroi.key_staging', KeyStaging::class);
     }
 
     /**
-     * Out of the JWK Set before its retirement date: what an operator does after a compromise.
+     * RFC 8292 §2
      */
-    protected static function retireKey(SigningKey $key): void
+    protected static function applicationServerKey(): TenantKey
     {
-        self::rotator()
-            ->retire(self::tenant(), $key->kid, self::context(), force: true);
-    }
-
-    protected static function rotator(): SigningKeyRotator
-    {
-        return self::service('test.heidi.key_rotator', SigningKeyRotator::class);
+        return self::takeOver()->rotate(self::tenant(), Algorithms::vapid(), self::context());
     }
 
     /**
-     * The "kid" a compact JWS names in its protected header (RFC 7515 §4.1.4).
+     * RFC 7515 §4.1.4
      */
     protected static function kidOf(string $compactJws): string
     {
@@ -209,9 +223,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
     }
 
     /**
-     * The whole code flow of one client on the session the browser holds: the authorization request, the
-     * consent when the client requires one, then the code exchanged for tokens. A client holds a token of
-     * the session from there on (Back-Channel Logout 1.0 §2.6).
+     * The whole code flow of one client on the session the browser holds, consent included.
      */
     protected function signInClient(string $clientId, string $redirectUri, ?string $secret): void
     {
@@ -223,8 +235,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
             $interaction = self::redirectedInteraction($this->browser->getResponse());
             $this->browser->submit($this->browser->request('GET', '/consent', [
                 'interaction' => $interaction,
-            ])->selectButton('Allow')
-                ->form());
+            ])->selectButton('Allow')->form());
         }
         $code = self::redirectedQuery($this->browser->getResponse())['code'] ?? static::fail(sprintf('The client "%s" got no code.', $clientId));
         $parameters = [
@@ -233,7 +244,6 @@ abstract class BrowserTestCase extends DatabaseTestCase
             'redirect_uri' => $redirectUri,
             'code_verifier' => self::CODE_VERIFIER,
         ];
-        // the three authentication methods of the test kernel: a public client names itself and nothing else
         $server = [];
         if ($secret === null) {
             $parameters['client_id'] = $clientId;
@@ -250,8 +260,6 @@ abstract class BrowserTestCase extends DatabaseTestCase
     }
 
     /**
-     * The claims of a compact JWS, unverified: the test reads what the endpoint wrote.
-     *
      * @return array<string, mixed>
      */
     protected static function claimsOf(string $compactJws): array
@@ -275,10 +283,9 @@ abstract class BrowserTestCase extends DatabaseTestCase
     }
 
     /**
-     * A valid authorization request of a client of the test kernel (OIDC Core §3.1.2.1), as query
-     * parameters; what is given replaces the defaults, null removes a parameter.
+     * OIDC Core §3.1.2.1
      *
-     * @param array<string, string|null> $parameters
+     * @param array<string, string|null> $parameters replace the defaults, null removing a parameter
      *
      * @return array<string, string>
      */
@@ -310,8 +317,6 @@ abstract class BrowserTestCase extends DatabaseTestCase
     }
 
     /**
-     * The query parameters of the Location header of a redirection.
-     *
      * @return array<string, string>
      */
     protected static function redirectedQuery(Response $response): array
@@ -329,9 +334,6 @@ abstract class BrowserTestCase extends DatabaseTestCase
         return $strings;
     }
 
-    /**
-     * The interaction identifier the Location header of a redirection to a page carries.
-     */
     protected static function redirectedInteraction(Response $response): string
     {
         return self::redirectedQuery($response)['interaction'] ?? static::fail('The redirection names no interaction.');
@@ -362,38 +364,24 @@ abstract class BrowserTestCase extends DatabaseTestCase
     }
 
     /**
-     * Architecture §5.2: what every response of the interaction plane carries.
+     * Architecture §5.2
      */
-    protected static function assertInteractionHeaders(Response $response): void
+    protected static function assertInteractionHeaders(Response $response, string $contentSecurityPolicy = self::INTERACTION_POLICY): void
     {
         static::assertSame('DENY', $response->headers->get('X-Frame-Options'));
-        static::assertSame("frame-ancestors 'none'", $response->headers->get('Content-Security-Policy'));
+        static::assertSame($contentSecurityPolicy, $response->headers->get('Content-Security-Policy'));
         static::assertSame('no-referrer', $response->headers->get('Referrer-Policy'));
         static::assertTrue($response->headers->hasCacheControlDirective('no-store'));
     }
 
-    protected static function keyStorage(): string
-    {
-        return sys_get_temp_dir() . '/heidi-bundle-tests/cache/test/keys';
-    }
-
-    /**
-     * The session ended on the rows, the way a logout, an administrator or another tab ends it: read
-     * again through the repository, because the browser reboots the kernel between two requests and the
-     * object the test holds is not the one the next request reads.
-     */
     protected function endSession(AuthenticationSession $session, SessionEnd $by = SessionEnd::User): void
     {
-        $sessions = self::service('test.heidi.sessions', AuthenticationSessionRepositoryInterface::class);
+        $sessions = self::service('test.beffroi.sessions', AuthenticationSessionRepositoryInterface::class);
         $stored = $sessions->find($session->id) ?? static::fail('The session is gone.');
         $stored->end($by, self::currentSecond());
         $sessions->save($stored);
     }
 
-    /**
-     * The HTTP session the browser holds, read from the storage of the kernel: what the firewall and the
-     * bundle wrote in it.
-     */
     protected function readHttpSession(): SessionInterface
     {
         $httpSession = self::service('session.factory', SessionFactoryInterface::class)->createSession();
@@ -404,18 +392,79 @@ abstract class BrowserTestCase extends DatabaseTestCase
         return $httpSession;
     }
 
-    /**
-     * The real now, with the precision of a datetime column.
-     */
     protected static function currentSecond(): DateTimeImmutable
     {
         return new DateTimeImmutable('@' . time());
     }
 
     /**
-     * The session cookie the browser will send: the one the kernel set, which carries a domain, over the
-     * one a test wrote without one before any request, once a login migrated the session behind it.
+     * Posts as a browser does from another site: "Sec-Fetch-Site: cross-site", without the cookies that
+     * "SameSite=Lax" or "Strict" keeps from it (RFC 6265bis), which the jar holds again afterwards.
+     *
+     * @param array<string, string|null> $server replaces the headers of a cross-site post, null removing one
      */
+    protected function postedFromAnotherSite(string $uri, string $body, array $server = []): void
+    {
+        $jar = $this->browser->getCookieJar();
+        $heldBack = [];
+        foreach ($jar->all() as $cookie) {
+            if (strtolower((string) $cookie->getSameSite()) !== 'none') {
+                $heldBack[] = $cookie;
+                $jar->expire($cookie->getName(), $cookie->getPath(), $cookie->getDomain());
+            }
+        }
+        $this->postedFromAnotherSiteWithTheCookie($uri, $body, $server);
+        foreach ($heldBack as $cookie) {
+            $jar->set($cookie);
+        }
+    }
+
+    /**
+     * @param array<string, string|null> $server replaces the headers of a cross-site post, null removing one
+     */
+    protected function postedFromAnotherSiteWithTheCookie(string $uri, string $body, array $server = []): void
+    {
+        parse_str($body, $fields);
+        $this->browser->request(
+            'POST',
+            $uri,
+            $fields,
+            [],
+            array_filter(
+                $server
+                + [
+                    'CONTENT_TYPE' => 'application/x-www-form-urlencoded',
+                    'HTTP_SEC_FETCH_SITE' => 'cross-site',
+                ],
+                static fn (?string $value): bool => $value !== null,
+            ),
+            $body,
+        );
+    }
+
+    protected function postedWithoutOriginOrReferer(Form $form): void
+    {
+        $this->browser->getHistory()->clear();
+        $this->browser->submit(
+            $form,
+            [],
+            [
+                'HTTP_ORIGIN' => 'null',
+            ],
+        );
+    }
+
+    protected function postedAgain(): void
+    {
+        $this->browser->submit(
+            $this->browser->getCrawler()->filter('form')->form(),
+            [],
+            [
+                'HTTP_SEC_FETCH_SITE' => 'same-origin',
+            ],
+        );
+    }
+
     private function sessionCookie(string $name): ?Cookie
     {
         $found = null;
@@ -429,8 +478,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
     }
 
     /**
-     * Writes an HTTP session the browser will present on its next request, through the same session
-     * factory and storage the kernel uses.
+     * Writes the HTTP session the browser presents on its next request.
      *
      * @param callable(SessionInterface, BrowserSession): void $write
      */
@@ -442,10 +490,37 @@ abstract class BrowserTestCase extends DatabaseTestCase
             $httpSession->setId($cookie->getValue());
         }
         $httpSession->start();
-        $write($httpSession, self::service('test.heidi.browser_session', BrowserSession::class));
+        $write($httpSession, self::service('test.beffroi.browser_session', BrowserSession::class));
         $httpSession->save();
-        // the cookie the kernel set carries a domain, and a cookie with a domain wins over one without
-        $this->browser->getCookieJar()
-            ->set(new Cookie($httpSession->getName(), $httpSession->getId(), null, $cookie?->getPath() ?? '/', $cookie?->getDomain() ?? ''));
+        // The cookie the kernel set carries a domain, and a cookie with a domain wins over one without.
+        $this->browser->getCookieJar()->set(
+            new Cookie($httpSession->getName(), $httpSession->getId(), null, $cookie?->getPath() ?? '/', $cookie?->getDomain() ?? ''),
+        );
+    }
+
+    /**
+     * The events of that class since the test began, or since the last forgetEvents().
+     *
+     * @template T of object
+     *
+     * @param class-string<T> $class
+     *
+     * @return list<T>
+     */
+    protected static function events(string $class): array
+    {
+        $events = [];
+        foreach (self::service(RecordingEventHandler::class, RecordingEventHandler::class)->events as $event) {
+            if ($event instanceof $class) {
+                $events[] = $event;
+            }
+        }
+
+        return $events;
+    }
+
+    protected static function forgetEvents(): void
+    {
+        self::service(RecordingEventHandler::class, RecordingEventHandler::class)->forget();
     }
 }

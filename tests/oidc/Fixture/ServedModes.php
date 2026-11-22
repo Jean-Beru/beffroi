@@ -2,37 +2,39 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
-use Heidi\Oidc\Domain\Authorization\ResponseMode;
-use Heidi\Oidc\Port\ServedResponseModesInterface;
+use Beffroi\Oidc\Port\ServedResponseModesInterface;
 
-/**
- * The response modes an integration wired: the default alone, as spike 1 had, or the default and the
- * posted form, as the bundle wires since spike 4.
- */
-final readonly class ServedModes implements ServedResponseModesInterface
+final readonly class ServedModes
 {
+    public const string QUERY = 'query';
+
+    public const string FORM_POST = 'form_post';
+
+    public const string SIGNED_QUERY = 'query.jwt';
+
+    public const string SIGNED_FORM_POST = 'form_post.jwt';
+
+    public static function queryOnly(): ServedResponseModesInterface
+    {
+        return WiredModes::of([self::QUERY]);
+    }
+
+    public static function queryAndFormPost(): ServedResponseModesInterface
+    {
+        return WiredModes::of([self::QUERY, self::FORM_POST]);
+    }
+
     /**
-     * @param non-empty-list<ResponseMode> $modes
+     * JARM §2.1
      */
-    private function __construct(
-        private array $modes,
-    ) {
-    }
-
-    public static function queryOnly(): self
+    public static function signedToo(): ServedResponseModesInterface
     {
-        return new self([ResponseMode::Query]);
-    }
-
-    public static function queryAndFormPost(): self
-    {
-        return new self([ResponseMode::Query, ResponseMode::FormPost]);
-    }
-
-    public function servedResponseModes(): array
-    {
-        return $this->modes;
+        return WiredModes::of(
+            [self::QUERY, self::FORM_POST, self::SIGNED_QUERY, self::SIGNED_FORM_POST],
+            [self::SIGNED_QUERY, self::SIGNED_FORM_POST],
+            self::SIGNED_QUERY,
+        );
     }
 }

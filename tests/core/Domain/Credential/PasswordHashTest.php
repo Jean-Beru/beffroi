@@ -2,30 +2,31 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Domain\Credential;
+namespace Beffroi\Core\Tests\Domain\Credential;
 
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 final class PasswordHashTest extends TestCase
 {
     /**
-     * Decision 0002: no password hash without an identified algorithm.
+     * Decision 0002
      */
     #[Test]
     public function itAlwaysNamesItsAlgorithmAndMayCarryParameters(): void
     {
         // When
-        $hash = new PasswordHash(PasswordAlgorithm::Pbkdf2Sha256, 'base64digest', [
+        $hash = new PasswordHash(new Pbkdf2Sha256(), 'base64digest', [
             'salt' => 'base64salt',
             'iterations' => 27500,
         ]);
 
         // Then
-        static::assertSame(PasswordAlgorithm::Pbkdf2Sha256, $hash->algorithm);
+        static::assertSame(Pbkdf2Sha256::NAME, $hash->algorithm->name());
         static::assertSame(27500, $hash->parameters['iterations']);
     }
 
@@ -36,6 +37,6 @@ final class PasswordHashTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new PasswordHash(PasswordAlgorithm::Argon2id, '');
+        new PasswordHash(new Argon2id(), '');
     }
 }

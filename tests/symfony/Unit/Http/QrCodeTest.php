@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Http;
+namespace App\Tests\Symfony\Unit\Http;
 
-use Heidi\Bundle\Http\QrCode;
+use App\Http\QrCode;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function str_starts_with;
 
 /**
- * Architecture §5.2: the QR code of an enrolment is an SVG the page embeds.
+ * Architecture §5.2
  */
 final class QrCodeTest extends TestCase
 {
@@ -18,8 +18,7 @@ final class QrCodeTest extends TestCase
     public function itDrawsAnSvgDocumentWithoutTheXmlDeclaration(): void
     {
         // When
-        $svg = new QrCode()
-            ->svg('otpauth://totp/ACME:alice?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=ACME');
+        $svg = new QrCode()->svg('otpauth://totp/ACME:alice?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=ACME');
 
         // Then
         static::assertTrue(str_starts_with($svg, '<svg '), $svg);

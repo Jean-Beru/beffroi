@@ -2,20 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use function base64_encode;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * RFC 6749 §3.2, §5.1, §5.2 and architecture §4.5: the token endpoint answers JSON, never cached,
- * the client authenticated before anything is read.
+ * RFC 6749 §3.2, §5.1, §5.2, Architecture §4.5
  */
 final class TokenControllerTest extends BrowserTestCase
 {
     /**
-     * RFC 6749 §3.2: POST only.
+     * RFC 6749 §3.2
      */
     #[Test]
     public function theTokenEndpointIsPostOnly(): void
@@ -30,7 +29,7 @@ final class TokenControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §5.2: invalid_client is 401 with the challenge when the header was used.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function aWrongSecretInTheHeaderIsChallenged(): void
@@ -47,7 +46,7 @@ final class TokenControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §5.1 and §5.2: the answers of the token endpoint are never cached, the errors included.
+     * RFC 6749 §5.1, §5.2
      */
     #[Test]
     public function anErrorOfTheTokenEndpointIsNotCached(): void
@@ -62,7 +61,7 @@ final class TokenControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §5.2: a grant the provider does not offer.
+     * RFC 6749 §5.2
      */
     #[Test]
     public function anUnknownGrantTypeIsRefused(): void
@@ -80,7 +79,26 @@ final class TokenControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §3.2: the parameters are read from the form body, never from the query string.
+     * RFC 7523 §2.2, RFC 6749 §5.2
+     */
+    #[Test]
+    public function anAssertionOfAnotherTypeIsAnInvalidRequest(): void
+    {
+        // When
+        $this->browser->request('POST', '/token', [
+            'grant_type' => 'client_credentials',
+            'client_assertion' => 'an.assertion.here',
+            'client_assertion_type' => 'urn:ietf:params:oauth:client-assertion-type:saml2-bearer',
+        ]);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        static::assertSame('invalid_request', self::json($response)['error']);
+    }
+
+    /**
+     * RFC 6749 §3.2
      */
     #[Test]
     public function theQueryStringIsNotRead(): void
@@ -95,11 +113,10 @@ final class TokenControllerTest extends BrowserTestCase
     }
 
     /**
-     * RFC 6749 §6 and architecture §4.5: a confidential client gets a refresh token, rotated at each use,
-     * through the same endpoint.
+     * RFC 6749 §6, Architecture §4.5, FAPI 2.0 Security Profile §5.3.2.1-9
      */
     #[Test]
-    public function aRefreshTokenIsRotated(): void
+    public function theRefreshTokenOfAConfidentialClientStands(): void
     {
         // Given
         $refreshToken = $this->refreshTokenOfTheDemoClient();
@@ -113,15 +130,15 @@ final class TokenControllerTest extends BrowserTestCase
         $renewed = self::json($response);
         static::assertIsString($renewed['access_token']);
         static::assertIsString($renewed['id_token']);
-        static::assertNotSame($refreshToken, $renewed['refresh_token']);
+        static::assertArrayNotHasKey('refresh_token', $renewed);
         static::assertSame('openid profile', $renewed['scope']);
     }
 
     /**
-     * RFC 9700 §4.13.2: the rotated token is refused.
+     * RFC 9700 §4.13.2
      */
     #[Test]
-    public function aRotatedRefreshTokenIsRefused(): void
+    public function theRefreshTokenOfAConfidentialClientRefreshesAgain(): void
     {
         // Given
         $refreshToken = $this->refreshTokenOfTheDemoClient();
@@ -131,13 +148,13 @@ final class TokenControllerTest extends BrowserTestCase
         $this->refresh($refreshToken);
 
         // Then
-        static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
-        static::assertSame('invalid_grant', self::json($this->browser->getResponse())['error']);
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
+        static::assertIsString(self::json($response)['access_token']);
     }
 
     /**
-     * OIDC Core §10.1.1 and architecture §3.3: the opaque refresh token depends on no key; a rotation
-     * changes nothing for it, and the tokens it gets are signed by the key that signs now.
+     * OIDC Core §10.1.1, Architecture §3.3
      */
     #[Test]
     public function aRefreshAfterARotationIssuesTokensSignedByTheNewKey(): void
@@ -157,44 +174,55 @@ final class TokenControllerTest extends BrowserTestCase
         static::assertNotSame($previous->kid, $active->kid);
         static::assertSame($active->kid, self::kidOf(self::string($renewed['access_token'])));
         static::assertSame($active->kid, self::kidOf(self::string($renewed['id_token'])));
-        static::assertIsString($renewed['refresh_token']);
     }
 
     private function postWithAWrongSecret(): void
     {
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => 'whatever',
-        ], server: [
-            'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:wrong-secret-of-at-least-32-characters'),
-        ]);
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => 'whatever',
+            ],
+            server: [
+                'HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('oidc-demo:wrong-secret-of-at-least-32-characters'),
+            ],
+        );
     }
 
-    /**
-     * The refresh token oidc-demo gets from the code flow of alice.
-     */
     private function refreshTokenOfTheDemoClient(): string
     {
         self::signingKey();
         $this->signIn(self::user('alice'));
         $this->browser->request('GET', '/authorize', self::authorizationParameters('oidc-demo'));
         $code = self::redirectedQuery($this->browser->getResponse())['code'];
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'authorization_code',
-            'code' => $code,
-            'redirect_uri' => 'https://demo.test/login/check',
-            'code_verifier' => self::CODE_VERIFIER,
-        ], server: self::demoCredentials());
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => 'https://demo.test/login/check',
+                'code_verifier' => self::CODE_VERIFIER,
+            ],
+            server: self::demoCredentials(),
+        );
 
         return self::string(self::json($this->browser->getResponse())['refresh_token']);
     }
 
     private function refresh(string $refreshToken): void
     {
-        $this->browser->request('POST', '/token', [
-            'grant_type' => 'refresh_token',
-            'refresh_token' => $refreshToken,
-        ], server: self::demoCredentials());
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $refreshToken,
+            ],
+            server: self::demoCredentials(),
+        );
     }
 
     /**

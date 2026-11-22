@@ -1,0 +1,27 @@
+{# The layout every page of the interaction plane extends (architecture §5.2): the document, its language
+   (the locale of the interaction, architecture §5.7) and the blocks a page fills, with no stylesheet and no
+   script. This is the bare
+   version the suite of the integration renders; the application serves its own (apps/beffroi/templates/beffroi/layout.html.twig),
+   which reads what the kernel of this suite does not boot. #}
+<!DOCTYPE html>
+<html lang="{{ app.request.locale|replace({'_': '-'}) }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{% endblock %}</title>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    {% block brand %}{% include '@Beffroi/_brand.html.twig' %}{% endblock %}
+    {% block body %}
+        <main>
+            <h1>{% block heading %}{{ block('title') }}{% endblock %}</h1>
+            {# The one action the page offers, beside its title rather than at the end of what the page
+               says: a page that offers none fills this with nothing. #}
+            {% block action %}{% endblock %}
+            {% block content %}{% endblock %}
+        </main>
+    {% endblock %}
+    {% block locale %}{% include '@Beffroi/_locale_switcher.html.twig' %}{% endblock %}
+</body>
+</html>

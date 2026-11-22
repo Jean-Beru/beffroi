@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Bridge\Otphp;
+namespace Beffroi\Core\Bridge\Otphp;
 
-use Heidi\Core\Domain\Credential\TotpCredential;
-use Heidi\Core\Domain\Credential\TotpSecret;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Port\TotpAlgorithmInterface;
+use Beffroi\Core\Domain\Credential\TotpCredential;
+use Beffroi\Core\Domain\Credential\TotpSecret;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Port\TotpAlgorithmInterface;
 use function intdiv;
 use OTPHP\TOTP;
 use ParagonIE\ConstantTime\Base32;
@@ -17,8 +17,7 @@ use function sprintf;
 use function str_replace;
 
 /**
- * RFC 6238 by spomky-labs/otphp, with the parameters of TotpCredential and nothing else: the brick does
- * the HMAC and the truncation of RFC 4226 §5.3, the core reads the steps.
+ * RFC 6238, RFC 4226 §5.3
  */
 final readonly class OtphpTotpAlgorithm implements TotpAlgorithmInterface
 {
@@ -28,36 +27,29 @@ final readonly class OtphpTotpAlgorithm implements TotpAlgorithmInterface
     }
 
     /**
-     * The brick takes a Unix time and divides it by the period (RFC 6238 §4.2); the first second of the
-     * step is given, so that the step is what it is asked for.
+     * RFC 6238 §4.2
      */
     public function codeAt(TotpSecret $secret, int $timeStep): string
     {
         if ($timeStep < 0 || $timeStep > intdiv(PHP_INT_MAX, TotpCredential::PERIOD)) {
             throw new InvalidArgumentException('A time step is never negative (RFC 6238 §4.2), nor beyond what a Unix time counts.');
         }
-        /** @var int<0, max> $unixTime the step is bounded on both sides */
         $unixTime = $timeStep * TotpCredential::PERIOD;
 
-        return $this->totp($secret)
-            ->at($unixTime);
+        return $this->totp($secret)->at($unixTime);
     }
 
     /**
-     * The label is "issuer:account" (the Key Uri Format), so neither carries a colon: one that would is
-     * shown with a space instead.
+     * The label is "issuer:account" (Key Uri Format), so a colon in either is shown as a space.
      */
     public function provisioningUri(TotpSecret $secret, string $issuer, string $account): string
     {
-        return $this->totp($secret)
-            ->withIssuer(self::labelPart($issuer, 'issuer'))
-            ->withLabel(self::labelPart($account, 'account'))
-            ->getProvisioningUri();
+        return $this->totp($secret)->withIssuer(self::labelPart($issuer, 'issuer'))->withLabel(self::labelPart($account, 'account'))->getProvisioningUri();
     }
 
     private function totp(TotpSecret $secret): TOTP
     {
-        /** @var non-empty-string $encoded at least sixteen bytes, so at least twenty-six characters */
+        /** @var non-empty-string $encoded */
         $encoded = Base32::encodeUpperUnpadded($secret->bytes);
 
         return TOTP::createFromSecret($encoded, $this->clock)

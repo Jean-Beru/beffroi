@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Key;
+namespace App\Tests\Symfony\Functional\Key;
 
-use Heidi\Bundle\Key\KmsUnavailableListener;
-use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Heidi\Core\Domain\Event\KmsUnavailable;
-use Heidi\Core\Exception\KmsUnavailableException;
-use Heidi\Core\Exception\RuntimeException;
+use App\Key\KmsUnavailableListener;
+use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
+use App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler;
+use Beffroi\Core\Domain\Event\KmsUnavailable;
+use Beffroi\Core\Exception\KmsUnavailableException;
+use Beffroi\Core\Exception\RuntimeException;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,8 +20,7 @@ use Symfony\Component\KeyManagement\Exception\RuntimeException as KeyManagementR
 use Throwable;
 
 /**
- * Issue #128, architecture §3.3 and §5.4: what the listener of the bundle makes of an exception on its way
- * out of a request, on the real ExceptionEvent of the kernel; the requests themselves are KmsOutageTest.
+ * Architecture §3.3, §5.4
  */
 final class KmsUnavailableListenerTest extends DatabaseTestCase
 {
@@ -30,7 +29,7 @@ final class KmsUnavailableListenerTest extends DatabaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->listener = self::service('test.heidi.kms_unavailable_listener', KmsUnavailableListener::class);
+        $this->listener = self::service('test.beffroi.kms_unavailable_listener', KmsUnavailableListener::class);
     }
 
     #[Test]
@@ -47,15 +46,15 @@ final class KmsUnavailableListenerTest extends DatabaseTestCase
         $throwable = $event->getThrowable();
         static::assertInstanceOf(ServiceUnavailableHttpException::class, $throwable);
         static::assertSame(Response::HTTP_SERVICE_UNAVAILABLE, $throwable->getStatusCode());
-        static::assertSame([
-            'Retry-After' => KmsUnavailableListener::RETRY_AFTER,
-        ], $throwable->getHeaders());
+        static::assertSame(
+            [
+                'Retry-After' => KmsUnavailableListener::RETRY_AFTER,
+            ],
+            $throwable->getHeaders(),
+        );
         static::assertSame($outage, $throwable->getPrevious());
     }
 
-    /**
-     * What wrapped the outage on its way up (a bus, a handler) does not hide it.
-     */
     #[Test]
     public function anOutageWrappedOnItsWayUpIsStillAnOutage(): void
     {
@@ -73,8 +72,7 @@ final class KmsUnavailableListenerTest extends DatabaseTestCase
     }
 
     /**
-     * Architecture §3.5: the audit receives the outage with the request it turned away and the words of
-     * the KMS.
+     * Architecture §3.5
      */
     #[Test]
     public function theOutageIsAnnouncedWithTheRequestAndTheWordsOfTheKms(): void
@@ -110,13 +108,13 @@ final class KmsUnavailableListenerTest extends DatabaseTestCase
         static::assertSame([], self::service(RecordingEventHandler::class, RecordingEventHandler::class)->events);
     }
 
-    /**
-     * What the sealer throws when the bridge of Vault cannot reach it, with the words of the bridge and of
-     * the transport under it.
-     */
     private static function outage(): KmsUnavailableException
     {
-        return new KmsUnavailableException('The sealed secret could not be opened.', 0, new KeyManagementRuntimeException('Failed to reach Vault.', 0, new \RuntimeException("Could not resolve host:\n vault")));
+        return new KmsUnavailableException(
+            'The sealed secret could not be opened.',
+            0,
+            new KeyManagementRuntimeException('Failed to reach Vault.', 0, new \RuntimeException("Could not resolve host:\n vault")),
+        );
     }
 
     private static function event(Throwable $throwable): ExceptionEvent

@@ -5,32 +5,56 @@
 #   docker compose --profile conformance up -d    plus the OpenID conformance suite on https://localhost:8443
 #   docker compose --profile vault up -d          plus HashiCorp Vault (dev mode), whose Transit engine seals the signing keys
 #   docker compose --profile aws up -d            plus Floci (AWS emulator), an AWS KMS on the desk that seals them the same way
+#   docker compose --profile saml-sp up -d        plus the SimpleSAMLphp service provider of the SAML judge on https://saml-sp.localhost (castor saml-sp)
+#   docker compose --profile saml-idp up -d       plus the SimpleSAMLphp identity provider of the SAML judge on https://saml-idp.localhost (castor saml-idp)
 #
 # The OP answers on op.localhost for the browser (every *.localhost name is loopback) and for the
-# conformance suite container (network alias). Caddy issues the certificate from its internal CA;
-# that CA is imported into the Java truststore of the suite at start-up (tests/conformance/server-entrypoint.sh),
-# with the certificate of the suite's own nginx, for the scripted browser of the suite (tests/conformance/README.md).
+# conformance suite container (network alias). Its certificate is the one mkcert issued on the machine
+# when "castor start" found an mkcert CA (BEFFROI_STACK_CERTIFICATE, docker/op/entrypoint.sh), and one
+# Caddy issues from its internal CA otherwise. Either root is imported into the Java truststore of the
+# suite at start-up (tests/conformance/server-entrypoint.sh), with the certificate of the suite's own
+# nginx, for the scripted browser of the suite (tests/conformance/README.md).
 services:
   op:
     build:
       context: .
-      dockerfile: apps/op/Dockerfile
+      dockerfile: apps/beffroi/Dockerfile
       target: frankenphp_dev
     restart: unless-stopped
     environment:
       SERVER_NAME: ${SERVER_NAME:-op.localhost}
-      # The second host, the one that asks for a client certificate (issue #157, docs/mtls-at-the-edge.md):
-      # the same listener, another name, and the site block of apps/op/frankenphp/mtls.Caddyfile, imported
+      # The second host, the one that asks for a client certificate (issue #157, architecture §6):
+      # the same listener, another name, and the site block of apps/beffroi/frankenphp/mtls.Caddyfile, imported
       # the way worker.Caddyfile is. The host of SERVER_NAME above is untouched and keeps asking for nothing.
       MTLS_SERVER_NAME: ${MTLS_SERVER_NAME:-mtls.op.localhost}
-      CADDY_EXTRA_CONFIG: "import mtls.Caddyfile"
-      DATABASE_URL: postgresql://${POSTGRES_USER:-heidi}:${POSTGRES_PASSWORD:-heidi}@database:5432/${POSTGRES_DB:-heidi}?serverVersion=16&charset=utf8
-      MESSENGER_TRANSPORT_DSN: amqp://${RABBITMQ_USER:-heidi}:${RABBITMQ_PASSWORD:-heidi}@rabbitmq:5672/%2f/messages
+      # The host of the administration API of the tenant (decision 0038, apps/beffroi/frankenphp/administration.Caddyfile):
+      # a site of this listener with a worker of its own, whose kernel serves the routes of the API and no other. It is
+      # the identifier apps/beffroi/.env.local gives the API, BEFFROI_TENANT_ADMINISTRATION_RESOURCE.
+      ADMINISTRATION_SERVER_NAME: ${ADMINISTRATION_SERVER_NAME:-admin.op.localhost}
+      # The service provider of the SAML judge, saml-sp.localhost, and its identity provider, saml-idp.localhost,
+      # are sites of this listener as well: docker/saml-sp/saml-sp.Caddyfile and docker/saml-idp/saml-idp.Caddyfile,
+      # mounted below rather than built into the image, being sites of the stack and not of the application.
+      CADDY_EXTRA_CONFIG: |-
+        import mtls.Caddyfile
+        import administration.Caddyfile
+        import saml-sp.Caddyfile
+        import saml-idp.Caddyfile
+      DATABASE_URL: postgresql://${POSTGRES_USER:-beffroi}:${POSTGRES_PASSWORD:-beffroi}@database:5432/${POSTGRES_DB:-beffroi}?serverVersion=16&charset=utf8
+      # The four lanes are queues of the database, which apps/beffroi/.env names (BEFFROI_MESSENGER_DSN, issue #919),
+      # as in a deployment of the image (compose.prod.yaml): this stack runs no broker (issue #927).
       # https://xdebug.org/docs/all_settings#mode
       XDEBUG_MODE: ${XDEBUG_MODE:-off}
-      # Both documented in apps/op/.env; "castor start --conformance" sets them for a stack that serves the suite.
+      # Both documented where the configuration of development reads them (apps/beffroi/config/packages/web_profiler.yaml,
+      # apps/beffroi/config/packages/dev/beffroi.yaml); "castor start --conformance" sets them for a stack that serves the suite.
       APP_PROFILER: ${APP_PROFILER:-1}
       CONFORMANCE_ACCESS_TOKEN_FORMAT: ${CONFORMANCE_ACCESS_TOKEN_FORMAT:-jwt}
+      # The name the suite's nginx answers on, set by "castor start --conformance" and by nothing else:
+      # it is what tells the entrypoint that there is a certificate to trust (docker/conformance/trust-nginx.sh).
+      CONFORMANCE_NGINX_HOST: ${CONFORMANCE_NGINX_HOST:-}
+      # The fingerprint of the certificate mkcert issued for the stack (the volume of /stack-certificate
+      # below), read by nothing in the container: Caddy loads the certificate once, at start, and a value
+      # that changes is what has compose create this container again when "castor start" issued a new one.
+      BEFFROI_STACK_CERTIFICATE_FINGERPRINT: ${BEFFROI_STACK_CERTIFICATE_FINGERPRINT:-}
       # Worker mode, as in production (architecture §3.3, §6): the kernel, and with it the opened signing key,
       # lives for every request a worker serves; the KMS is asked once per key and per worker, not once per
       # signature. The workers restart when a source file of the application or of the packages changes,
@@ -38,16 +62,50 @@ services:
       # never on a write under var/, or every compiled template and catalogue would restart them.
       FRANKENPHP_CONFIG: "import worker.Caddyfile"
       FRANKENPHP_WORKER_CONFIG: |-
-        watch /app/src/**/*.php
+        watch /app/src/**/*.{php,xlf}
         watch /app/config/**/*.{php,yaml,yml}
         watch /app/templates/**/*.twig
         watch /app/translations/**/*.xlf
         watch /app/.env*
         watch /src/**/*.{php,yaml,yml,twig,xlf}
+    # What this container needs from the machine around it before the image sets the application up: the
+    # certificate of the conformance suite when the suite is up. It runs in front of docker-entrypoint and
+    # ends in it, the other way round from the worker, because everything that entrypoint does for this
+    # container it only does when the command it is given starts with "frankenphp".
+    entrypoint: ["/bin/sh", "/entrypoint/entrypoint.sh"]
+    # Naming an entrypoint clears the command of the image, so the command of the development image is
+    # said again here. Without it docker-entrypoint is handed nothing, and everything it does for this
+    # container it only does when what it is handed starts with "frankenphp": the container comes up with
+    # no application in it and goes unhealthy.
+    command: ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile", "--watch"]
+    # The check of the image, whose sixty seconds are what this container takes to install, migrate and
+    # build its stylesheet. Under "--conformance" the entrypoint waits for the certificate of the suite's
+    # nginx before any of that, and the suite starts after this container: the window is wide enough for
+    # that wait, or "up --wait" would call an OP that is still getting ready unhealthy. The test is
+    # repeated because a healthcheck without one is not an override of the image's, it is no check.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:2019/metrics || exit 1"]
+      start_period: 120s
     volumes:
-      - ./apps/op:/app
+      - ./docker/op/entrypoint.sh:/entrypoint/entrypoint.sh:ro
+      - ./docker/conformance/trust-nginx.sh:/entrypoint/trust-nginx.sh:ro
+      - ./docker/saml-sp/saml-sp.Caddyfile:/etc/frankenphp/saml-sp.Caddyfile:ro
+      # the site of the administration API, mounted rather than read from the image, so that a change to it reaches a
+      # stack without a build, as the two sites of the judges below do
+      - ./apps/beffroi/frankenphp/administration.Caddyfile:/etc/frankenphp/administration.Caddyfile:ro
+      - ./docker/saml-idp/saml-idp.Caddyfile:/etc/frankenphp/saml-idp.Caddyfile:ro
+      - ./apps/beffroi:/app
       - ./src:/src
       - /app/var/
+      # The metadata of the service provider of the SAML judge, the file apps/beffroi/config/packages/dev/beffroi.yaml
+      # declares ("castor saml-sp" writes it); the directory holds nothing else, the private key of the service
+      # provider being beside it, not in it. The worker below reads the same file for its hourly refresh.
+      - ./var/saml-sp/metadata:/saml-sp:ro
+      # The metadata of the identity provider of the SAML judge, the file the development declaration of
+      # beffroi.saml.identity_providers names ("castor saml-idp" writes it from what the identity provider serves);
+      # nothing else is in the directory, its key being under var/saml-idp/ and not in it. The worker below reads
+      # the same file for its hourly refresh.
+      - ./var/saml-idp/metadata:/saml-idp-metadata:ro
       # The sealed signing keys are files (architecture §3.3): the process that serves them and the process
       # that rotates them (the worker below) share the directory, or a rotation would change nothing here.
       - keys_data:/app/var/keys
@@ -55,8 +113,17 @@ services:
       # outside the web root and outside the sealed keys, shared for the same reason; the process that rotates
       # seals with it, the process that serves opens with it.
       - kms_data:/app/var/kms
+      # The GeoLite2 databases of addresses (architecture §3.5): the console refreshes them here and the
+      # worker below reads them, so they are one directory for both or a refresh asked for in this
+      # container would change nothing where the enrichment runs.
+      - geoip_data:/app/var/geoip
       - caddy_data:/data
       - caddy_config:/config
+      # The certificate mkcert issued on the machine for every name of the stack, its key and a copy of the
+      # mkcert root, which "castor start" names when the machine has an mkcert CA (STACK_HOSTS of
+      # .castor/stack/stack.php); the directory of mkcert itself, and the key of its root, are mounted
+      # nowhere. Without it, a directory with no certificate in it, and Caddy keeps its internal CA.
+      - ${BEFFROI_STACK_CERTIFICATE:-./docker/op/without-mkcert}:/stack-certificate:ro
     ports:
       - target: 80
         published: ${HTTP_PORT:-80}
@@ -73,70 +140,78 @@ services:
           - op.localhost
           # so that a container of the stack reaches the mTLS host the way a browser on the machine does
           - mtls.op.localhost
+          # and the host of the administration API
+          - admin.op.localhost
+          # and the identity provider of the SAML judge, whose site is this Caddy's, at the name its metadata give
+          - saml-idp.localhost
     depends_on:
       database:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
     tty: true
 
   # The worker of architecture §5.6, one in development: the transports of the buses, the lane of what the
-  # provider tells a third party (§4.9, the logout tokens) and the schedule of the bundle
-  # ("scheduler_heidi": the timed steps of the key lifecycle, §3.3). That lane is named first after the
+  # provider tells a third party (§4.9, the logout tokens) and the schedule of the provider
+  # ("scheduler_beffroi": the timed steps of the key lifecycle, §3.3). That lane is named first after the
   # schedule because a relying party learns of a logout while the certification suite waits for it, and
   # messenger:consume takes the transports in the order it is given them. One process consumes the
   # schedule; the buses could have more. Same image, no HTTP, restarted every hour by Messenger itself.
   worker:
     build:
       context: .
-      dockerfile: apps/op/Dockerfile
+      dockerfile: apps/beffroi/Dockerfile
       target: frankenphp_dev
     restart: unless-stopped
     # What this container needs from the machine around it before it consumes anything: the address of the
     # host, and the certificate of the conformance suite when the suite is up. Chained behind the
     # entrypoint of the image, which every container of it goes through.
     entrypoint: ["docker-entrypoint", "/bin/sh", "/entrypoint/entrypoint.sh"]
-    command: ["scheduler_heidi", "async_notifications", "async_priority_high", "async_priority_medium", "async_priority_low", "--time-limit=3600", "--memory-limit=256M"]
+    command: ["scheduler_beffroi", "async_notifications", "async_priority_high", "async_priority_medium", "async_priority_low", "--time-limit=3600", "--memory-limit=256M"]
     # The image checks Caddy; a worker is healthy while the consumer is its first process. The entrypoint
     # runs before that process replaces it, and waits for the certificate of the conformance suite when
     # the suite is starting beside it: the window is wide enough for that wait, or "up --wait" would call
-    # a worker that is still getting ready unhealthy.
+    # a worker that is still getting ready unhealthy. The consumer refuses to boot without the KMS that
+    # "castor provision" names, so on a stack not provisioned yet "castor start" creates this container and
+    # leaves it stopped, and "castor provision" starts it (issue #773).
     healthcheck:
       test: ["CMD-SHELL", "grep -q messenger:consume /proc/1/cmdline"]
       start_period: 90s
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-heidi}:${POSTGRES_PASSWORD:-heidi}@database:5432/${POSTGRES_DB:-heidi}?serverVersion=16&charset=utf8
-      MESSENGER_TRANSPORT_DSN: amqp://${RABBITMQ_USER:-heidi}:${RABBITMQ_PASSWORD:-heidi}@rabbitmq:5672/%2f/messages
+      DATABASE_URL: postgresql://${POSTGRES_USER:-beffroi}:${POSTGRES_PASSWORD:-beffroi}@database:5432/${POSTGRES_DB:-beffroi}?serverVersion=16&charset=utf8
       XDEBUG_MODE: ${XDEBUG_MODE:-off}
       APP_PROFILER: 0
       CONFORMANCE_ACCESS_TOKEN_FORMAT: ${CONFORMANCE_ACCESS_TOKEN_FORMAT:-jwt}
-    # The worker is what carries a logout token to a client (Back-Channel Logout 1.0 §2.5), so it is
-    # the one process of the stack that calls out to an application of the host. "localhost" is the
-    # container itself from in here, so the second instance of oidc-demo is registered under a name
-    # of its own, which resolves to the host ("castor demo --logout-others").
+      CONFORMANCE_NGINX_HOST: ${CONFORMANCE_NGINX_HOST:-}
+    # The worker is what calls a client back: a logout token (Back-Channel Logout 1.0 §2.5) and the
+    # notification that a backchannel request has been answered (CIBA Core §10.2). It is therefore the
+    # one process of the stack that calls out to an application of the host. "localhost" is the
+    # container itself from in here, so a client the worker has to reach is registered under a name of
+    # its own, which resolves to the host: the second instance of oidc-demo ("castor demo
+    # --logout-others") and the listener of the ping client ("castor demo --ciba").
     extra_hosts:
       - "demo.localhost:host-gateway"
     volumes:
       - ./docker/worker/entrypoint.sh:/entrypoint/entrypoint.sh:ro
-      - ./apps/op:/app
+      - ./docker/conformance/trust-nginx.sh:/entrypoint/trust-nginx.sh:ro
+      - ./apps/beffroi:/app
       - ./src:/src
       - /app/var/
+      - ./var/saml-sp/metadata:/saml-sp:ro
+      - ./var/saml-idp/metadata:/saml-idp-metadata:ro
       - keys_data:/app/var/keys
       - kms_data:/app/var/kms
+      - geoip_data:/app/var/geoip
     depends_on:
       op:
         condition: service_healthy
       database:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
 
   # HashiCorp Vault, the KMS of the spike (architecture §3.3): its Transit engine wraps the data key of every
   # envelope, the private JWK never reaches it. Dev mode, in memory: a restart loses the key of the tenant
   # and every token, and the envelopes sealed before it cannot be opened again. The container runs
   # docker/vault/init.sh against its own server on every start, idempotent: Transit enabled, the key of the
-  # tenant heidi-<slug> (derived, not exportable, without plaintext backup), the policy of the OP
-  # (docker/vault/heidi-op.hcl); it is healthy once the key exists. The root token stays here, for the
+  # tenant beffroi-<slug> (derived, not exportable, without plaintext backup), the policy of the OP
+  # (docker/vault/beffroi-op.hcl); it is healthy once the key exists. The root token stays here, for the
   # script and for "castor provision --kms vault", which mints the token of the OP under that policy.
   # (A separate one-shot init service would make "docker compose up --wait" fail the moment it exits.)
   vault:
@@ -149,11 +224,11 @@ services:
       VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
       VAULT_ADDR: http://127.0.0.1:8200
       VAULT_TOKEN: ${VAULT_ROOT_TOKEN:-dev-root-token}
-      HEIDI_TENANT_SLUG: ${HEIDI_TENANT_SLUG:-default}
+      BEFFROI_TENANT_SLUG: ${BEFFROI_TENANT_SLUG:-default}
     entrypoint: ["/bin/sh", "-c"]
     command: ["docker-entrypoint.sh server -dev & pid=$$!; trap 'kill $$pid' TERM INT; /init/init.sh; wait $$pid"]
     healthcheck:
-      test: ["CMD", "vault", "read", "transit/keys/heidi-${HEIDI_TENANT_SLUG:-default}"]
+      test: ["CMD", "vault", "read", "transit/keys/beffroi-${BEFFROI_TENANT_SLUG:-default}"]
       interval: 3s
       timeout: 5s
       retries: 20
@@ -172,7 +247,7 @@ services:
   # image is the bare binary. Storage is left at its default (memory, FLOCI_STORAGE_MODE): a restart loses the
   # key, and the envelopes sealed before it cannot be opened again, which "castor provision" notices. Floci
   # runs docker/floci/init.sh once its API answers, at every start, idempotent: the key of the tenant
-  # (SYMMETRIC_DEFAULT, ENCRYPT_DECRYPT) under the alias heidi-<slug>, which the DSN names; healthy once the
+  # (SYMMETRIC_DEFAULT, ENCRYPT_DECRYPT) under the alias beffroi-<slug>, which the DSN names; healthy once the
   # alias resolves. A hook that fails stops Floci, where LocalStack only logged, so the container is never up
   # without its key. Any credentials are accepted, the "test" pair here: Floci stores key policies and grants
   # but evaluates neither on a cryptographic call, so what the key policy of a real account refuses is
@@ -181,13 +256,13 @@ services:
     image: floci/floci:${FLOCI_VERSION:-2.1.0}-compat
     profiles: [aws]
     environment:
-      HEIDI_TENANT_SLUG: ${HEIDI_TENANT_SLUG:-default}
+      BEFFROI_TENANT_SLUG: ${BEFFROI_TENANT_SLUG:-default}
       # The region of the DSN "castor provision --kms aws" writes: the one the init hook and the healthcheck
       # name, and the one Floci puts in the ARNs it hands back (its own default is us-east-1).
       KMS_REGION: ${KMS_REGION:-eu-west-3}
       FLOCI_DEFAULT_REGION: ${KMS_REGION:-eu-west-3}
     healthcheck:
-      test: ["CMD-SHELL", "aws --endpoint-url http://localhost:4566 kms describe-key --region ${KMS_REGION:-eu-west-3} --key-id alias/heidi-${HEIDI_TENANT_SLUG:-default} >/dev/null"]
+      test: ["CMD-SHELL", "aws --endpoint-url http://localhost:4566 kms describe-key --region ${KMS_REGION:-eu-west-3} --key-id alias/beffroi-${BEFFROI_TENANT_SLUG:-default} >/dev/null"]
       interval: 3s
       timeout: 10s
       retries: 30
@@ -199,35 +274,87 @@ services:
     volumes:
       - ./docker/floci:/etc/floci/init/ready.d:ro
 
+  # The SAML judge (issue #732, sub-spike 9c): SimpleSAMLphp 2.5.3.1, the service provider of 9b, on
+  # https://saml-sp.localhost through the Caddy of op (docker/saml-sp/saml-sp.Caddyfile). The image is the one the
+  # judges of saml2-bindings build, its slim release archive pinned by the SHA-256 the release publishes; what
+  # makes it this service provider is mounted. It reads the metadata of the provider at https://op.localhost/saml/metadata
+  # through the alias of op, verified against the root of the internal CA of Caddy, and holds its own key and
+  # certificate: all three are files "castor saml-sp" puts in var/saml-sp/ (the root certificate is copied out of op,
+  # the volume of Caddy being mounted nowhere else than in op: its directories hold the private key of that CA).
+  saml-sp:
+    build:
+      context: tests/saml2-bindings/Interop/simplesamlphp/installation
+    image: beffroi-saml-sp:2.5.3.1
+    profiles: [saml-sp]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -o /dev/null http://localhost/simplesaml/module.php/saml/sp/metadata/beffroi || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    # The private key of the service provider is 0600 under var/saml-sp/ ("castor saml-sp"), its owner's alone on the
+    # machine. Root of the container reads it there whatever uid owns it, as root of a container does on Linux, under
+    # rootless Docker and through Docker Desktop alike, and gives www-data, the user Apache serves as, a copy of its
+    # own that exists in this container only (docker/saml-sp/config/authsources.php).
+    command: ["sh", "-c", "install -d -o root -g www-data -m 0750 /run/saml-sp && install -o www-data -g www-data -m 0400 /saml-sp/sp.pem /run/saml-sp/sp.pem && exec apache2-foreground"]
+    volumes:
+      - ./docker/saml-sp/config:/var/simplesamlphp/config:ro
+      - ./docker/saml-sp/metadata:/var/simplesamlphp/metadata:ro
+      - ./docker/saml-sp/status.php:/var/simplesamlphp/public/status.php:ro
+      - ./docker/saml-sp/https-behind-caddy.conf:/etc/apache2/conf-enabled/https-behind-caddy.conf:ro
+      - ./var/saml-sp:/saml-sp:ro
+
+  # The upstream identity provider of the SAML judge (issue #788, sub-spike 9d): SimpleSAMLphp 2.5.3.1 again, from the
+  # same pinned image as the service provider above, on https://saml-idp.localhost through the Caddy of op
+  # (docker/saml-idp/saml-idp.Caddyfile). What makes it this identity provider is mounted (docker/saml-idp/): two people,
+  # a persistent NameID, its responses, assertions and metadata signed. It holds its own key and certificate and reads
+  # the metadata of the service provider of the stack at https://op.localhost/saml/sp/metadata/{identity provider}
+  # through the alias of op, verified against the root of the certificate of the stack: all three are files "castor
+  # saml-idp" puts in var/saml-idp/.
+  saml-idp:
+    build:
+      context: tests/saml2-bindings/Interop/simplesamlphp/installation
+    image: beffroi-saml-idp:2.5.3.1
+    profiles: [saml-idp]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -o /dev/null http://localhost/simplesaml/module.php/saml/idp/metadata || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    # The private key of the identity provider is 0600 under var/saml-idp/ ("castor saml-idp"), its owner's alone on the
+    # machine; root of the container gives www-data a copy of its own, as the service provider above does.
+    command: ["sh", "-c", "install -d -o root -g www-data -m 0750 /run/saml-idp && install -o www-data -g www-data -m 0400 /saml-idp/idp.pem /run/saml-idp/idp.pem && exec apache2-foreground"]
+    volumes:
+      - ./docker/saml-idp/config:/var/simplesamlphp/config:ro
+      - ./docker/saml-idp/metadata:/var/simplesamlphp/metadata:ro
+      - ./docker/saml-sp/https-behind-caddy.conf:/etc/apache2/conf-enabled/https-behind-caddy.conf:ro
+      - ./var/saml-idp:/saml-idp:ro
+
   database:
     image: postgres:${POSTGRES_VERSION:-16}-alpine
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-heidi}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-heidi}
-      POSTGRES_USER: ${POSTGRES_USER:-heidi}
+      POSTGRES_DB: ${POSTGRES_DB:-beffroi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-beffroi}
+      POSTGRES_USER: ${POSTGRES_USER:-beffroi}
     healthcheck:
-      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-heidi}", "-U", "${POSTGRES_USER:-heidi}"]
+      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-beffroi}", "-U", "${POSTGRES_USER:-beffroi}"]
       timeout: 5s
       retries: 5
       start_period: 60s
+    # Published on the loopback interface alone, for the suite of the application ("castor app-phpunit",
+    # issue #521): that task runs in the QA image and is given the network of this machine, so what it
+    # reaches here is this port, and on a runner it reads the service container beside the job at the name
+    # that workflow sets DATABASE_URL to (.github/workflows/application.yml). It writes the database the
+    # test environment of the application names, "<name>_test", and never the one this server serves to
+    # the stack.
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - database_data:/var/lib/postgresql/data:rw
-
-  rabbitmq:
-    image: rabbitmq:${RABBITMQ_VERSION:-4}-management-alpine
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-heidi}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-heidi}
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-    ports:
-      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
 
   # OpenID Foundation conformance suite, prebuilt images from gitlab.com/openid/conformance-suite.
   # Test plan for spike 1: oidcc-basic-certification-test-plan (tests/conformance/).
@@ -243,7 +370,7 @@ services:
       - conformance_mongo:/data/db
 
   conformance-server:
-    image: registry.gitlab.com/openid/conformance-suite:${CONFORMANCE_SUITE_VERSION:-release-v5.2.1}
+    image: registry.gitlab.com/openid/conformance-suite:${CONFORMANCE_SUITE_VERSION:-release-v5.3.3}
     profiles: [conformance]
     # Same environment as the official docker-compose-prebuilt.yml: the dev Spring profile needs no
     # login, but the OAuth registrations must be non-empty for the context to start.
@@ -257,6 +384,10 @@ services:
       OIDC_GOOGLE_SECRET: google-secret
       OIDC_GITLAB_CLIENTID: gitlab-client
       OIDC_GITLAB_SECRET: gitlab-secret
+      # Read by nothing in the container, as on the op container: the suite imports the root of what the OP
+      # serves once, at start, so a stack that changes certificate, or goes from mkcert to the internal CA of
+      # Caddy, creates the suite again too.
+      BEFFROI_STACK_CERTIFICATE_FINGERPRINT: ${BEFFROI_STACK_CERTIFICATE_FINGERPRINT:-}
     entrypoint: ["/bin/sh", "/entrypoint/server-entrypoint.sh"]
     volumes:
       - ./tests/conformance/server-entrypoint.sh:/entrypoint/server-entrypoint.sh:ro
@@ -276,7 +407,7 @@ services:
         max-file: "5"
 
   conformance-nginx:
-    image: registry.gitlab.com/openid/conformance-suite/nginx:${CONFORMANCE_NGINX_VERSION:-release-v5.2.0}
+    image: registry.gitlab.com/openid/conformance-suite/nginx:${CONFORMANCE_NGINX_VERSION:-release-v5.3.3}
     profiles: [conformance]
     ports:
       - "8443:8443"
@@ -312,11 +443,49 @@ services:
       - worker
       - conformance-nginx
 
+  # The document behind a "sector_identifier_uri" is read by the registration endpoint, in the op container
+  # (OIDC Registration §5, issue #363), and the two modules of the Dynamic plan that judge it serve that
+  # document from the suite itself, at an address naming localhost:8443. Inside the op container that is
+  # the op container. This sidecar shares its network namespace and forwards that loopback port to nginx,
+  # as the two above do for the scripted browser and for the worker. What answers there is the self-signed
+  # certificate of nginx, which the entrypoint of the op container fetches and trusts
+  # (docker/conformance/trust-nginx.sh).
+  conformance-op-redirector:
+    image: alpine/socat:${CONFORMANCE_SOCAT_VERSION:-1.8.0.3}
+    profiles: [conformance]
+    network_mode: "service:op"
+    command: TCP-LISTEN:8443,fork,reuseaddr,bind=127.0.0.1 TCP:conformance-nginx:8443
+    depends_on:
+      - op
+      - conformance-nginx
+
+  # The browser that captures the pages of the OP the modules of the suite ask for, driven by "castor
+  # conformance" (tests/conformance/browser/capture.mjs). Chromium sends every *.localhost name to the
+  # loopback address whatever the DNS says, and in this container that is the container: its resolver
+  # rules send op.localhost to the OP and localhost to the suite's nginx, the URLs keeping their names.
+  conformance-browser:
+    build:
+      context: ./tests/conformance/browser
+    profiles: [conformance]
+    init: true
+    command: ["sleep", "infinity"]
+    environment:
+      CONFORMANCE_BROWSER_RESOLVER_RULES: "MAP op.localhost op, MAP localhost conformance-nginx"
+      CONFORMANCE_SUITE_API: https://conformance-nginx:8443
+      HOME: /tmp
+    volumes:
+      - ./tests/conformance/browser:/browser/driver:ro
+      # Created by "castor start", or Docker creates it as root and the captures cannot be written.
+      - ./var/conformance/captures:/captures
+    depends_on:
+      - op
+      - conformance-nginx
+
 volumes:
   keys_data:
   kms_data:
+  geoip_data:
   caddy_data:
-  rabbitmq_data:
   caddy_config:
   database_data:
   conformance_mongo:

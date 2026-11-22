@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Interaction;
+namespace Beffroi\Oidc\Domain\Interaction;
 
 /**
- * Why the user has to authenticate (OIDC Core §3.1.2.1); with prompt=none it becomes "login_required".
+ * OIDC Core §3.1.2.1
  */
 enum LoginRequirement: string
 {
@@ -16,14 +16,8 @@ enum LoginRequirement: string
      */
     case ReauthenticationRequested = 'reauthentication_requested';
 
-    /**
-     * prompt=select_account
-     */
     case AccountSelectionRequested = 'account_selection_requested';
 
-    /**
-     * max_age
-     */
     case MaxAgeExceeded = 'max_age_exceeded';
 
     /**
@@ -32,8 +26,8 @@ enum LoginRequirement: string
     case DifferentUser = 'different_user';
 
     /**
-     * acr_values, or the "acr" claim request, names classes the provider can prove and the session
-     * satisfies none (decision 0010): a step-up, one more proof on the same session
+     * acr_values or the "acr" claim request names classes the provider can prove and the session satisfies none
+     * (decision 0010)
      */
     case StrongerFactorRequired = 'stronger_factor_required';
 }

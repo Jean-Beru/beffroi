@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Application\Authorization;
+namespace Beffroi\Oidc\Application\Authorization;
 
 use function array_all;
 use function array_is_list;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Exception\InvalidJwsException;
-use Heidi\Core\Port\JwsVerifierInterface;
-use Heidi\Oidc\Domain\Authorization\IdTokenHint;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Exception\InvalidRequestException;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\InvalidJwsException;
+use Beffroi\Core\Port\JwsVerifierInterface;
+use Beffroi\Oidc\Domain\Authorization\IdTokenHint;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Exception\InvalidRequestException;
 use function is_array;
 use function is_string;
 use function json_decode;
@@ -22,10 +22,9 @@ use JsonException;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Reads an id_token_hint (OIDC Core §3.1.2.1, RP-Initiated Logout §2): signed by a published key of the
- * tenant, "iss" equal to the issuer, a valid "sub" and "sid". "exp" is not looked at, the hint may
- * describe a past session. verify() also checks "aud" for the authorization endpoint; the logout endpoint
- * calls read() and finds the client in "aud" itself.
+ * OIDC Core §3.1.2.1, RP-Initiated Logout §2
+ *
+ * "exp" is not checked: a hint may describe a past session.
  */
 final readonly class IdTokenHintVerifier
 {
@@ -44,12 +43,12 @@ final readonly class IdTokenHintVerifier
     }
 
     /**
-     * @throws InvalidRequestException always redirectable
+     * @throws InvalidRequestException
      */
     public function verify(Client $client, string $idTokenHint): Subject
     {
         $hint = $this->read($client->tenant, $idTokenHint, true);
-        if (! $hint->isFor($client->clientId)) {
+        if (! $hint->isFor($client->registration->clientId)) {
             throw new InvalidRequestException(self::NOT_FOR_CLIENT, true);
         }
 
@@ -96,8 +95,6 @@ final readonly class IdTokenHintVerifier
     }
 
     /**
-     * OIDC Core §2 "aud": a string or a list of strings.
-     *
      * @return list<string>
      */
     private static function audiences(mixed $aud): array
@@ -113,9 +110,6 @@ final readonly class IdTokenHintVerifier
         return [];
     }
 
-    /**
-     * An RFC 9562 UUID, as this provider writes it (architecture §4.6).
-     */
     private static function sessionId(mixed $sid, bool $redirectable): ?Uuid
     {
         if ($sid === null) {

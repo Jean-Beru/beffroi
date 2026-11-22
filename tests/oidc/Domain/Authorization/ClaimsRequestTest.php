@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Authorization;
+namespace Beffroi\Oidc\Tests\Domain\Authorization;
 
 use function array_keys;
-use Heidi\Oidc\Domain\Authorization\ClaimRequest;
-use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Domain\Authorization\ClaimRequest;
+use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
+use Beffroi\Oidc\Domain\Claims\ClaimNames;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -29,9 +30,67 @@ final class ClaimsRequestTest extends TestCase
         }
     }';
 
+    #[Test]
+    public function itSaysTheNamesItAsksForOnEachSide(): void
+    {
+        // When
+        $names = ClaimsRequest::fromJson(self::SPECIFICATION_EXAMPLE)->names();
+
+        // Then
+        static::assertSame(
+            [
+                'userinfo' => ['given_name', 'nickname', 'email', 'email_verified', 'picture', 'http://example.info/claims/groups'],
+                'id_token' => ['auth_time', 'acr'],
+            ],
+            $names,
+        );
+    }
+
+    #[Test]
+    public function aSideThatAsksForNothingNamesNothing(): void
+    {
+        // When / Then
+        static::assertSame(
+            [
+                'userinfo' => [],
+                'id_token' => [],
+            ],
+            new ClaimsRequest()->names(),
+        );
+    }
+
     /**
-     * OIDC Core §5.5, the example of the specification: the "userinfo" member, in order, with a claim
-     * that is null and essential claims.
+     * OIDC Core §5.5
+     */
+    #[Test]
+    public function itNamesTheClaimsOfBothMembersEachOnce(): void
+    {
+        // Given
+        $claims = ClaimsRequest::fromJson('{"userinfo": {"email": null, "name": null}, "id_token": {"name": null, "acr": {"essential": true}}}');
+
+        // When / Then
+        static::assertSame(['email', 'name', 'acr'], $claims->claimNames()->all);
+    }
+
+    /**
+     * OIDC Core §5.5.1
+     */
+    #[Test]
+    public function narrowedItAsksForTheNamedClaimsAloneAsTheyWereAsked(): void
+    {
+        // Given
+        $claims = ClaimsRequest::fromJson('{"userinfo": {"email": {"essential": true}, "phone_number": null}, "id_token": {"phone_number": null, "name": {"value": "Alice"}}}');
+
+        // When
+        $narrowed = $claims->narrowedTo(new ClaimNames(['email', 'name']));
+
+        // Then
+        static::assertEquals(['email' => new ClaimRequest(true)], $narrowed->userinfo);
+        static::assertEquals(['name' => new ClaimRequest(false, 'Alice')], $narrowed->idToken);
+    }
+
+    /**
+     * OIDC Core §5.5
      */
     #[Test]
     public function itReadsTheUserinfoMemberOfTheExampleOfTheSpecification(): void
@@ -40,7 +99,10 @@ final class ClaimsRequestTest extends TestCase
         $claims = ClaimsRequest::fromJson(self::SPECIFICATION_EXAMPLE);
 
         // Then
-        static::assertSame(['given_name', 'nickname', 'email', 'email_verified', 'picture', 'http://example.info/claims/groups'], array_keys($claims->userinfo));
+        static::assertSame(
+            ['given_name', 'nickname', 'email', 'email_verified', 'picture', 'http://example.info/claims/groups'],
+            array_keys($claims->userinfo),
+        );
         static::assertEquals(new ClaimRequest(true), $claims->userinfo['given_name']);
         static::assertEquals(new ClaimRequest(), $claims->userinfo['nickname']);
         static::assertFalse($claims->userinfo['nickname']->essential);
@@ -48,7 +110,7 @@ final class ClaimsRequestTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5, the example of the specification: the "id_token" member, with a claim with a set of values.
+     * OIDC Core §5.5
      */
     #[Test]
     public function itReadsTheIdTokenMemberOfTheExampleOfTheSpecification(): void
@@ -62,8 +124,7 @@ final class ClaimsRequestTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5.1: "value" requests a particular value; it is a JSON scalar kept as sent, so a
-     * boolean stays a boolean and a number stays a number.
+     * OIDC Core §5.5.1
      */
     #[Test]
     public function itKeepsTheRequestedValueAsSent(): void
@@ -78,7 +139,7 @@ final class ClaimsRequestTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5: members that are not understood are ignored.
+     * OIDC Core §5.5
      */
     #[Test]
     public function itIgnoresWhatItDoesNotUnderstand(): void
@@ -92,7 +153,7 @@ final class ClaimsRequestTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5: an empty object or an absent member asks for nothing.
+     * OIDC Core §5.5
      */
     #[Test]
     #[DataProvider('provideRequestsAskingForNothing')]
@@ -129,8 +190,7 @@ final class ClaimsRequestTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5 and §5.5.1: a member that is understood but malformed is refused, and "essential" is
-     * a JSON boolean, never a string that looks like one.
+     * OIDC Core §5.5, §5.5.1
      */
     #[Test]
     #[DataProvider('provideMalformedRequests')]
@@ -167,5 +227,93 @@ final class ClaimsRequestTest extends TestCase
         yield 'values is an object' => ['{"id_token": {"acr": {"values": {"a": "b"}}}}', '"values" member'];
         yield 'values holds an object (deeper than a claims request)' => ['{"id_token": {"acr": {"values": [{"a": "b"}]}}}', 'not valid JSON'];
         yield 'values holds null' => ['{"id_token": {"acr": {"values": [null]}}}', '"values" member'];
+    }
+
+    /**
+     * OIDC Core §5.5
+     *
+     * @param array<string, mixed> $document
+     */
+    #[Test]
+    #[DataProvider('provideDocuments')]
+    public function itWritesTheDocumentAColumnHoldsItAs(ClaimsRequest $claims, array $document): void
+    {
+        // When / Then
+        static::assertSame($document, $claims->toDocument());
+    }
+
+    /**
+     * @param array<string, mixed> $document
+     */
+    #[Test]
+    #[DataProvider('provideDocuments')]
+    public function itComesBackOutOfItsDocument(ClaimsRequest $claims, array $document): void
+    {
+        // When / Then
+        static::assertEquals($claims, ClaimsRequest::fromDocument($document));
+    }
+
+    /**
+     * @return iterable<string, array{ClaimsRequest, array<string, mixed>}>
+     */
+    public static function provideDocuments(): iterable
+    {
+        yield 'a request of both members' => [
+            new ClaimsRequest([
+                'email' => new ClaimRequest(true),
+                'name' => new ClaimRequest(),
+            ], [
+                'acr' => new ClaimRequest(false, null, ['silver', 'gold']),
+                'auth_time' => new ClaimRequest(true, 1789000000),
+            ]),
+            [
+                'userinfo' => [
+                    'email' => [
+                        'essential' => true,
+                    ],
+                    'name' => null,
+                ],
+                'id_token' => [
+                    'acr' => [
+                        'values' => ['silver', 'gold'],
+                    ],
+                    'auth_time' => [
+                        'essential' => true,
+                        'value' => 1789000000,
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    #[Test]
+    public function aMemberThatAsksForNothingIsWrittenAsAnObject(): void
+    {
+        // When / Then
+        static::assertEquals((object) [], new ClaimsRequest()->toDocument()['userinfo']);
+    }
+
+    #[Test]
+    public function aDocumentThatAsksForNothingComesBackAsARequestThatAsksForNothing(): void
+    {
+        // When
+        $claims = ClaimsRequest::fromDocument([
+            'userinfo' => [],
+            'id_token' => [],
+        ]);
+
+        // Then
+        static::assertTrue($claims->isEmpty());
+    }
+
+    #[Test]
+    public function aDocumentThatIsAListIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The claims request must be a JSON object (OIDC Core §5.5).');
+
+        // When
+        ClaimsRequest::fromDocument([1]);
     }
 }

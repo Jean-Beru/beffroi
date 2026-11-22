@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Discovery;
+namespace Beffroi\Oidc\Domain\Discovery;
 
-use Heidi\Core\Domain\Tenant\Issuer;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use function is_string;
 use function parse_url;
 use function sprintf;
 use function strtolower;
 
 /**
- * The endpoints a tenant announces (OIDC Discovery §3, RP-Initiated Logout §2.1, RFC 8414 §2): absolute,
- * no fragment, no credentials, HTTPS with plain HTTP on a loopback host only. The token, introspection and
- * revocation endpoints have no exception (RFC 6749 §3.2, RFC 7662 §2.1, RFC 7009 §2).
+ * OIDC Discovery §3, RFC 8414 §2
+ *
+ * Only an endpoint a browser reaches may be plain HTTP on a loopback host; one a client calls never is.
  */
 final readonly class ProviderEndpoints
 {
@@ -32,8 +32,33 @@ final readonly class ProviderEndpoints
 
     public string $revocation;
 
-    public function __construct(string $authorization, string $token, string $userinfo, string $jwks, string $endSession, string $introspection, string $revocation)
-    {
+    public string $pushedAuthorizationRequest;
+
+    public string $deviceAuthorization;
+
+    public string $deviceVerification;
+
+    public string $backchannelAuthentication;
+
+    public string $backchannelApproval;
+
+    public string $clientRegistration;
+
+    public function __construct(
+        string $authorization,
+        string $token,
+        string $userinfo,
+        string $jwks,
+        string $endSession,
+        string $introspection,
+        string $revocation,
+        string $pushedAuthorizationRequest,
+        string $deviceAuthorization,
+        string $deviceVerification,
+        string $backchannelAuthentication,
+        string $backchannelApproval,
+        string $clientRegistration,
+    ) {
         $this->authorization = self::secureUrl('authorization', $authorization, true);
         $this->token = self::secureUrl('token', $token, false);
         $this->userinfo = self::secureUrl('userinfo', $userinfo, true);
@@ -41,6 +66,12 @@ final readonly class ProviderEndpoints
         $this->endSession = self::secureUrl('end session', $endSession, true);
         $this->introspection = self::secureUrl('introspection', $introspection, false);
         $this->revocation = self::secureUrl('revocation', $revocation, false);
+        $this->pushedAuthorizationRequest = self::secureUrl('pushed authorization request', $pushedAuthorizationRequest, false);
+        $this->deviceAuthorization = self::secureUrl('device authorization', $deviceAuthorization, false);
+        $this->deviceVerification = self::secureUrl('device verification', $deviceVerification, true);
+        $this->backchannelAuthentication = self::secureUrl('backchannel authentication', $backchannelAuthentication, false);
+        $this->backchannelApproval = self::secureUrl('backchannel approval', $backchannelApproval, true);
+        $this->clientRegistration = self::secureUrl('client registration', $clientRegistration, false);
     }
 
     private static function secureUrl(string $name, string $url, bool $loopbackInClear): string
@@ -63,8 +94,14 @@ final readonly class ProviderEndpoints
             return $url;
         }
 
-        throw new InvalidArgumentException($loopbackInClear
-            ? sprintf('The %s endpoint "%s" must use HTTPS; plain HTTP is only accepted on a loopback host.', $name, $url)
-            : sprintf('The %s endpoint "%s" must use HTTPS (RFC 6749 section 3.2), on a loopback host too.', $name, $url));
+        throw new InvalidArgumentException(
+            $loopbackInClear
+                ? sprintf('The %s endpoint "%s" must use HTTPS; plain HTTP is only accepted on a loopback host.', $name, $url)
+                : sprintf(
+                    'The %s endpoint "%s" must use HTTPS (RFC 6749 section 3.2, RFC 9126 section 2, RFC 8628 section 3.1, CIBA Core section 7), on a loopback host too.',
+                    $name,
+                    $url,
+                ),
+        );
     }
 }

@@ -2,12 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Authorization;
+namespace Beffroi\Oidc\Domain\Authorization;
 
+use function array_filter;
 use function array_is_list;
 use function array_key_exists;
+use function array_keys;
+use const ARRAY_FILTER_USE_KEY;
 use function count;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Domain\Claims\ClaimNames;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use function is_array;
 use function is_bool;
 use function is_float;
@@ -19,7 +23,7 @@ use JsonException;
 use function sprintf;
 
 /**
- * The "claims" parameter (OIDC Core §5.5): an unknown member is ignored, a malformed one refused.
+ * OIDC Core §5.5
  */
 final readonly class ClaimsRequest
 {
@@ -41,7 +45,7 @@ final readonly class ClaimsRequest
     /**
      * An empty object decodes as an empty list and asks for nothing.
      *
-     * @throws InvalidArgumentException when the JSON is not a claims request
+     * @throws InvalidArgumentException
      */
     public static function fromJson(string $json): self
     {
@@ -50,16 +54,95 @@ final readonly class ClaimsRequest
         } catch (JsonException $exception) {
             throw new InvalidArgumentException('The claims request is not valid JSON.', previous: $exception);
         }
-        if (! is_array($decoded) || ($decoded !== [] && array_is_list($decoded))) {
+        if (! is_array($decoded)) {
             throw new InvalidArgumentException('The claims request must be a JSON object (OIDC Core §5.5).');
         }
 
-        return new self(self::member($decoded, 'userinfo'), self::member($decoded, 'id_token'));
+        return self::fromDocument($decoded);
+    }
+
+    /**
+     * An empty member is written as an object: an empty PHP array would be written as a JSON list.
+     *
+     * @return array<string, array<string, array<string, mixed>|null>|object>
+     */
+    public function toDocument(): array
+    {
+        return [
+            'userinfo' => self::asked($this->userinfo),
+            'id_token' => self::asked($this->idToken),
+        ];
+    }
+
+    /**
+     * @param array<array-key, mixed> $document
+     *
+     * @throws InvalidArgumentException
+     */
+    public static function fromDocument(array $document): self
+    {
+        if ($document !== [] && array_is_list($document)) {
+            throw new InvalidArgumentException('The claims request must be a JSON object (OIDC Core §5.5).');
+        }
+
+        return new self(self::member($document, 'userinfo'), self::member($document, 'id_token'));
     }
 
     public function isEmpty(): bool
     {
         return $this->userinfo === [] && $this->idToken === [];
+    }
+
+    /**
+     * @return array{userinfo: list<string>, id_token: list<string>}
+     */
+    public function names(): array
+    {
+        return [
+            'userinfo' => array_keys($this->userinfo),
+            'id_token' => array_keys($this->idToken),
+        ];
+    }
+
+    public function claimNames(): ClaimNames
+    {
+        return new ClaimNames([...array_keys($this->userinfo), ...array_keys($this->idToken)]);
+    }
+
+    public function narrowedTo(ClaimNames $names): self
+    {
+        return new self(
+            array_filter($this->userinfo, $names->has(...), ARRAY_FILTER_USE_KEY),
+            array_filter($this->idToken, $names->has(...), ARRAY_FILTER_USE_KEY),
+        );
+    }
+
+    /**
+     * @param array<string, ClaimRequest> $claims
+     *
+     * @return array<string, array<string, mixed>|null>|object
+     */
+    private static function asked(array $claims): array|object
+    {
+        if ($claims === []) {
+            return (object) [];
+        }
+        $member = [];
+        foreach ($claims as $name => $claim) {
+            $request = [];
+            if ($claim->essential) {
+                $request['essential'] = true;
+            }
+            if ($claim->value !== null) {
+                $request['value'] = $claim->value;
+            }
+            if ($claim->values !== null) {
+                $request['values'] = $claim->values;
+            }
+            $member[$name] = $request === [] ? null : $request;
+        }
+
+        return $member;
     }
 
     /**
@@ -75,7 +158,7 @@ final readonly class ClaimsRequest
             return [];
         }
         $member = $decoded[$name];
-        if (! is_array($member) || ($member !== [] && array_is_list($member))) {
+        if (! is_array($member) || $member !== [] && array_is_list($member)) {
             throw new InvalidArgumentException(sprintf('The "%s" member of a claims request must be a JSON object (OIDC Core §5.5).', $name));
         }
         $claims = [];
@@ -94,26 +177,42 @@ final readonly class ClaimsRequest
         if ($request === null) {
             return new ClaimRequest();
         }
-        if (! is_array($request) || ($request !== [] && array_is_list($request))) {
+        if (! is_array($request) || $request !== [] && array_is_list($request)) {
             throw new InvalidArgumentException(sprintf('The claim "%s" in "%s" must be null or a JSON object (OIDC Core §5.5.1).', $claim, $member));
         }
         $essential = $request['essential'] ?? false;
         if (! is_bool($essential)) {
-            throw new InvalidArgumentException(sprintf('The "essential" member of the claim "%s" in "%s" must be a JSON boolean (OIDC Core §5.5.1).', $claim, $member));
+            throw new InvalidArgumentException(sprintf(
+                'The "essential" member of the claim "%s" in "%s" must be a JSON boolean (OIDC Core §5.5.1).',
+                $claim,
+                $member,
+            ));
         }
         $value = $request['value'] ?? null;
         if ($value !== null && ! self::isScalar($value)) {
-            throw new InvalidArgumentException(sprintf('The "value" member of the claim "%s" in "%s" must be a JSON string, number or boolean (OIDC Core §5.5.1).', $claim, $member));
+            throw new InvalidArgumentException(sprintf(
+                'The "value" member of the claim "%s" in "%s" must be a JSON string, number or boolean (OIDC Core §5.5.1).',
+                $claim,
+                $member,
+            ));
         }
         $values = null;
         if (($request['values'] ?? null) !== null) {
             if (! is_array($request['values']) || ! array_is_list($request['values']) || count($request['values']) === 0) {
-                throw new InvalidArgumentException(sprintf('The "values" member of the claim "%s" in "%s" must be a non-empty JSON array (OIDC Core §5.5.1).', $claim, $member));
+                throw new InvalidArgumentException(sprintf(
+                    'The "values" member of the claim "%s" in "%s" must be a non-empty JSON array (OIDC Core §5.5.1).',
+                    $claim,
+                    $member,
+                ));
             }
             $values = [];
             foreach ($request['values'] as $candidate) {
                 if (! self::isScalar($candidate)) {
-                    throw new InvalidArgumentException(sprintf('The "values" member of the claim "%s" in "%s" must list JSON strings, numbers or booleans (OIDC Core §5.5.1).', $claim, $member));
+                    throw new InvalidArgumentException(sprintf(
+                        'The "values" member of the claim "%s" in "%s" must list JSON strings, numbers or booleans (OIDC Core §5.5.1).',
+                        $claim,
+                        $member,
+                    ));
                 }
                 $values[] = $candidate;
             }

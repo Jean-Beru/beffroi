@@ -2,18 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use DateTimeImmutable;
-use Heidi\Bundle\Http\TotpProvisioningStore;
-use Heidi\Core\Domain\Credential\TotpCredential;
-use Heidi\Core\Domain\Credential\TotpSecret;
-use Heidi\Core\Domain\Event\CredentialEnrolled;
-use Heidi\Core\Domain\Event\CredentialRevoked;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\TotpAlgorithmInterface;
-use Heidi\Core\Port\UserRepositoryInterface;
+use App\Http\TotpProvisioningStore;
+use Beffroi\Core\Domain\Credential\TotpCredential;
+use Beffroi\Core\Domain\Credential\TotpSecret;
+use Beffroi\Core\Domain\Event\CredentialEnrolled;
+use Beffroi\Core\Domain\Event\CredentialRevoked;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\TotpAlgorithmInterface;
+use Beffroi\Core\Port\UserRepositoryInterface;
+use function array_unique;
 use function intdiv;
 use ParagonIE\ConstantTime\Base32;
 use PHPUnit\Framework\Attributes\Test;
@@ -24,10 +25,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 /**
- * The page of the second factor of the signed-in user (architecture §5.2): the enrolment of an
- * authenticator app by QR code through the enrolment of the core, the backup codes shown once, the
- * revocation, and what a login does with it. The authenticator app is the algorithm of the kernel, fed
- * with the key the page shows.
+ * Architecture §5.2
  */
 final class AccountTwoFactorTest extends PasskeyTestCase
 {
@@ -64,10 +62,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         static::assertCount(0, $crawler->filter('form[data-two-factor="revoke"]'));
     }
 
-    /**
-     * The enrolment page: the QR code drawn by the bundle as an SVG embedded in the page, the key for a
-     * manual entry, the form of the first code; nothing in the rows yet.
-     */
     #[Test]
     public function beginningShowsTheQrCodeTheKeyAndTheCodeForm(): void
     {
@@ -92,8 +86,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
     }
 
     /**
-     * Architecture §3.3, §5.2: what the session store keeps of an enrolment in progress is sealed by the
-     * KMS; neither the secret nor its base32 is in it.
+     * Architecture §3.3, §5.2
      */
     #[Test]
     public function theProvisioningIsSealedInTheHttpSession(): void
@@ -104,8 +97,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         $key = str_replace(' ', '', self::keyOf($crawler));
 
         // When
-        $stored = $this->readHttpSession()
-            ->get(TotpProvisioningStore::KEY);
+        $stored = $this->readHttpSession()->get(TotpProvisioningStore::KEY);
 
         // Then
         static::assertIsArray($stored);
@@ -127,18 +119,13 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         $crawler = $this->submitFirstCode('000000');
 
         // Then
-        $response = $this->browser->getResponse();
-        static::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
+        static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
         static::assertSame('refused', $crawler->filter('p[data-error]')->attr('data-error'));
         static::assertSame($key, self::keyOf($crawler));
         static::assertSame([], self::totpsOf($alice));
         static::assertSame([], self::events(CredentialEnrolled::class));
     }
 
-    /**
-     * The acceptance of the issue: the first code verified before the credential exists, then the ten
-     * backup codes shown, this once.
-     */
     #[Test]
     public function theRightFirstCodeCreatesTheTotpAndShowsTheBackupCodes(): void
     {
@@ -154,7 +141,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
         static::assertCount(1, $crawler->filter('p[data-two-factor="enrolled"]'));
-        $codes = $crawler->filter('ul[data-two-factor="backup-codes"] li');
+        $codes = $crawler->filter('ol[data-two-factor="backup-codes"] li');
         static::assertCount(TotpCredential::BACKUP_CODES, $codes);
         static::assertMatchesRegularExpression('/^[A-Z2-7]{5}-[A-Z2-7]{5}$/', $codes->first()->text());
         $totps = self::totpsOf($alice);
@@ -176,15 +163,12 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         $crawler = $this->twoFactorPage();
 
         // Then
-        static::assertCount(0, $crawler->filter('ul[data-two-factor="backup-codes"]'));
+        static::assertCount(0, $crawler->filter('ol[data-two-factor="backup-codes"]'));
         static::assertCount(0, $crawler->filter('p[data-two-factor="none"]'));
         static::assertSame((string) TotpCredential::BACKUP_CODES, $crawler->filter('p[data-backup-codes-left]')->attr('data-backup-codes-left'));
         static::assertCount(1, $crawler->filter('form[data-two-factor="revoke"]'));
     }
 
-    /**
-     * The acceptance of the issue: an enrolment abandoned at the QR code leaves nothing.
-     */
     #[Test]
     public function anEnrolmentAbandonedAtTheQrCodeLeavesNothing(): void
     {
@@ -206,9 +190,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
     {
         // Given
         $this->signIn(self::user('alice'));
-        $token = $this->twoFactorPage()
-            ->filter('form[data-two-factor="begin"] input[name="_token"]')
-            ->attr('value');
+        $token = $this->twoFactorPage()->filter('form[data-two-factor="begin"] input[name="_token"]')->attr('value');
 
         // When
         $crawler = $this->browser->request('POST', '/account/two-factor', [
@@ -217,7 +199,11 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         ]);
 
         // Then
-        static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode(), 'The token of the begin form is not the token of the enrol form.');
+        static::assertSame(
+            Response::HTTP_FORBIDDEN,
+            $this->browser->getResponse()->getStatusCode(),
+            'The token of the begin form is not the token of the enrol form.',
+        );
         static::assertSame('invalid_csrf_token', $crawler->filter('p[data-error]')->attr('data-error'));
     }
 
@@ -226,47 +212,65 @@ final class AccountTwoFactorTest extends PasskeyTestCase
     {
         // Given
         $this->signIn(self::user('alice'));
-        $token = $this->begin()
-            ->filter('form[data-two-factor="enrol"] input[name="_token"]')
-            ->attr('value');
+        $token = $this->begin()->filter('form[data-two-factor="enrol"] input[name="_token"]')->attr('value');
         $this->httpSession(static function (SessionInterface $httpSession): void {
             $httpSession->remove(TotpProvisioningStore::KEY);
         });
 
         // When
-        $crawler = $this->browser->request('POST', '/account/two-factor', [
+        $this->browser->request('POST', '/account/two-factor', [
             '_token' => $token,
             'code' => '000000',
         ]);
 
         // Then
-        static::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $this->browser->getResponse()->getStatusCode());
-        static::assertSame('no_provisioning', $crawler->filter('p[data-error]')->attr('data-error'));
+        static::assertSame('no_provisioning', $this->afterTheForm()->filter('p[data-error]')->attr('data-error'));
     }
 
-    /**
-     * The form that begins is gone from the page once an app is active; posted anyway, with the token
-     * the page gave before, it is refused.
-     */
     #[Test]
     public function aSecondAppIsRefusedWhileOneIsActive(): void
     {
         // Given
         $this->signIn(self::user('alice'));
-        $token = $this->twoFactorPage()
-            ->filter('form[data-two-factor="begin"] input[name="_token"]')
-            ->attr('value');
+        $token = $this->twoFactorPage()->filter('form[data-two-factor="begin"] input[name="_token"]')->attr('value');
         $secret = self::secretOf($this->begin());
         $this->submitFirstCode(self::codeOf($secret, new DateTimeImmutable()));
 
         // When
-        $crawler = $this->browser->request('POST', '/account/two-factor/begin', [
+        $this->browser->request('POST', '/account/two-factor/begin', [
             '_token' => $token,
         ]);
 
         // Then
-        static::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $this->browser->getResponse()->getStatusCode());
-        static::assertSame('already_enrolled', $crawler->filter('p[data-error]')->attr('data-error'));
+        static::assertSame('already_enrolled', $this->afterTheForm()->filter('p[data-error]')->attr('data-error'));
+    }
+
+    #[Test]
+    public function theEnrolmentInProgressIsAPageThatCanBeReadAgain(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        $key = self::keyOf($this->begin());
+
+        // When
+        $again = $this->browser->request('GET', '/account/two-factor/enrol');
+
+        // Then
+        static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
+        static::assertSame($key, self::keyOf($again));
+    }
+
+    #[Test]
+    public function theEnrolmentPageWithNothingDrawnSendsBackSayingSo(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $this->browser->request('GET', '/account/two-factor/enrol');
+
+        // Then
+        static::assertSame('no_provisioning', $this->afterTheForm()->filter('p[data-error]')->attr('data-error'));
     }
 
     #[Test]
@@ -286,7 +290,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
     }
 
     /**
-     * Architecture §5.2: the app is removed from the page; the row stays, revoked, and is announced.
+     * Architecture §5.2
      */
     #[Test]
     public function theAppIsRemovedFromThePage(): void
@@ -302,7 +306,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
 
         // Then
         $response = $this->browser->getResponse();
-        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        static::assertSame(Response::HTTP_SEE_OTHER, $response->getStatusCode());
         static::assertSame('/account/two-factor', $response->headers->get('Location'));
         $totps = self::totpsOf($alice);
         static::assertCount(1, $totps);
@@ -311,9 +315,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         static::assertCount(1, $this->twoFactorPage()->filter('p[data-two-factor="none"]'));
     }
 
-    /**
-     * Removed once, the app is not there to be removed again: the row stays revoked.
-     */
     #[Test]
     public function thereIsNothingToRemoveOnceTheAppIsRemoved(): void
     {
@@ -322,9 +323,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         $this->signIn($alice);
         $secret = self::secretOf($this->begin());
         $this->submitFirstCode(self::codeOf($secret, new DateTimeImmutable()));
-        $token = $this->twoFactorPage()
-            ->filter('form[data-two-factor="revoke"] input[name="_token"]')
-            ->attr('value');
+        $token = $this->twoFactorPage()->filter('form[data-two-factor="revoke"] input[name="_token"]')->attr('value');
         $this->revoke();
 
         // When
@@ -337,10 +336,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         static::assertCount(1, self::totpsOf($alice));
     }
 
-    /**
-     * End to end: the app set up on the page is what the login asks for, and a backup code the page
-     * showed signs the user in.
-     */
     #[Test]
     public function aBackupCodeShownAtTheEnrolmentSignsTheUserInAfterThePassword(): void
     {
@@ -348,10 +343,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         $alice = self::userWithPassword('alice', self::PASSWORD);
         $this->signIn($alice);
         $secret = self::secretOf($this->begin());
-        $backupCode = $this->submitFirstCode(self::codeOf($secret, new DateTimeImmutable()))
-            ->filter('ul[data-two-factor="backup-codes"] li')
-            ->eq(4)
-            ->text();
+        $backupCode = $this->submitFirstCode(self::codeOf($secret, new DateTimeImmutable()))->filter('ol[data-two-factor="backup-codes"] li')->eq(4)->text();
         $this->forgetTheBrowser();
         $interaction = $this->authorize();
         $this->submitLogin($interaction, 'alice', self::PASSWORD);
@@ -365,9 +357,6 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         static::assertSame(['pwd', 'otp', 'mfa'], $this->boundSession()->methodReferences());
     }
 
-    /**
-     * Once the app is removed, the password alone signs the user in again.
-     */
     #[Test]
     public function thePasswordAloneSignsInAgainOnceTheAppIsRemoved(): void
     {
@@ -388,6 +377,136 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         static::assertSame(['pwd'], $this->boundSession()->methodReferences());
     }
 
+    /**
+     * Architecture §5.2
+     */
+    #[Test]
+    public function theBackupCodesAreDrawnAgainAndShownOnce(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        $secret = self::secretOf($this->begin());
+        $this->submitFirstCode(self::codeOf($secret, new DateTimeImmutable()));
+
+        // When
+        $crawler = $this->renewBackupCodes();
+
+        // Then
+        static::assertCount(TotpCredential::BACKUP_CODES, $crawler->filter('ol[data-two-factor="backup-codes"] code'));
+        static::assertCount(1, $crawler->filter('p[data-two-factor="backup-codes-renewed"]'));
+        static::assertCount(0, $this->twoFactorPage()->filter('ol[data-two-factor="backup-codes"]'));
+    }
+
+    #[Test]
+    public function theCodesDrawnAgainReplaceTheOnesThatWereHeld(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        $secret = self::secretOf($this->begin());
+        $before = self::codesOf($this->submitFirstCode(self::codeOf($secret, new DateTimeImmutable())));
+
+        // When
+        $after = self::codesOf($this->renewBackupCodes());
+
+        // Then
+        static::assertCount(TotpCredential::BACKUP_CODES * 2, array_unique([...$before, ...$after]));
+    }
+
+    #[Test]
+    public function aPersonWithoutASecondFactorHasNoCodesToDraw(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $page = $this->twoFactorPage();
+
+        // Then
+        static::assertCount(0, $page->filter('form[data-two-factor="backup-codes"]'));
+        static::assertCount(1, $page->filter('form[data-two-factor="begin"]'));
+    }
+
+    #[Test]
+    public function drawingCodesWithoutTheTokenOfItsFormIsRefused(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $this->browser->request('POST', '/account/two-factor/backup-codes', []);
+
+        // Then
+        static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode());
+    }
+
+    /**
+     * Clipboard API §3
+     */
+    #[Test]
+    public function theCodesAreOfferedToTheClipboardOfABrowserThatCanTakeThem(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+        $secret = self::secretOf($this->begin());
+
+        // When
+        $page = $this->submitFirstCode(self::codeOf($secret, new DateTimeImmutable()));
+
+        // Then
+        $button = $page->filter('button[data-copy="backup-codes"]');
+        static::assertSame('backup-codes', $button->attr('data-copy'));
+        static::assertSame('', $button->attr('hidden'));
+        static::assertCount(1, $page->filter('ol#backup-codes[data-two-factor="backup-codes"]'));
+    }
+
+    /**
+     * Clipboard API §3
+     */
+    #[Test]
+    public function theKeyIsOfferedToTheClipboardOfABrowserThatCanTakeIt(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $page = $this->begin();
+
+        // Then
+        $button = $page->filter('button[data-copy="two-factor-key"]');
+        static::assertSame('two-factor-key', $button->attr('data-copy'));
+        static::assertSame('', $button->attr('hidden'));
+        static::assertCount(1, $page->filter('code#two-factor-key[data-two-factor="key"]'));
+    }
+
+    #[Test]
+    public function theScriptThatCopiesIsServedByTheProvider(): void
+    {
+        // When
+        $this->browser->request('GET', '/copy.js');
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        static::assertSame('text/javascript; charset=utf-8', $response->headers->get('Content-Type'));
+    }
+
+    private function renewBackupCodes(): Crawler
+    {
+        return $this->browser->submit($this->twoFactorPage()->selectButton('Draw new backup codes')->form());
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function codesOf(Crawler $page): array
+    {
+        return $page->filter('ol[data-two-factor="backup-codes"] code')->each(
+            static fn (Crawler $code): string => $code->text(),
+        );
+    }
+
     private function twoFactorPage(): Crawler
     {
         $crawler = $this->browser->request('GET', '/account/two-factor');
@@ -397,22 +516,22 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         return $crawler;
     }
 
-    /**
-     * Clicks the button of the page that sets up an app: the enrolment page comes back.
-     */
     private function begin(): Crawler
     {
-        return $this->browser->submit($this->twoFactorPage()->selectButton('Set up an authenticator app')->form());
+        $this->browser->submit($this->twoFactorPage()->selectButton('Set up an authenticator app')->form());
+
+        return $this->afterTheForm();
     }
 
     private function submitFirstCode(string $code): Crawler
     {
-        $form = $this->browser->getCrawler()
-            ->selectButton('Confirm')
-            ->form();
+        $form = $this->browser->getCrawler()->selectButton('Confirm')->form();
         $form['code'] = $code;
+        $crawler = $this->browser->submit($form);
 
-        return $this->browser->submit($form);
+        return $this->browser->getResponse()->getStatusCode() === Response::HTTP_SEE_OTHER
+            ? $this->browser->followRedirect()
+            : $crawler;
     }
 
     private function revoke(): void
@@ -422,9 +541,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
 
     private function submitLogin(string $interaction, string $username, string $password): void
     {
-        $form = $this->loginPage($interaction)
-            ->selectButton('Sign in')
-            ->form();
+        $form = $this->loginPage($interaction)->selectButton('Sign in')->form();
         $form['_username'] = $username;
         $form['_password'] = $password;
         $this->browser->submit($form);
@@ -435,21 +552,16 @@ final class AccountTwoFactorTest extends PasskeyTestCase
         $crawler = $this->browser->request('GET', '/login/code', [
             'interaction' => $interaction,
         ]);
-        $form = $crawler->selectButton('Continue')
-            ->form();
+        $form = $crawler->selectButton('Continue')->form();
         $form['_code'] = $code;
         $this->browser->submit($form);
     }
 
     private static function keyOf(Crawler $crawler): string
     {
-        return $crawler->filter('code[data-two-factor="key"]')
-            ->text();
+        return $crawler->filter('code[data-two-factor="key"]')->text();
     }
 
-    /**
-     * The secret the page shows as a key, as an app takes it by hand.
-     */
     private static function secretOf(Crawler $crawler): TotpSecret
     {
         return new TotpSecret(Base32::decodeUpper(str_replace(' ', '', self::keyOf($crawler))));
@@ -457,7 +569,8 @@ final class AccountTwoFactorTest extends PasskeyTestCase
 
     private static function codeOf(TotpSecret $secret, DateTimeImmutable $at): string
     {
-        return self::service('test.heidi.totp_algorithm', TotpAlgorithmInterface::class)->codeAt($secret, intdiv($at->getTimestamp(), TotpCredential::PERIOD));
+        return self::service('test.beffroi.totp_algorithm', TotpAlgorithmInterface::class)
+            ->codeAt($secret, intdiv($at->getTimestamp(), TotpCredential::PERIOD));
     }
 
     /**
@@ -466,8 +579,8 @@ final class AccountTwoFactorTest extends PasskeyTestCase
     private static function totpsOf(User $user): array
     {
         self::reload();
-        $managed = self::service('test.heidi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
+        $managed = self::service('test.beffroi.users', UserRepositoryInterface::class)->find($user->id) ?? static::fail('The user is gone.');
 
-        return self::service('test.heidi.credentials', CredentialRepositoryInterface::class)->findByUser($managed, TotpCredential::class);
+        return self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->findByUser($managed, TotpCredential::class);
     }
 }

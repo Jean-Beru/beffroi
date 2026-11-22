@@ -1,17 +1,54 @@
 parameters:
 	level: max
+	# The result cache, which holds the errors of a file and the symbols it depends on, so that a run
+	# analyses only what changed. The directory is of the repository and not the temporary one of the
+	# system, which is where the CI keeps it from one run to the next (ci.yml) and which a container of
+	# the QA image does not carry over. PHPStan validates the cache against a fingerprint of this
+	# configuration, the baseline, the PHP version and the files it analysed, and drops it whole when one
+	# of them moves, so nothing here has to be invalidated by hand.
+	tmpDir: %currentWorkingDirectory%/.ci-tools/cache/phpstan
 	scanDirectories:
 		- %rootDir%/../../../../phpunit/vendor
 		- %currentWorkingDirectory%/vendor
 	paths:
 		- %currentWorkingDirectory%/src
+		- %currentWorkingDirectory%/apps/beffroi/src
+		- %currentWorkingDirectory%/apps/beffroi/config/beffroi
+		- %currentWorkingDirectory%/apps/beffroi/migrations
+		- %currentWorkingDirectory%/apps/tui/src
 		- %currentWorkingDirectory%/tests
+	# The SAML packages are analysed apart, each by its own configuration (.ci-tools/phpstan-xml-security.neon,
+	# .ci-tools/phpstan-saml2-model.neon, .ci-tools/phpstan-saml2-bindings.neon and .ci-tools/phpstan-saml.neon), with
+	# no baseline and with the bans of their section 8.
 	excludePaths:
+		# The demonstration and the lab of the application are no part of the product (apps/beffroi/config/services.yaml).
+		- %currentWorkingDirectory%/apps/beffroi/src/Demonstration
+		- %currentWorkingDirectory%/apps/beffroi/src/Lab
 		- %currentWorkingDirectory%/tests/symfony/config
+		- %currentWorkingDirectory%/src/xml-security
+		- %currentWorkingDirectory%/src/saml2-model
+		- %currentWorkingDirectory%/src/saml2-bindings
+		- %currentWorkingDirectory%/src/saml
+		- %currentWorkingDirectory%/tests/xml-security
+		- %currentWorkingDirectory%/tests/saml2-model
+		- %currentWorkingDirectory%/tests/saml2-bindings
+		- %currentWorkingDirectory%/tests/saml
 	banned_code:
 		non_ignorable: false
 	checkUninitializedProperties: true
 	treatPhpDocTypesAsCertain: false
+	# doctrine/dbal marks the constructor of Schema "@internal" in favour of Schema::editor(), yet an empty
+	# Schema built by that constructor is what Doctrine Migrations hands a migration (EmptySchemaProvider),
+	# and so what a test that runs one has to build. Scoped to the two tests that run a migration; here rather
+	# than in the baseline, which says what is ignored and never why, and which castor prepare-pr
+	# regenerates.
+	ignoreErrors:
+		-
+			identifier: method.internal
+			path: %currentWorkingDirectory%/tests/symfony/Functional/Doctrine/MigrationTest.php
+		-
+			identifier: method.internal
+			path: %currentWorkingDirectory%/tests/symfony/Functional/Doctrine/SealingMigrationTest.php
 
 includes:
 	- %currentWorkingDirectory%/.ci-tools/phpstan-baseline.neon

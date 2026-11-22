@@ -2,27 +2,33 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Command;
+namespace App\Tests\Symfony\Functional\Command;
 
+use function array_filter;
 use function array_map;
+use function array_values;
 use DateTimeImmutable;
 use DateTimeInterface;
-use Heidi\Bundle\Message\AdvanceKeyLifecycle;
-use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Heidi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
-use Heidi\Core\Domain\Event\SigningKeyRetired;
-use Heidi\Core\Domain\Event\SigningKeyRotated;
-use Heidi\Core\Domain\Event\SigningKeyStaged;
-use Heidi\Core\Domain\Key\KeyStatus;
-use Heidi\Core\Domain\Key\RetirementReason;
-use Heidi\Core\Domain\Key\SigningKey;
-use Heidi\Core\Port\KeyPairGeneratorInterface;
-use Heidi\Core\Port\KeySealerInterface;
-use Heidi\Core\Port\SigningKeyRepositoryInterface;
-use Heidi\Core\Tests\Fixture\Algorithms;
+use App\Message\AdvanceKeyLifecycle;
+use App\Message\RemoveUnusedClients;
+use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
+use Beffroi\Core\Domain\Event\TenantKeyRetired;
+use Beffroi\Core\Domain\Event\TenantKeyRotated;
+use Beffroi\Core\Domain\Event\TenantKeyStaged;
+use Beffroi\Core\Domain\Key\KeyStatus;
+use Beffroi\Core\Domain\Key\KeyAlgorithmInterface;
+use Beffroi\Core\Domain\Key\KeyUse;
+use Beffroi\Core\Domain\Key\RetirementReason;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Port\KeyPairGeneratorInterface;
+use Beffroi\Core\Port\KeySealerInterface;
+use Beffroi\Core\Port\TenantKeyRepositoryInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Oidc\Application\Discovery\JwksHandler;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function preg_match;
+use function preg_match_all;
 use function preg_quote;
 use function random_bytes;
 use function sprintf;
@@ -33,22 +39,17 @@ use Symfony\Component\KeyManagement\Local\SodiumKms;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
- * The operator's side of a rotation without an outage (architecture §3.3, §5.5): one command starts it,
- * time does the rest, through the recurring message of the bundle; every step can be done by hand.
- * The staging delay of this kernel derives from its JWK Set max-age of two minutes: three minutes.
+ * Architecture §3.3, §5.5
  */
 final class KeyLifecycleTest extends ConsoleTestCase
 {
     private const string STAGING_DELAY = '+3 minutes';
 
-    /**
-     * The first key of a tenant is activated at once: nobody caches an empty JWK Set.
-     */
     #[Test]
     public function theFirstKeyOfATenantIsActiveAtOnce(): void
     {
         // When
-        $tester = self::console('heidi:keys:rotate');
+        $tester = self::console('beffroi:keys:rotate');
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
@@ -58,17 +59,16 @@ final class KeyLifecycleTest extends ConsoleTestCase
     }
 
     /**
-     * A tenant signs with one key per algorithm; the operator names the algorithm, and the key that was
-     * active for another one is left alone (architecture §3.3).
+     * Architecture §3.3
      */
     #[Test]
     public function anOperatorNamesTheAlgorithmTheKeySignsWith(): void
     {
         // Given
-        $rs256 = self::displayed(self::console('heidi:keys:rotate'), 'Key identifier');
+        $rs256 = self::displayed(self::console('beffroi:keys:rotate'), 'Key identifier');
 
         // When
-        $tester = self::console('heidi:keys:rotate', [
+        $tester = self::console('beffroi:keys:rotate', [
             '--algorithm' => 'ES256',
         ]);
 
@@ -79,15 +79,100 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame(KeyStatus::Active, self::key($rs256)->status);
     }
 
+    #[Test]
+    public function anOperatorNamesAnAlgorithmTheKeyIsEncryptedToWith(): void
+    {
+        // Given
+        $signing = self::displayed(self::console('beffroi:keys:rotate'), 'Key identifier');
+
+        // When
+        $tester = self::console('beffroi:keys:rotate', [
+            '--algorithm' => 'ECDH-ES+A256KW',
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame('enc', self::displayed($tester, 'Use'));
+        static::assertSame('active', self::displayed($tester, 'Status'));
+        static::assertSame(KeyStatus::Active, self::key($signing)->status);
+    }
+
     /**
-     * Decision 0006: an algorithm the provider is not wired with is refused, and the message says which
-     * ones it signs with.
+     * RFC 7517 §4.2
+     */
+    #[Test]
+    public function theJwkSetPublishesTheEncryptionKeyBesideTheSigningOne(): void
+    {
+        // Given
+        $signing = self::displayed(self::console('beffroi:keys:rotate'), 'Key identifier');
+        $encryption = self::displayed(self::console('beffroi:keys:rotate', [
+            '--algorithm' => 'ECDH-ES+A256KW',
+        ]), 'Key identifier');
+
+        // When
+        $published = self::service('test.beffroi.jwks', JwksHandler::class)->handle(self::tenant())->keys;
+
+        // Then
+        static::assertSame([$signing, $encryption], array_map(static fn (TenantKey $key): string => $key->kid, $published->keys));
+        static::assertSame('sig', $published->find($signing)?->publicJwk['use']);
+        static::assertSame('enc', $published->find($encryption)?->publicJwk['use']);
+        static::assertSame([$encryption], array_map(static fn (TenantKey $key): string => $key->kid, $published->forUse(KeyUse::Encryption)->keys));
+    }
+
+    #[Test]
+    public function aStagedEncryptionKeyIsActivatedByTheSameCommand(): void
+    {
+        // Given
+        $first = self::displayed(self::console('beffroi:keys:rotate', [
+            '--algorithm' => 'ECDH-ES+A256KW',
+        ]), 'Key identifier');
+        $staged = self::displayed(self::console('beffroi:keys:rotate', [
+            '--algorithm' => 'ECDH-ES+A256KW',
+        ]), 'Key identifier');
+
+        // When
+        $tester = self::console('beffroi:keys:activate', [
+            'kid' => $staged,
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame(KeyStatus::Active, self::key($staged)->status);
+        static::assertSame(KeyStatus::Retiring, self::key($first)->status);
+    }
+
+    #[Test]
+    public function aRetiringEncryptionKeyIsRetiredByTheSameCommand(): void
+    {
+        // Given
+        $first = self::displayed(self::console('beffroi:keys:rotate', [
+            '--algorithm' => 'ECDH-ES+A256KW',
+        ]), 'Key identifier');
+        self::console('beffroi:keys:rotate', [
+            '--algorithm' => 'ECDH-ES+A256KW',
+            '--now' => true,
+        ]);
+
+        // When
+        $tester = self::console('beffroi:keys:retire', [
+            'kid' => $first,
+            '--force' => true,
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame(KeyStatus::Retired, self::key($first)->status);
+        static::assertNotContains($first, self::publishedKids());
+    }
+
+    /**
+     * Decision 0006
      */
     #[Test]
     public function anAlgorithmTheProviderDoesNotSignWithIsRefused(): void
     {
         // When
-        $tester = self::console('heidi:keys:rotate', [
+        $tester = self::console('beffroi:keys:rotate', [
             '--algorithm' => 'HS256',
         ]);
 
@@ -96,70 +181,73 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertStringContainsString('does not sign with "HS256"', self::flattened($tester));
     }
 
-    /**
-     * The acceptance criterion: rotate, then the list shows a staged key next to the active one.
-     */
     #[Test]
     public function aRotationStagesAKeyNextToTheActiveOne(): void
     {
         // Given
-        $active = self::displayed(self::console('heidi:keys:rotate'), 'Key identifier');
+        $active = self::displayed(self::console('beffroi:keys:rotate'), 'Key identifier');
 
         // When
-        $tester = self::console('heidi:keys:rotate');
+        $tester = self::console('beffroi:keys:rotate');
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         $staged = self::displayed($tester, 'Key identifier');
         static::assertSame('staged', self::displayed($tester, 'Status'));
-        $list = self::flattened(self::console('heidi:keys:list'));
-        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Status\s+active\s+/', $active), $list);
-        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Status\s+staged\s+/', $staged), $list);
+        $list = self::flattened(self::console('beffroi:keys:list'));
+        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+active\s+/', $active), $list);
+        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+staged\s+/', $staged), $list);
         static::assertSame(KeyStatus::Active, self::key($active)->status);
     }
 
-    /**
-     * The staged key says when it activates: its creation plus the staging delay, derived from the JWK Set
-     * max-age of this kernel plus the refetch cooldown of oidc_login.
-     */
     #[Test]
     public function theStagedKeySaysWhenItActivates(): void
     {
         // Given
-        self::console('heidi:keys:rotate');
-        $staged = self::key(self::displayed(self::console('heidi:keys:rotate'), 'Key identifier'));
+        self::console('beffroi:keys:rotate');
+        $staged = self::key(self::displayed(self::console('beffroi:keys:rotate'), 'Key identifier'));
 
         // When
-        $tester = self::console('heidi:keys:list');
+        $tester = self::console('beffroi:keys:list');
 
         // Then
         static::assertEquals($staged->createdAt->modify(self::STAGING_DELAY), $staged->activationDueAt);
-        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+.*?Activates at\s+%s/', $staged->kid, preg_quote($staged->activationDueAt->format(DateTimeInterface::RFC3339), '/')), self::flattened($tester));
+        static::assertMatchesRegularExpression(
+            sprintf(
+                '/Key identifier\s+%s\s+.*?Activates at\s+%s/',
+                $staged->kid,
+                preg_quote($staged->activationDueAt->format(DateTimeInterface::RFC3339), '/'),
+            ),
+            self::flattened($tester),
+        );
     }
 
     #[Test]
     public function aRotationTellsTheOperatorWhenTheStagedKeySigns(): void
     {
         // Given
-        self::console('heidi:keys:rotate');
+        self::console('beffroi:keys:rotate');
 
         // When
-        $tester = self::console('heidi:keys:rotate');
+        $tester = self::console('beffroi:keys:rotate');
 
         // Then
         $staged = self::key(self::displayed($tester, 'Key identifier'));
-        static::assertStringContainsString(sprintf('the scheduled step activates the new key at %s', $staged->activationDueAt->format(DateTimeInterface::RFC3339)), self::flattened($tester));
-        static::assertStringContainsString(sprintf('"heidi:keys:activate %s" does it earlier', $staged->kid), self::flattened($tester));
+        static::assertStringContainsString(
+            sprintf('the scheduled step activates the new key at %s', $staged->activationDueAt->format(DateTimeInterface::RFC3339)),
+            self::flattened($tester),
+        );
+        static::assertStringContainsString(sprintf('"beffroi:keys:activate %s" does it earlier', $staged->kid), self::flattened($tester));
     }
 
     #[Test]
     public function aRotationNowActivatesAtOnceAndStartsRetiringThePreviousKey(): void
     {
         // Given
-        $previous = self::displayed(self::console('heidi:keys:rotate'), 'Key identifier');
+        $previous = self::displayed(self::console('beffroi:keys:rotate'), 'Key identifier');
 
         // When
-        $tester = self::console('heidi:keys:rotate', [
+        $tester = self::console('beffroi:keys:rotate', [
             '--now' => true,
         ]);
 
@@ -168,20 +256,20 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame('active', self::displayed($tester, 'Status'));
         static::assertStringContainsString(sprintf('The key "%s" was active and is now retiring', $previous), self::flattened($tester));
         static::assertSame(KeyStatus::Retiring, self::key($previous)->status);
-        static::assertStringContainsString(sprintf('until %s', self::key($previous)->retirementDueAt?->format(DateTimeInterface::RFC3339)), self::flattened($tester));
+        static::assertStringContainsString(
+            sprintf('until %s', self::key($previous)->retirementDueAt?->format(DateTimeInterface::RFC3339)),
+            self::flattened($tester),
+        );
     }
 
-    /**
-     * The compromise path: the previous key leaves the JWK Set at once, the trail says why.
-     */
     #[Test]
     public function aRotationForACompromiseRetiresThePreviousKeyAtOnce(): void
     {
         // Given
-        $compromised = self::displayed(self::console('heidi:keys:rotate'), 'Key identifier');
+        $compromised = self::displayed(self::console('beffroi:keys:rotate'), 'Key identifier');
 
         // When
-        $tester = self::console('heidi:keys:rotate', [
+        $tester = self::console('beffroi:keys:rotate', [
             '--compromised' => true,
         ]);
 
@@ -191,7 +279,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertStringContainsString(sprintf('The key "%s" was active and is retired at once', $compromised), self::flattened($tester));
         static::assertSame(KeyStatus::Retired, self::key($compromised)->status);
         static::assertSame([self::displayed($tester, 'Key identifier')], self::publishedKids());
-        [$retired] = self::events(SigningKeyRetired::class);
+        [$retired] = self::events(TenantKeyRetired::class);
         static::assertSame(RetirementReason::Compromised, $retired->reason);
     }
 
@@ -199,11 +287,11 @@ final class KeyLifecycleTest extends ConsoleTestCase
     public function activatingAStagedKeyByHandEndsItsStagingWindow(): void
     {
         // Given
-        $previous = self::displayed(self::console('heidi:keys:rotate'), 'Key identifier');
-        $staged = self::displayed(self::console('heidi:keys:rotate'), 'Key identifier');
+        $previous = self::displayed(self::console('beffroi:keys:rotate'), 'Key identifier');
+        $staged = self::displayed(self::console('beffroi:keys:rotate'), 'Key identifier');
 
         // When
-        $tester = self::console('heidi:keys:activate', [
+        $tester = self::console('beffroi:keys:activate', [
             'kid' => $staged,
         ]);
 
@@ -213,7 +301,10 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertStringContainsString(sprintf('The key "%s" was active and is now retiring', $previous), self::flattened($tester));
         static::assertSame(KeyStatus::Active, self::key($staged)->status);
         static::assertSame(KeyStatus::Retiring, self::key($previous)->status);
-        static::assertStringContainsString(sprintf('until %s', self::key($previous)->retirementDueAt?->format(DateTimeInterface::RFC3339)), self::flattened($tester));
+        static::assertStringContainsString(
+            sprintf('until %s', self::key($previous)->retirementDueAt?->format(DateTimeInterface::RFC3339)),
+            self::flattened($tester),
+        );
     }
 
     /**
@@ -224,10 +315,12 @@ final class KeyLifecycleTest extends ConsoleTestCase
     public function whatIsNotAStagedKeyIsNotActivated(array $input, string $message): void
     {
         // Given
-        $active = self::displayed(self::console('heidi:keys:rotate'), 'Key identifier');
+        $active = self::displayed(self::console('beffroi:keys:rotate'), 'Key identifier');
 
         // When
-        $tester = self::console('heidi:keys:activate', array_map(static fn (string|bool $value): string|bool => $value === '{active}' ? $active : $value, $input));
+        $tester = self::console('beffroi:keys:activate', array_map(static fn (string|bool $value): string|bool => $value === '{active}'
+            ? $active
+            : $value, $input));
 
         // Then
         static::assertSame(Command::FAILURE, $tester->getStatusCode());
@@ -240,17 +333,20 @@ final class KeyLifecycleTest extends ConsoleTestCase
      */
     public static function provideActivationsRefused(): iterable
     {
-        yield 'unknown key' => [[
-            'kid' => 'nope',
-        ], 'has no key "nope"'];
-        yield 'the active key' => [[
-            'kid' => '{active}',
-        ], 'Only a staged key can be activated; this one is active.'];
+        yield 'unknown key' => [
+            [
+                'kid' => 'nope',
+            ],
+            'has no key "nope"',
+        ];
+        yield 'the active key' => [
+            [
+                'kid' => '{active}',
+            ],
+            'Only a staged key can be activated; this one is active.',
+        ];
     }
 
-    /**
-     * The acceptance criterion: a key inside its retirement window is refused without --force.
-     */
     #[Test]
     public function retiringAKeyInsideItsWindowIsRefusedWithoutForce(): void
     {
@@ -258,7 +354,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
         $retiring = self::retiringKey();
 
         // When
-        $tester = self::console('heidi:keys:retire', [
+        $tester = self::console('beffroi:keys:retire', [
             'kid' => $retiring,
         ]);
 
@@ -276,7 +372,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
         $retiring = self::retiringKey();
 
         // When
-        $tester = self::console('heidi:keys:retire', [
+        $tester = self::console('beffroi:keys:retire', [
             'kid' => $retiring,
             '--force' => true,
         ]);
@@ -286,7 +382,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame('retired', self::displayed($tester, 'Status'));
         static::assertStringContainsString('before its retirement date', self::flattened($tester));
         static::assertSame(KeyStatus::Retired, self::key($retiring)->status);
-        static::assertSame(RetirementReason::Forced, self::events(SigningKeyRetired::class)[0]->reason);
+        static::assertSame(RetirementReason::Forced, self::events(TenantKeyRetired::class)[0]->reason);
     }
 
     /**
@@ -297,10 +393,12 @@ final class KeyLifecycleTest extends ConsoleTestCase
     public function whatIsNotARetiringKeyIsNotRetired(array $input, int $status, string $message): void
     {
         // Given
-        $active = self::displayed(self::console('heidi:keys:rotate'), 'Key identifier');
+        $active = self::displayed(self::console('beffroi:keys:rotate'), 'Key identifier');
 
         // When
-        $tester = self::console('heidi:keys:retire', array_map(static fn (string|bool $value): string|bool => $value === '{active}' ? $active : $value, $input));
+        $tester = self::console('beffroi:keys:retire', array_map(static fn (string|bool $value): string|bool => $value === '{active}'
+            ? $active
+            : $value, $input));
 
         // Then
         static::assertSame($status, $tester->getStatusCode());
@@ -313,24 +411,33 @@ final class KeyLifecycleTest extends ConsoleTestCase
      */
     public static function provideRetirementsRefused(): iterable
     {
-        yield 'unknown key' => [[
-            'kid' => 'nope',
-            '--force' => true,
-        ], Command::FAILURE, 'has no key "nope"'];
-        yield 'the active key' => [[
-            'kid' => '{active}',
-            '--force' => true,
-        ], Command::FAILURE, 'The active key cannot be retired; rotate first.'];
-        yield 'a key and --due' => [[
-            'kid' => '{active}',
-            '--due' => true,
-        ], Command::INVALID, 'not both, not neither'];
+        yield 'unknown key' => [
+            [
+                'kid' => 'nope',
+                '--force' => true,
+            ],
+            Command::FAILURE,
+            'has no key "nope"',
+        ];
+        yield 'the active key' => [
+            [
+                'kid' => '{active}',
+                '--force' => true,
+            ],
+            Command::FAILURE,
+            'The active key cannot be retired; rotate first.',
+        ];
+        yield 'a key and --due' => [
+            [
+                'kid' => '{active}',
+                '--due' => true,
+            ],
+            Command::INVALID,
+            'not both, not neither',
+        ];
         yield 'neither a key nor --due' => [[], Command::INVALID, 'not both, not neither'];
     }
 
-    /**
-     * The acceptance criterion: --due retires a key past its date and leaves one inside its window.
-     */
     #[Test]
     public function retiringTheDueKeysLeavesTheOneInsideItsWindow(): void
     {
@@ -339,7 +446,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
         $insideItsWindow = self::retiringKey();
 
         // When
-        $tester = self::console('heidi:keys:retire', [
+        $tester = self::console('beffroi:keys:retire', [
             '--due' => true,
         ]);
 
@@ -358,7 +465,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
         self::retiringKey();
 
         // When
-        $tester = self::console('heidi:keys:retire', [
+        $tester = self::console('beffroi:keys:retire', [
             '--due' => true,
         ]);
 
@@ -367,41 +474,40 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertStringContainsString('No key of "default" is past its retirement date.', self::flattened($tester));
     }
 
-    /**
-     * The list on request shows the retired keys too, with every date of their life.
-     */
     #[Test]
     public function theListShowsARetiredKeyOnRequestOnly(): void
     {
         // Given
         $retired = self::keyPastItsRetirementDate();
-        self::console('heidi:keys:retire', [
+        self::console('beffroi:keys:retire', [
             '--due' => true,
         ]);
 
         // When
-        $published = self::flattened(self::console('heidi:keys:list'));
-        $all = self::flattened(self::console('heidi:keys:list', [
+        $published = self::flattened(self::console('beffroi:keys:list'));
+        $all = self::flattened(self::console('beffroi:keys:list', [
             '--all' => true,
         ]));
 
         // Then
         static::assertStringNotContainsString($retired->kid, $published);
-        static::assertMatchesRegularExpression(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Status\s+retired\s+Created at\s+\S+\s+Activated at\s+\S+\s+Retiring since\s+\S+\s+Retirement due at\s+\S+\s+Retired at\s+2026-\S+/', $retired->kid), $all);
+        static::assertMatchesRegularExpression(
+            sprintf(
+                '/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+retired\s+Created at\s+\S+\s+Activated at\s+\S+\s+Retiring since\s+\S+\s+Retirement due at\s+\S+\s+Retired at\s+2026-\S+/',
+                $retired->kid,
+            ),
+            $all,
+        );
     }
 
-    /**
-     * Issue #58: what "castor provision" asks before it trusts the published key. The active key opens
-     * with the KMS of this kernel, whichever backend the environment named.
-     */
     #[Test]
     public function theCheckSaysTheActiveKeyOpensWithTheKms(): void
     {
         // Given
-        self::console('heidi:keys:rotate');
+        self::console('beffroi:keys:rotate');
 
         // When
-        $tester = self::console('heidi:keys:list', [
+        $tester = self::console('beffroi:keys:list', [
             '--check' => true,
         ]);
 
@@ -410,10 +516,6 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame('yes', self::displayed($tester, 'Opens with the KMS'));
     }
 
-    /**
-     * A key sealed under a master key the KMS no longer has (a Vault in dev mode or a Floci restarted,
-     * a DSN switched to another backend): the check says which key, why, and what to do; it deletes nothing.
-     */
     #[Test]
     public function theCheckFailsOnAKeyTheKmsCannotOpen(): void
     {
@@ -421,20 +523,59 @@ final class KeyLifecycleTest extends ConsoleTestCase
         $dead = self::stagedKeySealedUnderAnotherMasterKey();
 
         // When
-        $tester = self::console('heidi:keys:list', [
+        $tester = self::console('beffroi:keys:list', [
             '--check' => true,
         ]);
 
         // Then
         static::assertSame(Command::FAILURE, $tester->getStatusCode(), $tester->getDisplay());
-        static::assertStringStartsWith('no: The sealed signing key could not be opened.', self::displayed($tester, 'Opens with the KMS'));
-        static::assertStringContainsString(sprintf('The KMS cannot open the key %s of "default"', $dead->kid), self::flattened($tester));
-        static::assertStringContainsString('"heidi:keys:rotate --now" publishes a key sealed under the key it has now', self::flattened($tester));
+        static::assertStringStartsWith('no: The sealed key could not be opened.', self::displayed($tester, 'Opens with the KMS'));
+        static::assertStringContainsString(sprintf('The KMS cannot open the key %s (RS256) of "default"', $dead->kid), self::flattened($tester));
+        static::assertStringContainsString('a rotation publishes a key sealed under the master key the KMS has now', self::flattened($tester));
+        static::assertStringContainsString('beffroi:keys:rotate --now --algorithm=RS256', self::flattened($tester));
         static::assertSame(KeyStatus::Staged, self::key($dead->kid)->status);
     }
 
+    #[Test]
+    public function everyDeadKeyNamesTheRotationThatReachesIt(): void
+    {
+        // Given
+        $signing = self::stagedKeySealedUnderAnotherMasterKey();
+        $elliptic = self::stagedKeySealedUnderAnotherMasterKey(Algorithms::es256());
+
+        // When
+        $tester = self::console('beffroi:keys:list', [
+            '--check' => true,
+        ]);
+
+        // Then
+        static::assertSame(Command::FAILURE, $tester->getStatusCode(), $tester->getDisplay());
+        $said = self::flattened($tester);
+        static::assertStringContainsString(sprintf('%s (RS256)', $signing->kid), $said);
+        static::assertStringContainsString(sprintf('%s (ES256)', $elliptic->kid), $said);
+        static::assertStringContainsString('beffroi:keys:rotate --now --algorithm=RS256', $said);
+        static::assertStringContainsString('beffroi:keys:rotate --now --algorithm=ES256', $said);
+    }
+
+    #[Test]
+    public function twoDeadKeysOfOneAlgorithmNameOneRotation(): void
+    {
+        // Given
+        self::stagedKeySealedUnderAnotherMasterKey();
+        self::stagedKeySealedUnderAnotherMasterKey();
+
+        // When
+        $tester = self::console('beffroi:keys:list', [
+            '--check' => true,
+        ]);
+
+        // Then
+        static::assertSame(Command::FAILURE, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame(1, preg_match_all('/--algorithm=RS256/', self::flattened($tester)));
+    }
+
     /**
-     * A retiring key is never opened again (architecture §3.3): the check does not ask the KMS about it.
+     * Architecture §3.3
      */
     #[Test]
     public function theCheckLeavesARetiringKeyClosed(): void
@@ -443,25 +584,33 @@ final class KeyLifecycleTest extends ConsoleTestCase
         $retiring = self::retiringKey();
 
         // When
-        $tester = self::console('heidi:keys:list', [
+        $tester = self::console('beffroi:keys:list', [
             '--check' => true,
         ]);
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        static::assertSame(1, preg_match(sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Status\s+retiring\s+(.*?)Key identifier/', $retiring), self::flattened($tester), $matches), self::flattened($tester));
+        static::assertSame(
+            1,
+            preg_match(
+                sprintf('/Key identifier\s+%s\s+Algorithm\s+RS256\s+Use\s+sig\s+Status\s+retiring\s+(.*?)Key identifier/', $retiring),
+                self::flattened($tester),
+                $matches,
+            ),
+            self::flattened($tester),
+        );
         static::assertStringNotContainsString('Opens with the KMS', $matches[1]);
-        static::assertMatchesRegularExpression('/Status\s+active\s+Created at\s+\S+\s+Activated at\s+\S+\s+Opens with the KMS\s+yes/', self::flattened($tester));
+        static::assertMatchesRegularExpression(
+            '/Status\s+active\s+Created at\s+\S+\s+Activated at\s+\S+\s+Opens with the KMS\s+yes/',
+            self::flattened($tester),
+        );
     }
 
-    /**
-     * The acceptance criterion: the scheduled message activates the staged key once the delay elapsed.
-     */
     #[Test]
     public function theScheduledStepActivatesAStagedKeyWhoseDelayElapsed(): void
     {
         // Given
-        $previous = self::displayed(self::console('heidi:keys:rotate'), 'Key identifier');
+        $previous = self::displayed(self::console('beffroi:keys:rotate'), 'Key identifier');
         $due = self::stagedKeyDated(self::currentSecond()->modify('-4 minutes'), self::currentSecond()->modify('-1 minute'));
 
         // When
@@ -472,15 +621,12 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame(KeyStatus::Retiring, self::key($previous)->status);
     }
 
-    /**
-     * The acceptance criterion: and not before.
-     */
     #[Test]
     public function theScheduledStepLeavesAStagedKeyInsideItsWindow(): void
     {
         // Given
-        $active = self::displayed(self::console('heidi:keys:rotate'), 'Key identifier');
-        $staged = self::displayed(self::console('heidi:keys:rotate'), 'Key identifier');
+        $active = self::displayed(self::console('beffroi:keys:rotate'), 'Key identifier');
+        $staged = self::displayed(self::console('beffroi:keys:rotate'), 'Key identifier');
 
         // When
         self::tick();
@@ -505,150 +651,237 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame(KeyStatus::Retiring, self::key($insideItsWindow)->status);
     }
 
-    /**
-     * The trail says the scheduler did it, and from which schedule.
-     */
     #[Test]
     public function theScheduledStepNamesItselfInTheEvents(): void
     {
         // Given
-        self::console('heidi:keys:rotate');
+        self::console('beffroi:keys:rotate');
         self::stagedKeyDated(self::currentSecond()->modify('-4 minutes'), self::currentSecond()->modify('-1 minute'));
 
         // When
         self::tick();
 
         // Then
-        [, $rotated] = self::events(SigningKeyRotated::class);
+        [, $rotated] = self::events(TenantKeyRotated::class);
         static::assertNull($rotated->context->ipAddress);
-        static::assertStringStartsWith('heidi-scheduler/heidi (', $rotated->context->userAgent ?? '');
+        static::assertStringStartsWith('beffroi-scheduler/beffroi (', $rotated->context->userAgent ?? '');
     }
 
-    /**
-     * Before the first provisioning there is no key to move: the tick does nothing, and fails nothing.
-     */
     #[Test]
     public function theScheduledStepDoesNothingWithoutATenant(): void
     {
         // Given
-        self::entityManager()
-            ->getConnection()
-            ->executeStatement('DELETE FROM heidi_tenant');
+        self::entityManager()->getConnection()->executeStatement('DELETE FROM beffroi_tenant');
         self::reload();
 
         // When
         self::tick();
 
         // Then
-        static::assertSame([], self::events(SigningKeyRotated::class));
+        static::assertSame([], self::events(TenantKeyRotated::class));
     }
 
     /**
-     * Architecture §5.6: the message recurs every minute on the schedule of the bundle, whose transport the
-     * worker consumes next to the buses.
+     * Architecture §5.6
      */
     #[Test]
-    public function theScheduleOfTheBundleCarriesTheStepEveryMinute(): void
+    public function theScheduleOfTheProviderCarriesTheStepEveryMinute(): void
     {
         // When
         $tester = self::console('debug:scheduler');
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        static::assertStringContainsString('heidi', $tester->getDisplay());
+        static::assertStringContainsString('beffroi', $tester->getDisplay());
         static::assertStringContainsString('every 1 minute', $tester->getDisplay());
         static::assertStringContainsString(AdvanceKeyLifecycle::class, $tester->getDisplay());
     }
 
     /**
-     * The trail says who typed the command: the console names it and the user of the shell.
+     * Decision 0009
      */
+    #[Test]
+    public function theScheduleCarriesTheRemovalOfTheClientsNobodyUses(): void
+    {
+        // When
+        $tester = self::console('debug:scheduler');
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertStringContainsString(RemoveUnusedClients::class, $tester->getDisplay());
+        static::assertStringContainsString('every 1 hour', $tester->getDisplay());
+    }
+
     #[Test]
     public function theConsoleNamesItselfAndTheOperatorInTheEvents(): void
     {
         // When
-        self::console('heidi:keys:rotate');
+        self::console('beffroi:keys:rotate');
 
         // Then
-        [$staged] = self::events(SigningKeyStaged::class);
+        [$staged] = self::events(TenantKeyStaged::class);
         static::assertNull($staged->context->ipAddress);
-        static::assertMatchesRegularExpression('/^heidi-console\/heidi:keys:rotate \([^@]+@.+\)$/', $staged->context->userAgent ?? '');
+        static::assertMatchesRegularExpression('/^beffroi-console\/beffroi:keys:rotate \([^@]+@.+\)$/', $staged->context->userAgent ?? '');
     }
 
-    /**
-     * What the worker does on a tick: the recurring message, handled on the command bus.
-     */
+    #[Test]
+    public function theScheduledStepStagesASuccessorForAKeyPastItsAge(): void
+    {
+        // Given
+        $old = self::keyPastItsAge();
+
+        // When
+        self::tick();
+
+        // Then
+        static::assertSame(KeyStatus::Active, self::key($old->kid)->status);
+        static::assertCount(1, self::stagedKeys());
+        static::assertSame('RS256', self::stagedKeys()[0]->algorithm->name());
+    }
+
+    #[Test]
+    public function theScheduledStepStagesOneSuccessorAndNotOnePerTick(): void
+    {
+        // Given
+        self::keyPastItsAge();
+        self::tick();
+
+        // When
+        self::tick();
+
+        // Then
+        static::assertCount(1, self::stagedKeys());
+    }
+
+    #[Test]
+    public function theScheduledStepLeavesAKeyInsideItsAge(): void
+    {
+        // Given
+        self::console('beffroi:keys:rotate');
+
+        // When
+        self::tick();
+
+        // Then
+        static::assertSame([], self::stagedKeys());
+    }
+
+    #[Test]
+    public function theCheckFailsOnAKeyThatWorkedPastItsAgeWithNothingStaged(): void
+    {
+        // Given
+        $old = self::keyPastItsAge();
+
+        // When
+        $tester = self::console('beffroi:keys:list', [
+            '--check' => true,
+        ]);
+
+        // Then
+        static::assertSame(Command::FAILURE, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame('yes, and nothing is staged', self::displayed($tester, 'Has worked past its age'));
+        static::assertStringContainsString($old->kid, $tester->getDisplay());
+        static::assertStringContainsString('worker that is not consuming the schedule', self::flattened($tester));
+    }
+
+    #[Test]
+    public function theCheckPassesOnAKeyPastItsAgeWhoseSuccessorIsStaged(): void
+    {
+        // Given
+        self::keyPastItsAge();
+        self::tick();
+
+        // When
+        $tester = self::console('beffroi:keys:list', [
+            '--check' => true,
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame('yes, and a successor is staged', self::displayed($tester, 'Has worked past its age'));
+    }
+
     private static function tick(): void
     {
-        self::service('test.heidi.command_bus', MessageBusInterface::class)
-            ->dispatch(new AdvanceKeyLifecycle());
+        self::service('test.beffroi.command_bus', MessageBusInterface::class)->dispatch(new AdvanceKeyLifecycle());
     }
 
-    /**
-     * A key that signed and stopped a moment ago, inside its retirement window of ten minutes.
-     */
     private static function retiringKey(): string
     {
-        $kid = self::displayed(self::console('heidi:keys:rotate'), 'Key identifier');
-        self::console('heidi:keys:rotate', [
+        $kid = self::displayed(self::console('beffroi:keys:rotate'), 'Key identifier');
+        self::console('beffroi:keys:rotate', [
             '--now' => true,
         ]);
 
         return $kid;
     }
 
-    /**
-     * A key written as the files would hold it a day after its rotation: retiring since yesterday, due
-     * yesterday too, what no command of this kernel can write in the present.
-     */
-    private static function keyPastItsRetirementDate(): SigningKey
+    private static function keyPastItsRetirementDate(): TenantKey
     {
         $yesterday = self::currentSecond()->modify('-1 day');
         $key = self::stagedKeyDated($yesterday->modify('-1 hour'), $yesterday->modify('-1 hour'));
         $key->activate($yesterday->modify('-1 hour'));
         $key->startRetiring($yesterday, $yesterday->modify('+10 minutes'));
-        self::keys()
-            ->save($key);
+        self::keys()->save($key);
 
         return $key;
     }
 
-    /**
-     * A staged key sealed under a sodium master key this kernel does not have: what the files hold once the
-     * KMS lost its key, or once the DSN names another backend.
-     */
-    private static function stagedKeySealedUnderAnotherMasterKey(): SigningKey
+    private static function stagedKeySealedUnderAnotherMasterKey(?KeyAlgorithmInterface $algorithm = null): TenantKey
     {
-        $pair = self::service('test.heidi.key_pair_generator', KeyPairGeneratorInterface::class)->generate(Algorithms::rs256());
+        $algorithm ??= Algorithms::rs256();
+        $pair = self::service('test.beffroi.key_pair_generator', KeyPairGeneratorInterface::class)->generate($algorithm);
         $sealer = new EnvelopeKeySealer(new EnvelopeEncrypter(new SodiumKms(new InMemoryKeyLoader([
             'signing' => random_bytes(32),
         ]))), 'signing');
-        $key = new SigningKey($pair->kid, self::tenant(), Algorithms::rs256(), $pair->publicJwk, $sealer->seal(self::tenant(), $pair->privateJwk), self::currentSecond(), self::currentSecond()->modify(self::STAGING_DELAY));
-        self::keys()
-            ->save($key);
+        $key = new TenantKey(
+            $pair->kid,
+            self::tenant(),
+            $algorithm,
+            $pair->publicJwk,
+            $sealer->seal(self::tenant(), $pair->privateJwk),
+            self::currentSecond(),
+            self::currentSecond()->modify(self::STAGING_DELAY),
+        );
+        self::keys()->save($key);
+
+        return $key;
+    }
+
+    private static function stagedKeyDated(DateTimeImmutable $createdAt, DateTimeImmutable $activationDueAt): TenantKey
+    {
+        $pair = self::service('test.beffroi.key_pair_generator', KeyPairGeneratorInterface::class)->generate(Algorithms::rs256());
+        $sealed = self::service('test.beffroi.key_sealer', KeySealerInterface::class)->seal(self::tenant(), $pair->privateJwk);
+        $key = new TenantKey($pair->kid, self::tenant(), Algorithms::rs256(), $pair->publicJwk, $sealed, $createdAt, $activationDueAt);
+        self::keys()->save($key);
+
+        return $key;
+    }
+
+    private static function keyPastItsAge(): TenantKey
+    {
+        $activated = self::currentSecond()->modify('-91 days');
+        $key = self::stagedKeyDated($activated, $activated);
+        $key->activate($activated);
+        self::keys()->save($key);
 
         return $key;
     }
 
     /**
-     * A staged key with the dates given, sealed by the KMS of this kernel and saved: how the files look
-     * once the staging delay elapsed, without waiting for it.
+     * @return list<TenantKey>
      */
-    private static function stagedKeyDated(DateTimeImmutable $createdAt, DateTimeImmutable $activationDueAt): SigningKey
+    private static function stagedKeys(): array
     {
-        $pair = self::service('test.heidi.key_pair_generator', KeyPairGeneratorInterface::class)->generate(Algorithms::rs256());
-        $sealed = self::service('test.heidi.key_sealer', KeySealerInterface::class)->seal(self::tenant(), $pair->privateJwk);
-        $key = new SigningKey($pair->kid, self::tenant(), Algorithms::rs256(), $pair->publicJwk, $sealed, $createdAt, $activationDueAt);
-        self::keys()
-            ->save($key);
-
-        return $key;
+        return array_values(array_filter(
+            self::keys()->findInService(self::tenant()),
+            static fn (TenantKey $key): bool => $key->status === KeyStatus::Staged,
+        ));
     }
 
-    private static function key(string $kid): SigningKey
+    private static function key(string $kid): TenantKey
     {
-        return self::keys()
-            ->find(self::tenant(), $kid) ?? static::fail(sprintf('The key "%s" is not stored.', $kid));
+        return self::keys()->find(self::tenant(), $kid) ?? static::fail(sprintf('The key "%s" is not stored.', $kid));
     }
 
     /**
@@ -656,30 +889,11 @@ final class KeyLifecycleTest extends ConsoleTestCase
      */
     private static function publishedKids(): array
     {
-        return array_map(static fn (SigningKey $key): string => $key->kid, self::keys()->findPublished(self::tenant()));
+        return array_map(static fn (TenantKey $key): string => $key->kid, self::keys()->findInService(self::tenant()));
     }
 
-    private static function keys(): SigningKeyRepositoryInterface
+    private static function keys(): TenantKeyRepositoryInterface
     {
-        return self::service('test.heidi.keys', SigningKeyRepositoryInterface::class);
-    }
-
-    /**
-     * @template T of object
-     *
-     * @param class-string<T> $class
-     *
-     * @return list<T>
-     */
-    private static function events(string $class): array
-    {
-        $events = [];
-        foreach (self::service(RecordingEventHandler::class, RecordingEventHandler::class)->events as $event) {
-            if ($event instanceof $class) {
-                $events[] = $event;
-            }
-        }
-
-        return $events;
+        return self::service('test.beffroi.keys', TenantKeyRepositoryInterface::class);
     }
 }

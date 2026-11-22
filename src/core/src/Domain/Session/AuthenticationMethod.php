@@ -2,16 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Domain\Session;
+namespace Beffroi\Core\Domain\Session;
 
-use Heidi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use function in_array;
 use function preg_match;
 use function sprintf;
 use Stringable;
 
 /**
- * A value of the "amr" claim (RFC 8176 §2). The registered values are constants; any other well-formed
- * value is accepted, as a federated login carries whatever the upstream provider sent.
+ * RFC 8176 §2
+ *
+ * An unregistered value is accepted: a federated login carries whatever the upstream provider sent.
  */
 final readonly class AuthenticationMethod implements Stringable
 {
@@ -60,14 +62,11 @@ final readonly class AuthenticationMethod implements Stringable
     public function __construct(
         public string $value,
     ) {
-        if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/', $value) !== 1) {
+        if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/D', $value) !== 1) {
             throw new InvalidArgumentException(sprintf('"%s" is not a well-formed authentication method reference.', $value));
         }
     }
 
-    /**
-     * What each registered value proves (RFC 8176 §2).
-     */
     private const array FACTORS = [
         self::PASSWORD => AuthenticationFactor::Knowledge,
         self::PIN => AuthenticationFactor::Knowledge,
@@ -92,16 +91,28 @@ final readonly class AuthenticationMethod implements Stringable
     }
 
     /**
-     * Null when the method proves no factor by itself ("mfa", "user", the context values, an unknown value).
+     * @param list<self> $methods
+     *
+     * @return list<AuthenticationFactor> each kind once
      */
+    public static function factorsOf(array $methods): array
+    {
+        $factors = [];
+        foreach ($methods as $method) {
+            $factor = $method->factor();
+            if ($factor !== null && ! in_array($factor, $factors, true)) {
+                $factors[] = $factor;
+            }
+        }
+
+        return $factors;
+    }
+
     public function factor(): ?AuthenticationFactor
     {
         return self::FACTORS[$this->value] ?? null;
     }
 
-    /**
-     * RFC 8176 §2 "mfa": multiple factors asserted without naming them.
-     */
     public function isMultipleFactors(): bool
     {
         return $this->value === self::MULTIPLE_FACTORS;

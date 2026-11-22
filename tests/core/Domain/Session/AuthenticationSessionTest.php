@@ -2,17 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Domain\Session;
+namespace Beffroi\Core\Tests\Domain\Session;
 
 use DateTimeImmutable;
-use Heidi\Core\Domain\Session\AuthenticationContextClass;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Core\Domain\Session\AuthenticationProofs;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\SessionEnd;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Exception\LogicException;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Domain\Session\AuthenticationContextClass;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Domain\Session\AuthenticationProofs;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\GeoLocation;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Session\SessionEnd;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\LogicException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -53,7 +56,7 @@ final class AuthenticationSessionTest extends TestCase
     }
 
     /**
-     * OIDC Core §2 "acr", architecture §3.2: read from the proofs, "1" for the one factor a password is.
+     * OIDC Core §2, architecture §3.2
      */
     #[Test]
     public function aSessionEstablishedByAPasswordSatisfiesTheSingleFactorClass(): void
@@ -67,16 +70,26 @@ final class AuthenticationSessionTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.5.1.1: a session satisfies a requested class when its proofs meet it, a class below
-     * the strongest included.
+     * OIDC Core §5.5.1.1
      */
     #[Test]
     public function aSessionSatisfiesTheClassesItsProofsMeet(): void
     {
         // Given
         $user = Fixtures::user();
-        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::now());
-        $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), $proofs, Fixtures::context(), Fixtures::now()->modify('+1 hour'));
+        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(
+            new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD),
+            Fixtures::now(),
+        );
+        $session = new AuthenticationSession(
+            Uuid::v7(),
+            $user->tenant,
+            $user,
+            Fixtures::now(),
+            $proofs,
+            Fixtures::context(),
+            Fixtures::now()->modify('+1 hour'),
+        );
 
         // When / Then
         static::assertTrue($session->satisfies(AuthenticationContextClass::singleFactor()));
@@ -85,7 +98,7 @@ final class AuthenticationSessionTest extends TestCase
     }
 
     /**
-     * Architecture §3.2: a step-up adds a proof, and the class moves with it as auth_time does.
+     * Architecture §3.2
      */
     #[Test]
     public function aNewProofOfAnotherKindRaisesTheClass(): void
@@ -100,15 +113,94 @@ final class AuthenticationSessionTest extends TestCase
         static::assertSame('2', $session->authenticationContextClass()->value);
     }
 
+    /**
+     * beffroi/saml S-57
+     */
+    #[Test]
+    public function aProofIsDatedWhenWhatProvedItSaysItWasGiven(): void
+    {
+        // Given
+        $session = Fixtures::session();
+        $authnInstant = Fixtures::now()->modify('+4 minutes');
+
+        // When
+        $session->recordProof(
+            new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD),
+            Fixtures::context(Fixtures::now()->modify('+5 minutes')),
+            $authnInstant,
+        );
+
+        // Then
+        static::assertEquals($authnInstant, $session->authenticatedAt());
+    }
+
+    /**
+     * beffroi/saml S-57
+     */
+    #[Test]
+    public function aProofIsNeverDatedAfterTheRequestThatCarriedIt(): void
+    {
+        // Given
+        $session = Fixtures::session();
+        $receivedAt = Fixtures::now()->modify('+5 minutes');
+
+        // When
+        $session->recordProof(
+            new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD),
+            Fixtures::context($receivedAt),
+            $receivedAt->modify('+1 minute'),
+        );
+
+        // Then
+        static::assertEquals($receivedAt, $session->authenticatedAt());
+    }
+
+    /**
+     * beffroi/saml S-57, SAML Core §2.7.2
+     */
+    #[Test]
+    #[DataProvider('provideBounds')]
+    public function theSessionExpiresNoLaterThanItsBound(string $bound, string $expiresAt): void
+    {
+        // Given
+        $session = Fixtures::session();
+
+        // When
+        $session->expireNoLaterThan(Fixtures::now()->modify($bound));
+
+        // Then
+        static::assertEquals(Fixtures::now()->modify($expiresAt), $session->expiresAt);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideBounds(): iterable
+    {
+        yield 'a bound before its expiry' => ['+2 hours', '+2 hours'];
+        yield 'a bound after its expiry' => ['+20 hours', '+12 hours'];
+    }
+
     #[Test]
     public function itRecordsEveryMethodProven(): void
     {
         // Given
         $user = Fixtures::user();
-        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD), Fixtures::now());
+        $proofs = AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now())->with(
+            new AuthenticationMethod(AuthenticationMethod::ONE_TIME_PASSWORD),
+            Fixtures::now(),
+        );
 
         // When
-        $session = new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), $proofs, Fixtures::context(), Fixtures::now()->modify('+1 hour'));
+        $session = new AuthenticationSession(
+            Uuid::v7(),
+            $user->tenant,
+            $user,
+            Fixtures::now(),
+            $proofs,
+            Fixtures::context(),
+            Fixtures::now()->modify('+1 hour'),
+        );
 
         // Then
         static::assertSame(['pwd', 'otp', 'mfa'], $session->methodReferences());
@@ -124,7 +216,15 @@ final class AuthenticationSessionTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()), Fixtures::context(), Fixtures::now());
+        new AuthenticationSession(
+            Uuid::v7(),
+            $user->tenant,
+            $user,
+            Fixtures::now(),
+            AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()),
+            Fixtures::context(),
+            Fixtures::now(),
+        );
     }
 
     #[Test]
@@ -137,7 +237,15 @@ final class AuthenticationSessionTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new AuthenticationSession(Uuid::v7(), $user->tenant, $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()->modify('+1 second')), Fixtures::context(), Fixtures::now()->modify('+1 hour'));
+        new AuthenticationSession(
+            Uuid::v7(),
+            $user->tenant,
+            $user,
+            Fixtures::now(),
+            AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()->modify('+1 second')),
+            Fixtures::context(),
+            Fixtures::now()->modify('+1 hour'),
+        );
     }
 
     #[Test]
@@ -150,11 +258,19 @@ final class AuthenticationSessionTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new AuthenticationSession(Uuid::v7(), Fixtures::tenant('other', 'https://id.other.example'), $user, Fixtures::now(), AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()), Fixtures::context(), Fixtures::now()->modify('+1 hour'));
+        new AuthenticationSession(
+            Uuid::v7(),
+            Fixtures::tenant('other', 'https://id.other.example'),
+            $user,
+            Fixtures::now(),
+            AuthenticationProofs::of(AuthenticationMethod::password(), Fixtures::now()),
+            Fixtures::context(),
+            Fixtures::now()->modify('+1 hour'),
+        );
     }
 
     /**
-     * OIDC Core §2: auth_time is the time of the End-User authentication; a re-authentication moves it.
+     * OIDC Core §2
      */
     #[Test]
     public function aNewProofMovesAuthTime(): void
@@ -171,9 +287,6 @@ final class AuthenticationSessionTest extends TestCase
         static::assertEquals(Fixtures::now(), $session->establishedAt);
     }
 
-    /**
-     * The proofs of other methods keep their own date (symfony/symfony#66064).
-     */
     #[Test]
     public function aNewProofKeepsTheOtherProofs(): void
     {
@@ -181,7 +294,10 @@ final class AuthenticationSessionTest extends TestCase
         $session = Fixtures::session();
 
         // When
-        $session->recordProof(new AuthenticationMethod(AuthenticationMethod::HARDWARE_KEY), Fixtures::context(Fixtures::now()->modify('+2 hours'), '198.51.100.7'));
+        $session->recordProof(
+            new AuthenticationMethod(AuthenticationMethod::HARDWARE_KEY),
+            Fixtures::context(Fixtures::now()->modify('+2 hours'), '198.51.100.7'),
+        );
 
         // Then
         static::assertSame(['pwd', 'hwk', 'mfa'], $session->methodReferences());
@@ -336,7 +452,7 @@ final class AuthenticationSessionTest extends TestCase
         $session->end(SessionEnd::User, $first);
 
         // When
-        $session->end(SessionEnd::Expiry, new DateTimeImmutable('2026-09-15T12:00:00+00:00'));
+        $session->end(SessionEnd::RelyingParty, new DateTimeImmutable('2026-09-15T12:00:00+00:00'));
 
         // Then
         static::assertSame($first, $session->endedAt);
@@ -355,5 +471,37 @@ final class AuthenticationSessionTest extends TestCase
 
         // When
         $session->touch(Fixtures::context(), Fixtures::now()->modify('+1 day'));
+    }
+
+    #[Test]
+    public function locatingASessionAddsAPlaceToEachProvenanceAndChangesNothingElse(): void
+    {
+        // Given
+        $session = Fixtures::session();
+        $session->touch(new RequestContext(Fixtures::now()->modify('+1 hour'), '198.51.100.7', 'curl/8.5.0'), $session->expiresAt);
+
+        // When
+        $session->locate(new GeoLocation('GB', city: 'Oxford'), new GeoLocation('FR', city: 'Lyon'));
+
+        // Then
+        static::assertSame('Oxford', $session->createdFrom->location?->city);
+        static::assertSame('203.0.113.10', $session->createdFrom->ipAddress);
+        static::assertSame('Lyon', $session->lastSeenFrom->location?->city);
+        static::assertSame('198.51.100.7', $session->lastSeenFrom->ipAddress);
+        static::assertSame('curl/8.5.0', $session->lastSeenFrom->userAgent);
+    }
+
+    #[Test]
+    public function anEndedSessionIsStillLocated(): void
+    {
+        // Given
+        $session = Fixtures::session();
+        $session->end(SessionEnd::User, Fixtures::now()->modify('+1 minute'));
+
+        // When
+        $session->locate(new GeoLocation('GB', city: 'Oxford'), new GeoLocation('GB', city: 'Oxford'));
+
+        // Then
+        static::assertSame('Oxford', $session->createdFrom->location?->city);
     }
 }

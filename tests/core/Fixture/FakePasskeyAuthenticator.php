@@ -2,22 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Fixture;
+namespace Beffroi\Core\Tests\Fixture;
 
 use function array_map;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Credential\VerifiedPasskeyAssertion;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\PasskeyCeremonyFailedException;
-use Heidi\Core\Port\PasskeyAuthenticatorInterface;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Domain\Credential\VerifiedPasskeyAssertion;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\PasskeyCeremonyFailedException;
+use Beffroi\Core\Port\PasskeyAuthenticatorInterface;
 use function str_repeat;
 use Webauthn\AuthenticatorData;
 use Webauthn\PublicKeyCredentialDescriptor;
 use Webauthn\PublicKeyCredentialRequestOptions;
 
-/**
- * An authentication ceremony that trusts the test: the assertion is verified as prepared, or refused.
- */
 final class FakePasskeyAuthenticator implements PasskeyAuthenticatorInterface
 {
     /**
@@ -44,7 +41,9 @@ final class FakePasskeyAuthenticator implements PasskeyAuthenticatorInterface
 
     public function requestOptions(Tenant $tenant, array $allowed): PublicKeyCredentialRequestOptions
     {
-        $this->allowed = array_map(static fn (PasskeyCredential $passkey): PublicKeyCredentialDescriptor => $passkey->record()->getPublicKeyCredentialDescriptor(), $allowed);
+        $this->allowed = array_map(static fn (PasskeyCredential $passkey): PublicKeyCredentialDescriptor => $passkey
+            ->record()
+            ->getPublicKeyCredentialDescriptor(), $allowed);
 
         return PublicKeyCredentialRequestOptions::create(str_repeat('c', 32), rpId: 'id.acme.example', allowCredentials: $this->allowed);
     }

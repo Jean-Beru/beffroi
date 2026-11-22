@@ -2,33 +2,34 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Controller;
+namespace App\Tests\Symfony\Functional\Controller;
 
 use function array_column;
 use function array_keys;
 use Closure;
-use Heidi\Bundle\Http\LogoutTokenSender;
-use Heidi\Bundle\Message\SendLogoutToken;
-use Heidi\Bundle\MessageHandler\SendLogoutTokenHandler;
-use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Heidi\Bundle\Tests\Functional\Messenger\LogoutEndpoints;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Oidc\Domain\Event\LogoutTokenGivenUp;
+use App\Http\LogoutTokenSender;
+use App\Message\SendLogoutToken;
+use App\MessageHandler\SendLogoutTokenHandler;
+use App\Messenger\NotificationNotDeliveredException;
+use App\Messenger\NotificationRetryPolicy;
+use App\Tests\Symfony\Functional\Command\ConsoleTestCase;
+use App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler;
+use App\Tests\Symfony\Functional\Messenger\LogoutEndpoints;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Oidc\Domain\Event\LogoutTokenGivenUp;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\Envelope;
-use Symfony\Component\Messenger\Exception\RecoverableMessageHandlingException;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Transport\TransportInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Back-Channel Logout 1.0 §2.5 and §2.8, architecture §5.6: what the provider does with the logout token
- * it minted, and what it does when the relying party does not take it. The delivery is asynchronous in
- * production; the transports of this kernel are synchronous, so what a worker would do later happens
- * here, in the request or on the call of the handler.
+ * Back-Channel Logout 1.0 §2.5, §2.8, Architecture §5.6
  */
-final class LogoutTokenDeliveryTest extends BrowserTestCase
+final class LogoutTokenDeliveryTest extends ConsoleTestCase
 {
     private const string URI = 'https://demo.test/backchannel-logout';
 
@@ -50,8 +51,7 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
     }
 
     /**
-     * Architecture §5.6: the logout answers the browser without waiting for the relying party. The token
-     * waits in the queue of its own transport, and a client that hangs holds a worker, never a user.
+     * Architecture §5.6
      */
     #[Test]
     public function theLogoutAnswersWithoutWaitingForTheClient(): void
@@ -69,8 +69,7 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
     }
 
     /**
-     * §2.5: the token reaches the URI the client registered, posted as a form whose one parameter is the
-     * one of the section, and it names the session that ended.
+     * Back-Channel Logout 1.0 §2.5
      */
     #[Test]
     public function theQueuedTokenIsPostedToTheClient(): void
@@ -93,7 +92,7 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
     }
 
     /**
-     * §2.8: a client that answers 200 is done, and nothing is given up on.
+     * Back-Channel Logout 1.0 §2.8
      */
     #[Test]
     public function aClientThatAnswersOkIsDone(): void
@@ -107,8 +106,7 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
     }
 
     /**
-     * §2.8: a client that failed for its own reasons is asked again, which the transport does on the
-     * schedule of its retry policy; nothing is given up on while it may still work.
+     * Back-Channel Logout 1.0 §2.8
      */
     #[Test]
     public function aClientThatFailsForItsOwnReasonsIsAskedAgain(): void
@@ -117,17 +115,13 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
         $this->endpoints->willAnswer([LogoutEndpoints::answering(500)]);
 
         // Then
-        $this->expectException(RecoverableMessageHandlingException::class);
+        $this->expectException(NotificationNotDeliveredException::class);
         $this->expectExceptionMessageIsOrContains('the client answered 500');
 
         // When
         $this->deliver();
     }
 
-    /**
-     * The token of the second attempt is the one that was minted, and the client that came back takes it:
-     * a retry asks the key management service for no new signature.
-     */
     #[Test]
     public function aClientThatComesBackTakesTheSameTokenOnTheNextAttempt(): void
     {
@@ -136,8 +130,7 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
         $message = self::message();
         try {
             self::handler()($message);
-        } catch (RecoverableMessageHandlingException) {
-            // the first attempt, which the transport would bring back
+        } catch (NotificationNotDeliveredException) {
         }
 
         // When
@@ -148,9 +141,6 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
         static::assertSame([], self::givenUp());
     }
 
-    /**
-     * A client that never answers is asked again too: a timeout is not a refusal.
-     */
     #[Test]
     public function aClientThatNeverAnswersIsAskedAgain(): void
     {
@@ -158,7 +148,7 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
         $this->endpoints->willAnswer([LogoutEndpoints::timingOut()]);
 
         // Then
-        $this->expectException(RecoverableMessageHandlingException::class);
+        $this->expectException(NotificationNotDeliveredException::class);
         $this->expectExceptionMessageIsOrContains('the client cannot be reached');
 
         // When
@@ -166,8 +156,45 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
     }
 
     /**
-     * Decision 0006: no outbound request follows a redirect, and the same redirect would answer every
-     * attempt, so the provider gives up at once and says where it was being sent.
+     * Back-Channel Logout 1.0 §2.8, Architecture §5.6
+     */
+    #[Test]
+    public function aClientThatNeverComesBackIsAskedAsOftenAsTheLaneAllows(): void
+    {
+        // Given
+        $this->endpoints->willAnswer([LogoutEndpoints::answering(503)]);
+        self::queue(self::message());
+
+        // When
+        self::work();
+
+        // Then
+        static::assertCount(self::policy()->attempts(), $this->endpoints->requests);
+    }
+
+    /**
+     * Back-Channel Logout 1.0 §2.8
+     */
+    #[Test]
+    public function aClientTheLaneRunsOutOnIsGivenUpOn(): void
+    {
+        // Given
+        $this->endpoints->willAnswer([LogoutEndpoints::answering(503)]);
+        self::queue(self::message());
+
+        // When
+        self::work();
+
+        // Then
+        $events = self::givenUp();
+        static::assertCount(1, $events);
+        [$givenUp] = $events;
+        static::assertSame('oidc-demo', $givenUp->clientId);
+        static::assertStringContainsString('the client answered 503', $givenUp->reason);
+    }
+
+    /**
+     * Decision 0006
      */
     #[Test]
     public function aClientThatRedirectsIsNotFollowedAndIsGivenUpOn(): void
@@ -186,8 +213,7 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
     }
 
     /**
-     * §2.8: 400 and 501 are the two answers that say the client read the token and will not act on it;
-     * asking again gets the same answer, so the provider gives up and says so.
+     * Back-Channel Logout 1.0 §2.8
      */
     #[Test]
     #[DataProvider('provideFinalRefusals')]
@@ -220,9 +246,26 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
         self::handler()(self::message());
     }
 
-    /**
-     * What a worker does with what it finds in the queue.
-     */
+    private static function queue(SendLogoutToken $message): void
+    {
+        self::service('command.bus', MessageBusInterface::class)->dispatch($message);
+    }
+
+    private static function work(): void
+    {
+        self::mockTime();
+        self::console('messenger:consume', [
+            'receivers' => ['async_notifications'],
+            '--time-limit' => (string) (2 * self::policy()->waiting()),
+            '--no-reset' => null,
+        ]);
+    }
+
+    private static function policy(): NotificationRetryPolicy
+    {
+        return self::service(NotificationRetryPolicy::class, NotificationRetryPolicy::class);
+    }
+
     private function deliverQueued(): void
     {
         foreach (self::queued() as $envelope) {
@@ -238,7 +281,7 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
     private static function queued(): array
     {
         $envelopes = [];
-        foreach (self::service('test.heidi.notification_queue', TransportInterface::class)->get() as $envelope) {
+        foreach (self::service('test.beffroi.notification_queue', TransportInterface::class)->get() as $envelope) {
             static::assertInstanceOf(Envelope::class, $envelope);
             $envelopes[] = $envelope;
         }
@@ -246,9 +289,6 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
         return $envelopes;
     }
 
-    /**
-     * The session of alice, signed in by one client through the whole code flow.
-     */
     private function signedInWith(string $clientId): AuthenticationSession
     {
         $session = $this->signIn(self::user('alice'));
@@ -262,18 +302,25 @@ final class LogoutTokenDeliveryTest extends BrowserTestCase
     {
         $this->browser->submit($this->browser->request('GET', '/logout', [
             'client_id' => 'oidc-demo',
-        ])->selectButton('Sign out')
-            ->form());
+        ])->selectButton('Sign out')->form());
     }
 
     private static function message(): SendLogoutToken
     {
-        return new SendLogoutToken(self::tenant(), 'oidc-demo', self::URI, self::TOKEN, Uuid::fromString(self::SESSION), self::context());
+        return new SendLogoutToken(
+            self::tenant(),
+            'oidc-demo',
+            self::URI,
+            self::TOKEN,
+            Uuid::fromString(self::SESSION),
+            new Subject('alice-subject'),
+            self::context(),
+        );
     }
 
     private static function handler(): SendLogoutTokenHandler
     {
-        return self::service('test.heidi.logout_token_delivery', SendLogoutTokenHandler::class);
+        return self::service('test.beffroi.logout_token_delivery', SendLogoutTokenHandler::class);
     }
 
     /**

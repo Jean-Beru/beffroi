@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Discovery;
+namespace Beffroi\Oidc\Tests\Domain\Discovery;
 
-use Heidi\Oidc\Domain\Discovery\ProviderEndpoints;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Domain\Discovery\ProviderEndpoints;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 final class ProviderEndpointsTest extends TestCase
 {
     /**
-     * OIDC Discovery §3: the endpoints are absolute URLs; a query is retained as it is (RFC 6749 §3.1).
+     * OIDC Discovery §3, RFC 6749 §3.1
      */
     #[Test]
     public function itKeepsAbsoluteHttpsUrlsAsTheyAre(): void
@@ -27,6 +27,12 @@ final class ProviderEndpointsTest extends TestCase
             'https://id.acme.example/logout',
             'https://id.acme.example/introspect',
             'https://id.acme.example/revoke',
+            'https://id.acme.example/par',
+            'https://id.acme.example/device_authorization',
+            'https://id.acme.example/device',
+            'https://id.acme.example/backchannel_authentication',
+            'https://id.acme.example/account/approvals',
+            'https://id.acme.example/register',
         );
 
         // Then
@@ -37,17 +43,36 @@ final class ProviderEndpointsTest extends TestCase
         static::assertSame('https://id.acme.example/logout', $endpoints->endSession);
         static::assertSame('https://id.acme.example/introspect', $endpoints->introspection);
         static::assertSame('https://id.acme.example/revoke', $endpoints->revocation);
+        static::assertSame('https://id.acme.example/par', $endpoints->pushedAuthorizationRequest);
+        static::assertSame('https://id.acme.example/device_authorization', $endpoints->deviceAuthorization);
+        static::assertSame('https://id.acme.example/device', $endpoints->deviceVerification);
+        static::assertSame('https://id.acme.example/backchannel_authentication', $endpoints->backchannelAuthentication);
+        static::assertSame('https://id.acme.example/account/approvals', $endpoints->backchannelApproval);
+        static::assertSame('https://id.acme.example/register', $endpoints->clientRegistration);
     }
 
     /**
-     * RFC 6761 §6.3: plain HTTP is tolerated on a loopback host for development, the same exception the
-     * issuer makes.
+     * RFC 6761 §6.3
      */
     #[Test]
     public function itToleratesPlainHttpOnLoopback(): void
     {
         // When
-        $endpoints = new ProviderEndpoints('http://localhost:8000/authorize', 'HTTPS://op.localhost/token', 'http://OP.LOCALHOST/userinfo', 'http://127.0.0.1/jwks', 'http://[::1]/logout', 'https://op.localhost/introspect', 'https://op.localhost/revoke');
+        $endpoints = new ProviderEndpoints(
+            'http://localhost:8000/authorize',
+            'HTTPS://op.localhost/token',
+            'http://OP.LOCALHOST/userinfo',
+            'http://127.0.0.1/jwks',
+            'http://[::1]/logout',
+            'https://op.localhost/introspect',
+            'https://op.localhost/revoke',
+            'https://op.localhost/par',
+            'https://op.localhost/device_authorization',
+            'https://op.localhost/device',
+            'https://op.localhost/backchannel_authentication',
+            'https://op.localhost/account/approvals',
+            'https://op.localhost/register',
+        );
 
         // Then
         static::assertSame('http://localhost:8000/authorize', $endpoints->authorization);
@@ -56,21 +81,34 @@ final class ProviderEndpointsTest extends TestCase
     }
 
     /**
-     * RFC 6749 §3.2 requires TLS on the token endpoint, and oidc_login refuses a token endpoint in clear
-     * even on loopback; RFC 7662 §2.1 and RFC 7009 §2 require it of the two endpoints that take the
-     * client credentials and a token the same way.
+     * RFC 6749 §3.2, RFC 7662 §2.1, RFC 7009 §2
      */
     #[Test]
     #[DataProvider('provideEndpointsRequiringTls')]
     public function itRefusesAnEndpointThatCarriesCredentialsInClearEvenOnLoopback(string $name, int $position): void
     {
         // Given
-        $urls = ['https://op.localhost/authorize', 'https://op.localhost/token', 'https://op.localhost/userinfo', 'https://op.localhost/jwks', 'https://op.localhost/logout', 'https://op.localhost/introspect', 'https://op.localhost/revoke'];
+        $urls = [
+            'https://op.localhost/authorize',
+            'https://op.localhost/token',
+            'https://op.localhost/userinfo',
+            'https://op.localhost/jwks',
+            'https://op.localhost/logout',
+            'https://op.localhost/introspect',
+            'https://op.localhost/revoke',
+            'https://op.localhost/par',
+            'https://op.localhost/device_authorization',
+            'https://op.localhost/device',
+            'https://op.localhost/backchannel_authentication',
+            'https://op.localhost/account/approvals',
+            'https://op.localhost/register',
+        ];
         $urls[$position] = 'http://localhost/x';
 
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIsOrContains($name . ' endpoint "http://localhost/x" must use HTTPS (RFC 6749 section 3.2), on a loopback host too');
+        $this->expectExceptionMessageIsOrContains($name
+        . ' endpoint "http://localhost/x" must use HTTPS (RFC 6749 section 3.2, RFC 9126 section 2, RFC 8628 section 3.1, CIBA Core section 7), on a loopback host too');
 
         // When
         new ProviderEndpoints(...$urls);
@@ -84,11 +122,14 @@ final class ProviderEndpointsTest extends TestCase
         yield 'token' => ['token', 1];
         yield 'introspection' => ['introspection', 5];
         yield 'revocation' => ['revocation', 6];
+        yield 'pushed authorization request' => ['pushed authorization request', 7];
+        yield 'device authorization' => ['device authorization', 8];
+        yield 'backchannel authentication' => ['backchannel authentication', 10];
+        yield 'client registration' => ['client registration', 12];
     }
 
     /**
-     * RFC 6749 §3.1, §3.2: absolute, no fragment, over TLS; what a relying party would use as it is must
-     * be refused before it is announced.
+     * RFC 6749 §3.1, §3.2
      */
     #[Test]
     #[DataProvider('provideRefusedUrls')]
@@ -99,7 +140,21 @@ final class ProviderEndpointsTest extends TestCase
         $this->expectExceptionMessageIsOrContains('The authorization endpoint "' . $url . '" ' . $reason);
 
         // When
-        new ProviderEndpoints($url, 'https://id.acme.example/token', 'https://id.acme.example/userinfo', 'https://id.acme.example/jwks', 'https://id.acme.example/logout', 'https://id.acme.example/introspect', 'https://id.acme.example/revoke');
+        new ProviderEndpoints(
+            $url,
+            'https://id.acme.example/token',
+            'https://id.acme.example/userinfo',
+            'https://id.acme.example/jwks',
+            'https://id.acme.example/logout',
+            'https://id.acme.example/introspect',
+            'https://id.acme.example/revoke',
+            'https://id.acme.example/par',
+            'https://id.acme.example/device_authorization',
+            'https://id.acme.example/device',
+            'https://id.acme.example/backchannel_authentication',
+            'https://id.acme.example/account/approvals',
+            'https://id.acme.example/register',
+        );
     }
 
     /**
@@ -117,15 +172,12 @@ final class ProviderEndpointsTest extends TestCase
         yield 'a user without a password' => ['https://user@id.acme.example/authorize', 'must not carry credentials'];
     }
 
-    /**
-     * Every endpoint is checked, and the message names the one at fault.
-     */
     #[Test]
     #[DataProvider('provideEndpointsAtFault')]
     public function everyEndpointIsCheckedAndNamed(string $name, int $position, string $url): void
     {
         // Given
-        $urls = array_fill(0, 7, 'https://id.acme.example/x');
+        $urls = array_fill(0, 13, 'https://id.acme.example/x');
         $urls[$position] = $url;
 
         // Then
@@ -148,5 +200,11 @@ final class ProviderEndpointsTest extends TestCase
         yield 'end session' => ['end session', 4, 'https://id.acme.example/e#f'];
         yield 'introspection' => ['introspection', 5, 'https://id.acme.example/i#f'];
         yield 'revocation' => ['revocation', 6, 'https://id.acme.example/r#f'];
+        yield 'pushed authorization request' => ['pushed authorization request', 7, 'https://id.acme.example/p#f'];
+        yield 'device authorization' => ['device authorization', 8, 'https://id.acme.example/d#f'];
+        yield 'device verification' => ['device verification', 9, 'https://id.acme.example/v#f'];
+        yield 'backchannel authentication' => ['backchannel authentication', 10, 'https://id.acme.example/b#f'];
+        yield 'backchannel approval' => ['backchannel approval', 11, 'https://id.acme.example/c#f'];
+        yield 'client registration' => ['client registration', 12, 'https://id.acme.example/g#f'];
     }
 }

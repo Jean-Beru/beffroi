@@ -2,26 +2,38 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Token;
+namespace Beffroi\Oidc\Tests\Application\Token;
 
+use Beffroi\Core\Exception\KmsUnavailableException;
+use Beffroi\Oidc\Tests\Fixture\Secrets;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use DateInterval;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Oidc\Application\Token\TokenIssuer;
-use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Event\TokensIssued;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
-use Heidi\Oidc\Domain\Token\RefreshToken;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
-use Heidi\Oidc\Tests\Fixture\FakeIdTokenIssuer;
-use Heidi\Oidc\Tests\Fixture\Tokens;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Application\Token\TokenIssuer;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Event\TokensIssued;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
+use Beffroi\Oidc\Domain\Token\AddressedResponse;
+use Beffroi\Oidc\Domain\Token\ClientAuthorization;
+use Beffroi\Oidc\Domain\Token\UserAuthorization;
+use Beffroi\Oidc\Domain\Token\RefreshToken;
+use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
+use Beffroi\Oidc\Exception\LogicException;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
+use Beffroi\Oidc\Tests\Fixture\FakeIdTokenIssuer;
+use Beffroi\Oidc\Tests\Fixture\Grants;
+use Beffroi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
 
 final class TokenIssuerTest extends TestCase
 {
@@ -50,12 +62,58 @@ final class TokenIssuerTest extends TestCase
         $this->idTokens = new FakeIdTokenIssuer();
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
         $this->events = new RecordingEventDispatcher();
-        $this->issuer = new TokenIssuer($this->accessTokens, $this->idTokens, $this->refreshTokens, $this->events);
+        $this->issuer = new TokenIssuer($this->accessTokens, $this->idTokens, $this->refreshTokens, Secrets::drawer(), $this->events);
     }
 
     /**
-     * OIDC Core §3.1.3.3: an access token and an ID token; the ID token is minted with the access token
-     * of the same response, for at_hash.
+     * RFC 6749 §4.4.3, OIDC Core §2
+     */
+    #[Test]
+    public function anAuthorizationWithNobodyBehindItIsAnsweredWithAnAccessTokenAlone(): void
+    {
+        // Given
+        $authorization = $this->clientAuthorization();
+
+        // When
+        $issued = $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
+
+        // Then
+        static::assertNull($issued->idToken);
+        static::assertSame([], $this->idTokens->issued);
+        static::assertSame([$authorization], $this->accessTokens->issued);
+    }
+
+    #[Test]
+    public function theIssuanceNamesThePersonTheTokensWereIssuedFor(): void
+    {
+        // Given
+        $authorization = $this->authorizationFromCode();
+
+        // When
+        $this->issuer->issue($authorization, null, $this->context, Fixtures::now(), $this->addressed($authorization));
+
+        // Then
+        static::assertTrue($this->events->of(TokensIssued::class)[0]->subject()?->equals($this->session->user->subject));
+    }
+
+    /**
+     * RFC 6749 §4.4
+     */
+    #[Test]
+    public function theIssuanceToAClientActingForItselfNamesNobody(): void
+    {
+        // Given
+        $authorization = $this->clientAuthorization();
+
+        // When
+        $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
+
+        // Then
+        static::assertNull($this->events->of(TokensIssued::class)[0]->subject());
+    }
+
+    /**
+     * OIDC Core §3.1.3.3
      */
     #[Test]
     public function itMintsAnAccessTokenAndAnIdTokenWhenOpenidIsRequested(): void
@@ -64,7 +122,7 @@ final class TokenIssuerTest extends TestCase
         $authorization = $this->authorizationFromCode();
 
         // When
-        $issued = $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
+        $issued = $this->issuer->issue($authorization, null, $this->context, Fixtures::now(), $this->addressed($authorization));
 
         // Then
         static::assertSame($authorization, $issued->authorization);
@@ -75,35 +133,29 @@ final class TokenIssuerTest extends TestCase
         static::assertSame([[$authorization, $issued->accessToken]], $this->idTokens->issued);
     }
 
-    /**
-     * The refresh token given goes into the response.
-     */
     #[Test]
     public function theRefreshTokenGivenGoesIntoTheResponse(): void
     {
         // Given
         $authorization = $this->authorizationFromCode();
-        $refreshToken = $this->issuer->refreshToken(Tokens::family(Fixtures::now()), $authorization, Fixtures::now());
+        $refreshToken = $this->issuer->refreshToken(Tokens::family(Fixtures::now(), $authorization->tenant), $authorization, Fixtures::now());
 
         // When
-        $issued = $this->issuer->issue($authorization, $refreshToken, $this->context, Fixtures::now());
+        $issued = $this->issuer->issue($authorization, $refreshToken, $this->context, Fixtures::now(), $this->addressed($authorization));
 
         // Then
         static::assertSame($refreshToken, $issued->refreshToken);
     }
 
-    /**
-     * The issuance is announced once, with the request context and the record of the refresh token.
-     */
     #[Test]
     public function theIssuanceIsAnnouncedOnce(): void
     {
         // Given
         $authorization = $this->authorizationFromCode();
-        $refreshToken = $this->issuer->refreshToken(Tokens::family(Fixtures::now()), $authorization, Fixtures::now());
+        $refreshToken = $this->issuer->refreshToken(Tokens::family(Fixtures::now(), $authorization->tenant), $authorization, Fixtures::now());
 
         // When
-        $this->issuer->issue($authorization, $refreshToken, $this->context, Fixtures::now());
+        $this->issuer->issue($authorization, $refreshToken, $this->context, Fixtures::now(), $this->addressed($authorization));
 
         // Then
         $events = $this->events->of(TokensIssued::class);
@@ -112,14 +164,14 @@ final class TokenIssuerTest extends TestCase
         static::assertEquals(Fixtures::now(), $events[0]->occurredAt);
         static::assertSame($this->session->tenant, $events[0]->tenant);
         static::assertSame($this->context, $events[0]->context);
-        static::assertSame($authorization, $events[0]->authorization);
+        static::assertSame($authorization->grantId, $events[0]->grantId);
         static::assertEquals(Fixtures::now()->modify('+10 minutes'), $events[0]->accessTokenExpiresAt);
         static::assertTrue($events[0]->idTokenIssued);
-        static::assertSame($refreshToken->token, $events[0]->refreshToken);
+        static::assertSame($refreshToken->token->tokenHash, $events[0]->refreshTokenHash);
     }
 
     /**
-     * RFC 6749 §6 with a scope narrowed below "openid": an access token only.
+     * RFC 6749 §6
      */
     #[Test]
     public function itMintsNoIdTokenWithoutOpenid(): void
@@ -128,12 +180,127 @@ final class TokenIssuerTest extends TestCase
         $authorization = $this->authorizationNarrowedToProfile();
 
         // When
-        $issued = $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
+        $issued = $this->issuer->issue($authorization, null, $this->context, Fixtures::now(), $this->addressed($authorization));
 
         // Then
         static::assertNull($issued->idToken);
         static::assertSame([], $this->idTokens->issued);
         static::assertFalse($this->events->of(TokensIssued::class)[0]->idTokenIssued);
+    }
+
+    /**
+     * OIDC Core §3.1.3.3
+     */
+    #[Test]
+    public function theIdTokenOfAResponseWithoutOpenidIsNotAddressed(): void
+    {
+        // Given
+        $this->idTokens->unreadableKeys = new ClientKeysUnavailableException('The keys of the client cannot be read.');
+
+        // When
+        $addressed = $this->issuer->address($this->client, new Scopes([new Scope('profile')]));
+
+        // Then
+        static::assertNull($addressed->idToken);
+    }
+
+    /**
+     * OIDC Core §3.1.3.7
+     */
+    #[Test]
+    public function keysThatCannotBeReadAreToldWhenTheIdTokenIsAddressed(): void
+    {
+        // Given
+        $this->idTokens->unreadableKeys = new ClientKeysUnavailableException('The keys of the client cannot be read.');
+
+        // Then
+        $this->expectException(ClientKeysUnavailableException::class);
+        $this->expectExceptionMessageIs('The keys of the client cannot be read.');
+
+        // When
+        $this->issuer->address($this->client, new Scopes([Scope::openid()]));
+    }
+
+    /**
+     * Architecture §4.5
+     */
+    #[Test]
+    public function aKmsThatDoesNotAnswerIsToldWhenTheResponseIsAddressed(): void
+    {
+        // Given
+        $this->accessTokens->kmsOutage = new KmsUnavailableException('The KMS did not answer.');
+
+        // Then
+        $this->expectException(KmsUnavailableException::class);
+        $this->expectExceptionMessageIs('The KMS did not answer.');
+
+        // When
+        $this->issuer->address($this->client, new Scopes([new Scope('profile')]));
+    }
+
+    /**
+     * RFC 6749 §4.4.3
+     */
+    #[Test]
+    public function aResponseNobodySignedInForIsAddressedWhenItIsStruck(): void
+    {
+        // Given
+        $authorization = $this->clientAuthorization();
+        $this->accessTokens->kmsOutage = new KmsUnavailableException('The KMS did not answer.');
+
+        // Then
+        $this->expectException(KmsUnavailableException::class);
+        $this->expectExceptionMessageIs('The KMS did not answer.');
+
+        // When
+        $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
+    }
+
+    #[Test]
+    public function aResponseItsGrantAddressedIsStruckWithWhatWasReadThen(): void
+    {
+        // Given
+        $authorization = $this->clientAuthorization();
+        $addressed = $this->issuer->addressFor($authorization);
+        $this->accessTokens->kmsOutage = new KmsUnavailableException('The KMS did not answer.');
+
+        // When
+        $this->issuer->issue($authorization, null, $this->context, Fixtures::now(), $addressed);
+
+        // Then
+        static::assertSame([$authorization], $this->accessTokens->issued);
+    }
+
+    /**
+     * Architecture §4.5
+     */
+    #[Test]
+    public function aResponseTheGrantDidNotAddressIsAFaultOfTheGrant(): void
+    {
+        // Given
+        $authorization = $this->authorizationNarrowedToProfile();
+
+        // Then
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessageIs('The response to an authorization somebody signed in for was not addressed before the grant spent what the request presented (architecture section 4.5).');
+
+        // When
+        $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
+    }
+
+    #[Test]
+    public function anIdTokenTheGrantDidNotAddressIsAFaultOfTheGrant(): void
+    {
+        // Given
+        $authorization = $this->authorizationFromCode();
+        $addressed = $this->issuer->address($authorization->client, new Scopes([new Scope('profile')]));
+
+        // Then
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessageIs('The ID token of this response was not addressed before the grant spent what the request presented (OIDC Core section 3.1.3.7).');
+
+        // When
+        $this->issuer->issue($authorization, null, $this->context, Fixtures::now(), $addressed);
     }
 
     #[Test]
@@ -143,45 +310,44 @@ final class TokenIssuerTest extends TestCase
         $authorization = $this->authorizationNarrowedToProfile();
 
         // When
-        $issued = $this->issuer->issue($authorization, null, $this->context, Fixtures::now());
+        $issued = $this->issuer->issue($authorization, null, $this->context, Fixtures::now(), $this->addressed($authorization));
 
         // Then
         static::assertNull($issued->refreshToken);
         static::assertSame([], $this->refreshTokens->all());
         static::assertSame(0, $this->refreshTokens->saves);
-        static::assertNull($this->events->of(TokensIssued::class)[0]->refreshToken);
+        static::assertNull($this->events->of(TokensIssued::class)[0]->refreshTokenHash);
     }
 
     /**
-     * Architecture §4.6: the refresh token is stored as its hash; the value goes to the client only.
+     * Architecture §4.6
      */
     #[Test]
     public function itIssuesARefreshTokenStoredHashed(): void
     {
         // Given
         $token = $this->previousRefreshToken();
-        $authorization = GrantedAuthorization::fromRefreshToken($token, [new Scope('profile')]);
+        $authorization = UserAuthorization::fromRefreshToken(Grants::refreshToken(), $token, new Scopes([new Scope('profile')]));
 
         // When
         $issued = $this->issuer->refreshToken($token->family, $authorization, Fixtures::now()->modify('+1 day'));
 
         // Then
         static::assertSame(1, preg_match('/^[A-Za-z0-9_-]{43}$/', $issued->value));
-        static::assertSame(RefreshToken::hash($issued->value), $issued->token->tokenHash);
+        static::assertSame(DrawnSecret::digestOf($issued->value), $issued->token->tokenHash);
         static::assertSame([$issued->token], $this->refreshTokens->all());
-        static::assertSame($issued->token, $this->refreshTokens->findByTokenHash(RefreshToken::hash($issued->value)));
+        static::assertSame($issued->token, $this->refreshTokens->findByTokenHash(DrawnSecret::digestOf($issued->value)));
     }
 
     /**
-     * Architecture §4.6: the refresh token is issued in the family given, for the granted scopes, with
-     * the authentication of the authorization.
+     * Architecture §4.6
      */
     #[Test]
     public function theRefreshTokenCarriesTheFamilyTheGrantedScopesAndTheAuthentication(): void
     {
         // Given
         $token = $this->previousRefreshToken();
-        $authorization = GrantedAuthorization::fromRefreshToken($token, [new Scope('profile')]);
+        $authorization = UserAuthorization::fromRefreshToken(Grants::refreshToken(), $token, new Scopes([new Scope('profile')]));
 
         // When
         $issued = $this->issuer->refreshToken($token->family, $authorization, Fixtures::now()->modify('+1 day'));
@@ -196,14 +362,14 @@ final class TokenIssuerTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: thirty days sliding.
+     * Architecture §4.6
      */
     #[Test]
     public function theRefreshTokenLivesThirtyDaysFromIssuance(): void
     {
         // Given
         $token = $this->previousRefreshToken();
-        $authorization = GrantedAuthorization::fromRefreshToken($token, [new Scope('profile')]);
+        $authorization = UserAuthorization::fromRefreshToken(Grants::refreshToken(), $token, new Scopes([new Scope('profile')]));
         $now = Fixtures::now()->modify('+1 day');
 
         // When
@@ -215,14 +381,14 @@ final class TokenIssuerTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: within the family, whose end caps the sliding expiry.
+     * Architecture §4.6
      */
     #[Test]
     public function theRefreshTokenNeverOutlivesItsFamily(): void
     {
         // Given
         $token = $this->previousRefreshToken();
-        $authorization = GrantedAuthorization::fromRefreshToken($token, [new Scope('profile')]);
+        $authorization = UserAuthorization::fromRefreshToken(Grants::refreshToken(), $token, new Scopes([new Scope('profile')]));
 
         // When
         $issued = $this->issuer->refreshToken($token->family, $authorization, Fixtures::now()->modify('+85 days'));
@@ -231,15 +397,12 @@ final class TokenIssuerTest extends TestCase
         static::assertEquals($token->family->expiresAt, $issued->token->expiresAt);
     }
 
-    /**
-     * The refresh token is announced with the response, by issue(), not when it is minted.
-     */
     #[Test]
     public function mintingARefreshTokenAnnouncesNothing(): void
     {
         // Given
         $token = $this->previousRefreshToken();
-        $authorization = GrantedAuthorization::fromRefreshToken($token, [new Scope('profile')]);
+        $authorization = UserAuthorization::fromRefreshToken(Grants::refreshToken(), $token, new Scopes([new Scope('profile')]));
 
         // When
         $this->issuer->refreshToken($token->family, $authorization, Fixtures::now());
@@ -253,8 +416,8 @@ final class TokenIssuerTest extends TestCase
     {
         // Given
         $token = $this->previousRefreshToken();
-        $authorization = GrantedAuthorization::fromRefreshToken($token, [new Scope('profile')]);
-        $shortLived = new TokenIssuer($this->accessTokens, $this->idTokens, $this->refreshTokens, $this->events, new DateInterval('PT1H'));
+        $authorization = UserAuthorization::fromRefreshToken(Grants::refreshToken(), $token, new Scopes([new Scope('profile')]));
+        $shortLived = new TokenIssuer($this->accessTokens, $this->idTokens, $this->refreshTokens, Secrets::drawer(), $this->events, new DateInterval('PT1H'));
 
         // When
         $issued = $shortLived->refreshToken($token->family, $authorization, Fixtures::now());
@@ -263,14 +426,43 @@ final class TokenIssuerTest extends TestCase
         static::assertEquals(Fixtures::now()->modify('+1 hour'), $issued->token->expiresAt);
     }
 
-    private function authorizationFromCode(): GrantedAuthorization
+    /**
+     * RFC 6749 §4.4
+     */
+    private function clientAuthorization(): ClientAuthorization
     {
-        return GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile']));
+        return new ClientAuthorization(
+            Grants::clientCredentials(),
+            Uuid::v7(),
+            Clients::service(
+                $this->session->tenant,
+                new FakePasswordHasher()->hash(Clients::SECRET),
+                allowedScopes: new Scopes([Scope::openid()]),
+            ),
+            new Scopes([Scope::openid()]),
+            ResourceIndicators::of([Clients::CALENDAR]),
+        );
     }
 
-    private function authorizationNarrowedToProfile(): GrantedAuthorization
+    private function authorizationFromCode(): UserAuthorization
     {
-        return GrantedAuthorization::fromRefreshToken($this->previousRefreshToken(), [new Scope('profile')]);
+        return UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+            ['openid', 'profile'],
+        ));
+    }
+
+    private function addressed(UserAuthorization $authorization): AddressedResponse
+    {
+        return $this->issuer->address($authorization->client, $authorization->scopes);
+    }
+
+    private function authorizationNarrowedToProfile(): UserAuthorization
+    {
+        return UserAuthorization::fromRefreshToken(Grants::refreshToken(), $this->previousRefreshToken(), new Scopes([new Scope('profile')]));
     }
 
     private function previousRefreshToken(): RefreshToken

@@ -2,22 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Bridge\JwtLibrary;
+namespace Beffroi\Core\Tests\Bridge\JwtLibrary;
 
-use function array_keys;
 use function base64_decode;
 use function explode;
-use Heidi\Core\Bridge\InMemory\InMemorySigningKeyRepository;
-use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
-use Heidi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
-use Heidi\Core\Bridge\Key\SealedKeyProvider;
-use Heidi\Core\Domain\Key\SigningKey;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\InvalidJwsException;
-use Heidi\Core\Exception\KeyNotFoundException;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Keys;
+use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
+use Beffroi\Core\Bridge\Key\OpenedKeys;
+use Beffroi\Core\Bridge\Key\SealedKeyProvider;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\InvalidJwsException;
+use Beffroi\Core\Exception\KeyNotFoundException;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Keys;
 use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Core\JWK;
 use Jose\Component\Core\JWKSet;
@@ -29,31 +29,41 @@ use Jose\Component\Signature\Serializer\CompactSerializer;
 use function json_decode;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use ReflectionProperty;
 use function strtr;
 
 final class JwtLibraryTest extends TestCase
 {
     private Tenant $tenant;
 
-    private InMemorySigningKeyRepository $repository;
+    private InMemoryTenantKeyRepository $repository;
+
+    private OpenedKeys $opened;
 
     private SealedKeyProvider $provider;
 
-    private SigningKey $active;
+    private TenantKey $active;
 
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
-        $this->repository = new InMemorySigningKeyRepository();
-        $this->active = new SigningKey(Keys::pair()->kid, $this->tenant, Algorithms::rs256(), Keys::pair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now());
+        $this->repository = new InMemoryTenantKeyRepository();
+        $this->active = new TenantKey(
+            Keys::pair()->kid,
+            $this->tenant,
+            Algorithms::rs256(),
+            Keys::pair()->publicJwk,
+            Keys::sealer()->seal($this->tenant, Keys::pair()->privateJwk),
+            Fixtures::now(),
+            Fixtures::now(),
+        );
         $this->active->activate(Fixtures::now());
         $this->repository->save($this->active);
-        $this->provider = new SealedKeyProvider($this->repository, Keys::sealer());
+        $this->opened = Keys::opened();
+        $this->provider = new SealedKeyProvider($this->repository, $this->opened);
     }
 
     /**
-     * RFC 7638 §3: the kid is the SHA-256 thumbprint of the public key.
+     * RFC 7638 §3
      */
     #[Test]
     public function theGeneratorNamesTheKeyByItsThumbprint(): void
@@ -69,7 +79,7 @@ final class JwtLibraryTest extends TestCase
     }
 
     /**
-     * RFC 7517 §4: the public JWK carries kid, alg and use, and no private member.
+     * RFC 7517 §4
      */
     #[Test]
     public function theGeneratorProducesAPublicJwkWithoutPrivateMembers(): void
@@ -86,7 +96,7 @@ final class JwtLibraryTest extends TestCase
     }
 
     /**
-     * RFC 7515 §7.1 compact serialization, header with alg and kid.
+     * RFC 7515 §7.1
      */
     #[Test]
     public function itSignsWithTheActiveKeyAndNamesItInTheHeader(): void
@@ -101,22 +111,48 @@ final class JwtLibraryTest extends TestCase
 
         // Then
         [$header] = explode('.', $jws);
-        static::assertSame([
-            'typ' => 'at+jwt',
-            'alg' => 'RS256',
-            'kid' => $this->active->kid,
-        ], json_decode((string) base64_decode(strtr($header, '-_', '+/'), true), true));
+        static::assertSame(
+            [
+                'typ' => 'at+jwt',
+                'alg' => 'RS256',
+                'kid' => $this->active->kid,
+            ],
+            json_decode((string) base64_decode(strtr($header, '-_', '+/'), true), true),
+        );
     }
 
     /**
-     * Verified by the library against the published JWK Set, the way a relying party would.
+     * RFC 7515 §7.1
      */
+    #[Test]
+    public function aKeyOpenedBeforeSignsWithoutBeingLookedUpAgain(): void
+    {
+        // Given
+        $opened = new JwtLibraryJwsSigner($this->provider, Algorithms::all())->open($this->tenant, Algorithms::rs256());
+        $this->active->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
+
+        // When
+        $jws = $opened->sign('{"sub":"alice"}', [
+            'typ' => 'at+jwt',
+        ]);
+
+        // Then
+        [$header] = explode('.', $jws);
+        static::assertSame(
+            [
+                'typ' => 'at+jwt',
+                'alg' => 'RS256',
+                'kid' => $this->active->kid,
+            ],
+            json_decode((string) base64_decode(strtr($header, '-_', '+/'), true), true),
+        );
+    }
+
     #[Test]
     public function theSignatureVerifiesAgainstThePublishedJwks(): void
     {
         // Given
-        $jws = new JwtLibraryJwsSigner($this->provider, Algorithms::all())
-            ->sign($this->tenant, Algorithms::rs256(), '{"sub":"alice"}');
+        $jws = new JwtLibraryJwsSigner($this->provider, Algorithms::all())->sign($this->tenant, Algorithms::rs256(), '{"sub":"alice"}');
         $jwks = JWKSet::createFromKeyData($this->provider->publicKeys($this->tenant)->toJwks());
 
         // When
@@ -130,14 +166,12 @@ final class JwtLibraryTest extends TestCase
     public function theVerifierReturnsThePayloadTheKeyAndTheHeader(): void
     {
         // Given
-        $jws = new JwtLibraryJwsSigner($this->provider, Algorithms::all())
-            ->sign($this->tenant, Algorithms::rs256(), '{"sub":"alice"}', [
-                'typ' => 'at+jwt',
-            ]);
+        $jws = new JwtLibraryJwsSigner($this->provider, Algorithms::all())->sign($this->tenant, Algorithms::rs256(), '{"sub":"alice"}', [
+            'typ' => 'at+jwt',
+        ]);
 
         // When
-        $verified = new JwtLibraryJwsVerifier($this->provider, Algorithms::all())
-            ->verify($this->tenant, $jws);
+        $verified = new JwtLibraryJwsVerifier($this->provider, Algorithms::all())->verify($this->tenant, $jws);
 
         // Then
         static::assertSame('{"sub":"alice"}', $verified->payload);
@@ -165,7 +199,7 @@ final class JwtLibraryTest extends TestCase
     public function signingWithoutAnActiveKeyFails(): void
     {
         // Given
-        $signer = new JwtLibraryJwsSigner(new SealedKeyProvider(new InMemorySigningKeyRepository(), Keys::sealer()), Algorithms::all());
+        $signer = new JwtLibraryJwsSigner(new SealedKeyProvider(new InMemoryTenantKeyRepository(), Keys::opened()), Algorithms::all());
 
         // Then
         $this->expectException(KeyNotFoundException::class);
@@ -175,7 +209,7 @@ final class JwtLibraryTest extends TestCase
     }
 
     /**
-     * OIDC Core §10.1.1: what the previous key signed stays verifiable while it is in the JWK Set.
+     * OIDC Core §10.1.1
      */
     #[Test]
     public function aRetiringKeyStillVerifies(): void
@@ -185,8 +219,7 @@ final class JwtLibraryTest extends TestCase
         $jws = self::signWith(Keys::pair()->privateJwk, 'payload');
 
         // When
-        $verified = new JwtLibraryJwsVerifier($this->provider, Algorithms::all())
-            ->verify($this->tenant, $jws);
+        $verified = new JwtLibraryJwsVerifier($this->provider, Algorithms::all())->verify($this->tenant, $jws);
 
         // Then
         static::assertSame($this->active, $verified->key);
@@ -206,16 +239,23 @@ final class JwtLibraryTest extends TestCase
         $signer->sign($this->tenant, Algorithms::rs256(), 'x');
     }
 
-    /**
-     * A staged key is published so that a cache learns it, and signs nothing until it is activated.
-     */
     #[Test]
     public function aStagedKeyDoesNotSign(): void
     {
         // Given
-        $repository = new InMemorySigningKeyRepository();
-        $repository->save(new SigningKey(Keys::pair()->kid, $this->tenant, Algorithms::rs256(), Keys::pair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::pair()->privateJwk), Fixtures::now(), Fixtures::now()));
-        $signer = new JwtLibraryJwsSigner(new SealedKeyProvider($repository, Keys::sealer()), Algorithms::all());
+        $repository = new InMemoryTenantKeyRepository();
+        $repository->save(
+            new TenantKey(
+                Keys::pair()->kid,
+                $this->tenant,
+                Algorithms::rs256(),
+                Keys::pair()->publicJwk,
+                Keys::sealer()->seal($this->tenant, Keys::pair()->privateJwk),
+                Fixtures::now(),
+                Fixtures::now(),
+            ),
+        );
+        $signer = new JwtLibraryJwsSigner(new SealedKeyProvider($repository, Keys::opened()), Algorithms::all());
 
         // Then
         $this->expectException(KeyNotFoundException::class);
@@ -224,9 +264,6 @@ final class JwtLibraryTest extends TestCase
         $signer->sign($this->tenant, Algorithms::rs256(), 'x');
     }
 
-    /**
-     * A JWS naming a retired kid is refused like one naming a key that never existed.
-     */
     #[Test]
     public function aRetiredKeyNoLongerVerifies(): void
     {
@@ -239,34 +276,37 @@ final class JwtLibraryTest extends TestCase
         $this->expectException(InvalidJwsException::class);
 
         // When
-        new JwtLibraryJwsVerifier($this->provider, Algorithms::all())
-            ->verify($this->tenant, $jws);
+        new JwtLibraryJwsVerifier($this->provider, Algorithms::all())->verify($this->tenant, $jws);
     }
 
     /**
-     * RFC 8725 §3.1 and §3.2: the algorithm comes from the verifier, never from the token; "none" and HMAC
-     * are refused whatever the header says.
+     * RFC 8725 §3.1, §3.2
      */
     #[Test]
     public function itRefusesTokensSignedWithAnotherAlgorithm(): void
     {
         // Given
-        $hmac = new JWSBuilder(new AlgorithmManager([new HS256()]))->create()->withPayload('payload')->addSignature(new JWK([
-            'kty' => 'oct',
-            'k' => rtrim(strtr(base64_encode(str_repeat('k', 32)), '+/', '-_'), '='),
-        ]), [
-            'alg' => 'HS256',
-            'kid' => $this->active->kid,
-        ])->build();
-        $jws = new CompactSerializer()
-            ->serialize($hmac, 0);
+        $hmac = new JWSBuilder(new AlgorithmManager([new HS256()]))
+            ->create()
+            ->withPayload('payload')
+            ->addSignature(
+                new JWK([
+                    'kty' => 'oct',
+                    'k' => rtrim(strtr(base64_encode(str_repeat('k', 32)), '+/', '-_'), '='),
+                ]),
+                [
+                    'alg' => 'HS256',
+                    'kid' => $this->active->kid,
+                ],
+            )
+            ->build();
+        $jws = new CompactSerializer()->serialize($hmac, 0);
 
         // Then
         $this->expectException(InvalidJwsException::class);
 
         // When
-        new JwtLibraryJwsVerifier($this->provider, Algorithms::all())
-            ->verify($this->tenant, $jws);
+        new JwtLibraryJwsVerifier($this->provider, Algorithms::all())->verify($this->tenant, $jws);
     }
 
     #[Test]
@@ -279,8 +319,7 @@ final class JwtLibraryTest extends TestCase
         $this->expectException(InvalidJwsException::class);
 
         // When
-        new JwtLibraryJwsVerifier($this->provider, Algorithms::all())
-            ->verify($this->tenant, $jws);
+        new JwtLibraryJwsVerifier($this->provider, Algorithms::all())->verify($this->tenant, $jws);
     }
 
     #[Test]
@@ -293,26 +332,27 @@ final class JwtLibraryTest extends TestCase
         $this->expectException(InvalidJwsException::class);
 
         // When
-        new JwtLibraryJwsVerifier($this->provider, Algorithms::all())
-            ->verify(Fixtures::tenant('other', 'https://id.other.example'), $jws);
+        new JwtLibraryJwsVerifier($this->provider, Algorithms::all())->verify(Fixtures::tenant('other', 'https://id.other.example'), $jws);
     }
 
     #[Test]
     public function itRefusesATokenWithoutKid(): void
     {
         // Given
-        $built = new JWSBuilder(new AlgorithmManager([new RS256()]))->create()->withPayload('payload')->addSignature(new JWK(Keys::pair()->privateJwk), [
-            'alg' => 'RS256',
-        ])->build();
-        $jws = new CompactSerializer()
-            ->serialize($built, 0);
+        $built = new JWSBuilder(new AlgorithmManager([new RS256()]))
+            ->create()
+            ->withPayload('payload')
+            ->addSignature(new JWK(Keys::pair()->privateJwk), [
+                'alg' => 'RS256',
+            ])
+            ->build();
+        $jws = new CompactSerializer()->serialize($built, 0);
 
         // Then
         $this->expectException(InvalidJwsException::class);
 
         // When
-        new JwtLibraryJwsVerifier($this->provider, Algorithms::all())
-            ->verify($this->tenant, $jws);
+        new JwtLibraryJwsVerifier($this->provider, Algorithms::all())->verify($this->tenant, $jws);
     }
 
     #[Test]
@@ -326,8 +366,7 @@ final class JwtLibraryTest extends TestCase
         $this->expectException(InvalidJwsException::class);
 
         // When
-        new JwtLibraryJwsVerifier($this->provider, Algorithms::all())
-            ->verify($this->tenant, $forged);
+        new JwtLibraryJwsVerifier($this->provider, Algorithms::all())->verify($this->tenant, $forged);
     }
 
     #[Test]
@@ -337,8 +376,7 @@ final class JwtLibraryTest extends TestCase
         $this->expectException(InvalidJwsException::class);
 
         // When
-        new JwtLibraryJwsVerifier($this->provider, Algorithms::all())
-            ->verify($this->tenant, 'not.a.jws.at.all');
+        new JwtLibraryJwsVerifier($this->provider, Algorithms::all())->verify($this->tenant, 'not.a.jws.at.all');
     }
 
     #[Test]
@@ -364,17 +402,21 @@ final class JwtLibraryTest extends TestCase
         static::assertSame($first, $second);
     }
 
-    /**
-     * The opened private half of a key that stopped signing leaves the memory of the provider: the next
-     * active key is opened, the previous one is not kept beside it.
-     */
     #[Test]
     public function theProviderForgetsAKeyOnceItIsNoLongerActive(): void
     {
         // Given
-        $this->provider->activeKey($this->tenant, Algorithms::rs256());
+        $previous = $this->provider->activeKey($this->tenant, Algorithms::rs256());
         $this->active->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
-        $next = new SigningKey(Keys::otherPair()->kid, $this->tenant, Algorithms::rs256(), Keys::otherPair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::otherPair()->privateJwk), Fixtures::now(), Fixtures::now());
+        $next = new TenantKey(
+            Keys::otherPair()->kid,
+            $this->tenant,
+            Algorithms::rs256(),
+            Keys::otherPair()->publicJwk,
+            Keys::sealer()->seal($this->tenant, Keys::otherPair()->privateJwk),
+            Fixtures::now(),
+            Fixtures::now(),
+        );
         $next->activate(Fixtures::now());
         $this->repository->save($next);
 
@@ -383,24 +425,37 @@ final class JwtLibraryTest extends TestCase
 
         // Then
         static::assertSame($next, $opened->key);
-        $kept = new ReflectionProperty($this->provider, 'opened')
-            ->getValue($this->provider);
-        static::assertIsArray($kept);
-        static::assertSame([Keys::otherPair()->kid], array_keys($kept));
+        static::assertNotSame($previous, $this->opened->open($this->tenant, $this->active));
     }
 
     #[Test]
     public function theProviderPublishesStagedActiveAndRetiringKeys(): void
     {
         // Given
-        $retiring = new SigningKey(Keys::otherPair()->kid, $this->tenant, Algorithms::rs256(), Keys::otherPair()->publicJwk, Keys::sealer()->seal($this->tenant, Keys::otherPair()->privateJwk), Fixtures::now()->modify('-1 day'), Fixtures::now()->modify('-1 day'));
+        $retiring = new TenantKey(
+            Keys::otherPair()->kid,
+            $this->tenant,
+            Algorithms::rs256(),
+            Keys::otherPair()->publicJwk,
+            Keys::sealer()->seal($this->tenant, Keys::otherPair()->privateJwk),
+            Fixtures::now()->modify('-1 day'),
+            Fixtures::now()->modify('-1 day'),
+        );
         $retiring->activate(Fixtures::now()->modify('-1 day'));
         $retiring->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
         $this->repository->save($retiring);
-        $staged = new SigningKey('staged-kid', $this->tenant, Algorithms::rs256(), [
-            ...Keys::otherPair()->publicJwk,
-            'kid' => 'staged-kid',
-        ], 'sealed', Fixtures::now()->modify('+1 minute'), Fixtures::now()->modify('+7 minutes'));
+        $staged = new TenantKey(
+            'staged-kid',
+            $this->tenant,
+            Algorithms::rs256(),
+            [
+                ...Keys::otherPair()->publicJwk,
+                'kid' => 'staged-kid',
+            ],
+            'sealed',
+            Fixtures::now()->modify('+1 minute'),
+            Fixtures::now()->modify('+7 minutes'),
+        );
         $this->repository->save($staged);
 
         // When
@@ -425,12 +480,15 @@ final class JwtLibraryTest extends TestCase
      */
     private static function signWith(array $privateJwk, string $payload): string
     {
-        $jws = new JWSBuilder(new AlgorithmManager([new RS256()]))->create()->withPayload($payload)->addSignature(new JWK($privateJwk), [
-            'alg' => 'RS256',
-            'kid' => $privateJwk['kid'],
-        ])->build();
+        $jws = new JWSBuilder(new AlgorithmManager([new RS256()]))
+            ->create()
+            ->withPayload($payload)
+            ->addSignature(new JWK($privateJwk), [
+                'alg' => 'RS256',
+                'kid' => $privateJwk['kid'],
+            ])
+            ->build();
 
-        return new CompactSerializer()
-            ->serialize($jws, 0);
+        return new CompactSerializer()->serialize($jws, 0);
     }
 }

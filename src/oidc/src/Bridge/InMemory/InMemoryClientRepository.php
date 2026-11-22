@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Bridge\InMemory;
+namespace Beffroi\Oidc\Bridge\InMemory;
 
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Domain\Client\AccessTokenFormat;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Port\ClientRepositoryInterface;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\InventoriedClient;
+use Beffroi\Oidc\Port\ClientInventoryInterface;
+use Beffroi\Oidc\Port\ClientSourceInterface;
 
-/**
- * For tests and for the examples: nothing here survives the process.
- */
-final class InMemoryClientRepository implements ClientRepositoryInterface
+final class InMemoryClientRepository implements ClientInventoryInterface, ClientSourceInterface
 {
+    public const string SOURCE = 'memory';
+
     /**
      * @var list<Client>
      */
@@ -22,7 +22,7 @@ final class InMemoryClientRepository implements ClientRepositoryInterface
     public function findByClientId(Tenant $tenant, string $clientId): ?Client
     {
         foreach ($this->clients as $client) {
-            if ($client->belongsTo($tenant) && $client->clientId === $clientId) {
+            if ($client->belongsTo($tenant) && $client->registration->clientId === $clientId) {
                 return $client;
             }
         }
@@ -30,9 +30,20 @@ final class InMemoryClientRepository implements ClientRepositoryInterface
         return null;
     }
 
-    public function issuesAccessTokensIn(Tenant $tenant, AccessTokenFormat $format): bool
+    public function registrationsIn(Tenant $tenant): iterable
     {
-        return array_any($this->clients, fn ($client) => $client->belongsTo($tenant) && $client->accessTokenFormat === $format);
+        foreach ($this->clients as $client) {
+            if ($client->belongsTo($tenant)) {
+                yield $client->registration;
+            }
+        }
+    }
+
+    public function inventoryIn(Tenant $tenant): iterable
+    {
+        foreach ($this->registrationsIn($tenant) as $registration) {
+            yield new InventoriedClient(self::SOURCE, $registration->clientId, $registration->presentation->name);
+        }
     }
 
     public function save(Client $client): void

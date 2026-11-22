@@ -2,33 +2,40 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Token;
+namespace Beffroi\Oidc\Domain\Token;
 
-use Heidi\Oidc\Exception\InvalidClientException;
-use Heidi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Oidc\Exception\ChallengeInterface;
+use Beffroi\Oidc\Exception\InvalidClientException;
+use Beffroi\Oidc\Exception\OAuth2Exception;
 
 /**
- * An error of the token endpoint (RFC 6749 §5.2), and of the introspection (RFC 7662 §2.3) and revocation
- * (RFC 7009 §2.2.1) endpoints: 400, or 401 with a challenge for "invalid_client" through the header.
+ * RFC 6749 §5.2, RFC 7662 §2.3, RFC 7009 §2.2.1
  */
 final readonly class TokenErrorResponse
 {
     public const string CONTENT_TYPE = 'application/json';
 
     /**
-     * @param string|null $challenge the WWW-Authenticate header, when one is due
+     * @param array<string, string> $carried the headers the refusal carries beside its body, by name
      */
     public function __construct(
         public int $statusCode,
         public string $error,
         public string $errorDescription,
         public ?string $challenge = null,
+        public array $carried = [],
     ) {
     }
 
     public static function fromException(OAuth2Exception $exception): self
     {
-        return new self($exception->statusCode, $exception->error, $exception->errorDescription, $exception instanceof InvalidClientException ? $exception->challenge : null);
+        return new self(
+            $exception->statusCode,
+            $exception->error,
+            $exception->errorDescription,
+            $exception instanceof InvalidClientException ? $exception->challenge : null,
+            $exception instanceof ChallengeInterface ? $exception->challengeHeaders() : [],
+        );
     }
 
     /**
@@ -47,7 +54,7 @@ final readonly class TokenErrorResponse
      */
     public function headers(): array
     {
-        $headers = TokenResponse::HEADERS;
+        $headers = TokenResponse::HEADERS + $this->carried;
         if ($this->challenge !== null) {
             $headers['WWW-Authenticate'] = $this->challenge;
         }

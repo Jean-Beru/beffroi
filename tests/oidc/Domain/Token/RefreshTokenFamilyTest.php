@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Token;
+namespace Beffroi\Oidc\Tests\Domain\Token;
 
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
-use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Domain\Token\RefreshTokenFamily;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -16,7 +16,7 @@ use Symfony\Component\Uid\Uuid;
 final class RefreshTokenFamilyTest extends TestCase
 {
     /**
-     * Architecture §4.6: the family descends from a code.
+     * Architecture §4.6
      */
     #[Test]
     public function itDescendsFromACode(): void
@@ -25,23 +25,37 @@ final class RefreshTokenFamilyTest extends TestCase
         $id = Uuid::v7();
 
         // When
-        $family = new RefreshTokenFamily($id, AuthorizationCode::hash('the-code'), Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+90 days'));
+        $family = new RefreshTokenFamily(
+            $id,
+            Fixtures::tenant(),
+            DrawnSecret::digestOf('the-code'),
+            Uuid::v7(),
+            Fixtures::now(),
+            Fixtures::now()->modify('+90 days'),
+        );
 
         // Then
         static::assertSame($id, $family->id);
-        static::assertSame(AuthorizationCode::hash('the-code'), $family->authorizationCodeHash);
+        static::assertSame(DrawnSecret::digestOf('the-code'), $family->grantingRecordHash);
         static::assertEquals(Fixtures::now(), $family->startedAt);
     }
 
     /**
-     * Architecture §4.6: the family carries the absolute lifetime, ninety days, the last instant excluded.
+     * Architecture §4.6
      */
     #[Test]
     #[DataProvider('provideInstants')]
     public function itExpiresAbsolutely(string $offset, bool $expired): void
     {
         // Given
-        $family = new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash('the-code'), Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+90 days'));
+        $family = new RefreshTokenFamily(
+            Uuid::v7(),
+            Fixtures::tenant(),
+            DrawnSecret::digestOf('the-code'),
+            Uuid::v7(),
+            Fixtures::now(),
+            Fixtures::now()->modify('+90 days'),
+        );
 
         // When / Then
         static::assertSame($expired, $family->isExpired(Fixtures::now()->modify($offset)));
@@ -62,20 +76,45 @@ final class RefreshTokenFamilyTest extends TestCase
     {
         // Given
         $id = Uuid::v7();
-        $family = new RefreshTokenFamily($id, AuthorizationCode::hash('the-code'), Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+90 days'));
+        $family = new RefreshTokenFamily(
+            $id,
+            Fixtures::tenant(),
+            DrawnSecret::digestOf('the-code'),
+            Uuid::v7(),
+            Fixtures::now(),
+            Fixtures::now()->modify('+90 days'),
+        );
 
         // When / Then
-        static::assertTrue($family->equals(new RefreshTokenFamily($id, AuthorizationCode::hash('another'), Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+1 day'))));
+        static::assertTrue($family->equals(
+            new RefreshTokenFamily($id, Fixtures::tenant(), DrawnSecret::digestOf('another'), Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+1 day')),
+        ));
     }
 
     #[Test]
     public function twoFamiliesWithDifferentIdentifiersAreNotEqual(): void
     {
         // Given
-        $family = new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash('the-code'), Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+90 days'));
+        $family = new RefreshTokenFamily(
+            Uuid::v7(),
+            Fixtures::tenant(),
+            DrawnSecret::digestOf('the-code'),
+            Uuid::v7(),
+            Fixtures::now(),
+            Fixtures::now()->modify('+90 days'),
+        );
 
         // When / Then
-        static::assertFalse($family->equals(new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash('the-code'), Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+90 days'))));
+        static::assertFalse($family->equals(
+            new RefreshTokenFamily(
+                Uuid::v7(),
+                Fixtures::tenant(),
+                DrawnSecret::digestOf('the-code'),
+                Uuid::v7(),
+                Fixtures::now(),
+                Fixtures::now()->modify('+90 days'),
+            ),
+        ));
     }
 
     #[Test]
@@ -85,7 +124,7 @@ final class RefreshTokenFamilyTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new RefreshTokenFamily(Uuid::v7(), 'the-code', Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+90 days'));
+        new RefreshTokenFamily(Uuid::v7(), Fixtures::tenant(), 'the-code', Uuid::v7(), Fixtures::now(), Fixtures::now()->modify('+90 days'));
     }
 
     #[Test]
@@ -95,6 +134,6 @@ final class RefreshTokenFamilyTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash('the-code'), Uuid::v7(), Fixtures::now(), Fixtures::now());
+        new RefreshTokenFamily(Uuid::v7(), Fixtures::tenant(), DrawnSecret::digestOf('the-code'), Uuid::v7(), Fixtures::now(), Fixtures::now());
     }
 }

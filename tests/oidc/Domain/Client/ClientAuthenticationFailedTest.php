@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Client;
+namespace Beffroi\Oidc\Tests\Domain\Client;
 
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
-use Heidi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailed;
+use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 final class ClientAuthenticationFailedTest extends TestCase
 {
     /**
-     * Architecture §3.5: every event says when, in which tenant and from which request.
+     * Architecture §3.5
      */
     #[Test]
     public function itIsADomainEventWithTheRequestContext(): void
@@ -23,7 +23,14 @@ final class ClientAuthenticationFailedTest extends TestCase
         $context = Fixtures::context();
 
         // When
-        $event = new ClientAuthenticationFailed(Fixtures::now(), $tenant, $context, ClientAuthenticationFailureReason::InvalidSecret, 'oidc-demo', 'client_secret_basic');
+        $event = new ClientAuthenticationFailed(
+            Fixtures::now(),
+            $tenant,
+            $context,
+            ClientAuthenticationFailureReason::InvalidSecret,
+            'oidc-demo',
+            'client_secret_basic',
+        );
 
         // Then
         static::assertEquals(Fixtures::now(), $event->occurredAt);

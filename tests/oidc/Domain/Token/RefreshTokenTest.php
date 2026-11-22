@@ -2,32 +2,43 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Token;
+namespace Beffroi\Oidc\Tests\Domain\Token;
 
+use Beffroi\Oidc\Tests\Fixture\Secrets;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
-use Heidi\Oidc\Domain\Authorization\ClaimRequest;
-use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
-use Heidi\Oidc\Domain\Token\RefreshToken;
-use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Exception\LogicException;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\Tokens;
+use Beffroi\Core\Domain\Session\AuthenticationMethod;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Authorization\AuthenticationSnapshot;
+use Beffroi\Oidc\Domain\Authorization\ClaimRequest;
+use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Token\UserAuthorization;
+use Beffroi\Oidc\Domain\Token\KeyConfirmation;
+use Beffroi\Oidc\Domain\Token\RefreshToken;
+use Beffroi\Oidc\Domain\Token\RefreshTokenFamily;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Exception\LogicException;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\Grants;
+use Beffroi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use function preg_match;
-use function strlen;
 
 final class RefreshTokenTest extends TestCase
 {
+    /**
+     * RFC 7638 §3.1
+     */
+    private const string THUMBPRINT = 'NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs';
+
+    private const string OTHER_THUMBPRINT = '5bPRpDFfR6QNNOFrxJLPHlbCcFEHFwWVtOJQCg8h2hM';
+
     private AuthenticationSession $session;
 
     private Client $client;
@@ -38,49 +49,11 @@ final class RefreshTokenTest extends TestCase
     {
         $this->session = Fixtures::session();
         $this->client = Clients::public($this->session->tenant);
-        $this->family = Tokens::family(Fixtures::now());
+        $this->family = Tokens::family(Fixtures::now(), $this->client->tenant);
     }
 
     /**
-     * Architecture §4.6: 256 bits of the CSPRNG in base64url.
-     */
-    #[Test]
-    public function aTokenIs256RandomBitsInBase64url(): void
-    {
-        // When
-        $token = RefreshToken::generate();
-
-        // Then
-        static::assertSame(1, preg_match('/^[A-Za-z0-9_-]{43}$/', $token));
-        static::assertNotSame($token, RefreshToken::generate());
-    }
-
-    /**
-     * Architecture §4.6: stored as its SHA-256.
-     */
-    #[Test]
-    public function aTokenIsHashedWithSha256(): void
-    {
-        // When / Then
-        static::assertSame('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', RefreshToken::hash(''));
-        static::assertSame(64, strlen(RefreshToken::hash(RefreshToken::generate())));
-    }
-
-    #[Test]
-    public function twoTokensHashDifferently(): void
-    {
-        // Given
-        $token = RefreshToken::generate();
-        $again = RefreshToken::generate();
-
-        // When / Then
-        static::assertSame(RefreshToken::hash($token), RefreshToken::hash($token));
-        static::assertNotSame(RefreshToken::hash($token), RefreshToken::hash($again));
-    }
-
-    /**
-     * Architecture §4.6: everything the next refresh needs, with the authentication of the original
-     * authorization.
+     * Architecture §4.6
      */
     #[Test]
     public function itRecordsWhatTheNextRefreshWillNeed(): void
@@ -96,13 +69,13 @@ final class RefreshTokenTest extends TestCase
         $token = Tokens::refreshToken('the-token', $this->client, $this->session, $issuedAt, $this->family, ['openid', 'profile'], $claims);
 
         // Then
-        static::assertSame(RefreshToken::hash('the-token'), $token->tokenHash);
+        static::assertSame(DrawnSecret::digestOf('the-token'), $token->tokenHash);
         static::assertSame($this->family, $token->family);
         static::assertSame($this->client, $token->client);
-        static::assertSame($this->client->clientId, $token->clientId);
+        static::assertSame($this->client->registration->clientId, $token->clientId);
         static::assertSame($this->client->tenant, $token->tenant);
         static::assertSame($this->session, $token->session);
-        static::assertEquals([new Scope('openid'), new Scope('profile')], $token->scopes);
+        static::assertEquals([new Scope('openid'), new Scope('profile')], $token->scopes->all);
         static::assertSame($claims, $token->claimsRequest);
         static::assertEquals($issuedAt, $token->authentication->authenticatedAt);
         static::assertSame(['pwd', 'otp', 'mfa'], $token->authentication->methods);
@@ -131,8 +104,8 @@ final class RefreshTokenTest extends TestCase
         $token = Tokens::refreshToken('the-token', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile']);
 
         // When / Then
-        static::assertTrue($token->hasScope(new Scope('profile')));
-        static::assertFalse($token->hasScope(new Scope('email')));
+        static::assertTrue($token->scopes->has(new Scope('profile')));
+        static::assertFalse($token->scopes->has(new Scope('email')));
     }
 
     /**
@@ -146,7 +119,7 @@ final class RefreshTokenTest extends TestCase
         $token = Tokens::refreshToken('the-token', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile']);
 
         // When / Then
-        static::assertSame($covered, $token->covers($requested));
+        static::assertSame($covered, $token->scopes->covers(new Scopes($requested)));
     }
 
     /**
@@ -155,7 +128,6 @@ final class RefreshTokenTest extends TestCase
     public static function provideRequestedScopes(): iterable
     {
         yield 'all scopes in another order' => [[new Scope('profile'), new Scope('openid')], true];
-        yield 'nothing' => [[], true];
         yield 'a scope it does not carry' => [[new Scope('openid'), new Scope('email')], false];
     }
 
@@ -164,10 +136,20 @@ final class RefreshTokenTest extends TestCase
     {
         // Given
         $code = Tokens::code('the-code', $this->client, $this->session, Fixtures::now(), ['openid', 'profile', 'email']);
-        $authorization = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']), [new Scope('openid')]);
+        $authorization = UserAuthorization::fromRefreshToken(
+            Grants::refreshToken(),
+            Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']),
+            new Scopes([new Scope('openid')]),
+        );
 
         // When
-        $token = RefreshToken::fromAuthorization(RefreshToken::hash('the-token'), $this->family, $authorization, Fixtures::now(), Fixtures::now()->modify('+30 days'));
+        $token = RefreshToken::fromAuthorization(
+            DrawnSecret::digestOf('the-token'),
+            $this->family,
+            $authorization,
+            Fixtures::now(),
+            Fixtures::now()->modify('+30 days'),
+        );
 
         // Then
         static::assertEquals($code->scopes, $token->scopes, 'the token keeps what was granted, not what this response narrowed to');
@@ -179,10 +161,20 @@ final class RefreshTokenTest extends TestCase
     public function itIsIssuedFromAnAuthorizationWithItsAuthentication(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']), [new Scope('openid')]);
+        $authorization = UserAuthorization::fromRefreshToken(
+            Grants::refreshToken(),
+            Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']),
+            new Scopes([new Scope('openid')]),
+        );
 
         // When
-        $token = RefreshToken::fromAuthorization(RefreshToken::hash('the-token'), $this->family, $authorization, Fixtures::now(), Fixtures::now()->modify('+30 days'));
+        $token = RefreshToken::fromAuthorization(
+            DrawnSecret::digestOf('the-token'),
+            $this->family,
+            $authorization,
+            Fixtures::now(),
+            Fixtures::now()->modify('+30 days'),
+        );
 
         // Then
         static::assertSame($authorization->claimsRequest, $token->claimsRequest);
@@ -192,18 +184,107 @@ final class RefreshTokenTest extends TestCase
     }
 
     /**
-     * Architecture §4.6: the sliding expiry is capped by the family, so that the ninetieth day is the
-     * end whatever the last refresh.
+     * RFC 9449 §5
+     */
+    #[Test]
+    public function aTokenOfAPublicClientKeepsWhatTheRequestProved(): void
+    {
+        // Given
+        $key = new KeyConfirmation(self::THUMBPRINT);
+        $authorization = UserAuthorization::fromRefreshToken(
+            Grants::refreshToken(),
+            Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family),
+            null,
+            $key,
+        );
+
+        // When
+        $token = RefreshToken::fromAuthorization(
+            DrawnSecret::digestOf('the-token'),
+            $this->family,
+            $authorization,
+            Fixtures::now(),
+            Fixtures::now()->modify('+30 days'),
+        );
+
+        // Then
+        static::assertEquals($key, $token->confirmation);
+    }
+
+    /**
+     * RFC 8705 §4
+     */
+    #[Test]
+    public function aTokenOfAConfidentialClientKeepsNone(): void
+    {
+        // Given
+        $client = Clients::confidential($this->session->tenant, new FakePasswordHasher()->hash(Clients::SECRET));
+        $authorization = UserAuthorization::fromRefreshToken(
+            Grants::refreshToken(),
+            Tokens::refreshToken('previous', $client, $this->session, Fixtures::now(), $this->family),
+            null,
+            new KeyConfirmation(self::THUMBPRINT),
+        );
+
+        // When
+        $token = RefreshToken::fromAuthorization(
+            DrawnSecret::digestOf('the-token'),
+            $this->family,
+            $authorization,
+            Fixtures::now(),
+            Fixtures::now()->modify('+30 days'),
+        );
+
+        // Then
+        static::assertNull($token->confirmation);
+    }
+
+    #[Test]
+    #[DataProvider('provideRefreshes')]
+    public function itIsRefreshedByWhatProvesWhatItIsBoundTo(?string $bound, ?string $proven, bool $refreshed): void
+    {
+        // Given
+        $token = Tokens::refreshToken(
+            'the-token',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+            $this->family,
+            confirmation: $bound === null ? null : new KeyConfirmation($bound),
+        );
+
+        // When / Then
+        static::assertSame($refreshed, $token->isRefreshedBy($proven === null ? null : new KeyConfirmation($proven)));
+    }
+
+    /**
+     * @return iterable<string, array{string|null, string|null, bool}>
+     */
+    public static function provideRefreshes(): iterable
+    {
+        yield 'bound, and the key proved again' => [self::THUMBPRINT, self::THUMBPRINT, true];
+        yield 'bound, and another key proved' => [self::THUMBPRINT, self::OTHER_THUMBPRINT, false];
+        yield 'bound, and nothing proved' => [self::THUMBPRINT, null, false];
+        yield 'bound to nothing' => [null, null, true];
+        yield 'bound to nothing, and a key proved' => [null, self::THUMBPRINT, true];
+    }
+
+    /**
+     * Architecture §4.6
      */
     #[Test]
     public function itNeverOutlivesItsFamily(): void
     {
         // Given
-        $authorization = GrantedAuthorization::fromRefreshToken(Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']), [new Scope('openid')]);
+        $authorization = UserAuthorization::fromRefreshToken(
+            Grants::refreshToken(),
+            Tokens::refreshToken('previous', $this->client, $this->session, Fixtures::now(), $this->family, ['openid', 'profile', 'email']),
+            new Scopes([new Scope('openid')]),
+        );
         $late = Fixtures::now()->modify('+80 days');
 
         // When
-        $token = RefreshToken::fromAuthorization(RefreshToken::hash('the-token'), $this->family, $authorization, $late, $late->modify('+30 days'));
+        $token = RefreshToken::fromAuthorization(DrawnSecret::digestOf('the-token'), $this->family, $authorization, $late, $late->modify('+30 days'));
 
         // Then
         static::assertEquals($this->family->expiresAt, $token->expiresAt);
@@ -231,7 +312,7 @@ final class RefreshTokenTest extends TestCase
     }
 
     /**
-     * RFC 6749 §6, RFC 9700 §4.13.2: a token is rotated once.
+     * RFC 6749 §6, RFC 9700 §4.13.2
      */
     #[Test]
     public function rotatingDatesTheRotation(): void
@@ -249,9 +330,6 @@ final class RefreshTokenTest extends TestCase
         static::assertFalse($token->isRevoked());
     }
 
-    /**
-     * A second presentation is the grant's decision, so rotating twice is a programming error.
-     */
     #[Test]
     public function itCannotBeRotatedTwice(): void
     {
@@ -285,9 +363,6 @@ final class RefreshTokenTest extends TestCase
         static::assertEquals($presentedAt, $token->rotatedAt);
     }
 
-    /**
-     * Rotating a revoked token is a programming error too.
-     */
     #[Test]
     public function aRevokedTokenCannotBeRotated(): void
     {
@@ -335,9 +410,6 @@ final class RefreshTokenTest extends TestCase
         static::assertEquals($revokedAt, $token->revokedAt);
     }
 
-    /**
-     * The first revocation wins, like a consent or a session.
-     */
     #[Test]
     public function theFirstRevocationWins(): void
     {
@@ -360,7 +432,7 @@ final class RefreshTokenTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         // When
-        $this->token(tokenHash: RefreshToken::generate());
+        $this->token(tokenHash: Secrets::draw());
     }
 
     #[Test]
@@ -374,18 +446,19 @@ final class RefreshTokenTest extends TestCase
     }
 
     #[Test]
-    public function itRefusesAnEmptyScopeList(): void
+    public function itRefusesAFamilyOfAnotherTenant(): void
     {
+        // Given
+        $elsewhere = Tokens::family(Fixtures::now(), Fixtures::tenant('other', 'https://id.other.example'));
+
         // Then
         $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A refresh token binds a family and a client of the same tenant.');
 
         // When
-        $this->token(scopes: []);
+        $this->token(family: $elsewhere);
     }
 
-    /**
-     * RFC 8176: a session always has at least one proof, so a token always has at least one method.
-     */
     #[Test]
     public function itRefusesToBeIssuedBeforeItsFamilyStarted(): void
     {
@@ -417,19 +490,31 @@ final class RefreshTokenTest extends TestCase
     }
 
     /**
-     * @param list<Scope>|null $scopes
      * @param list<string>|null $methods
      */
-    private function token(?string $tokenHash = null, ?Client $client = null, ?array $scopes = null, ?array $methods = null, ?DateTimeImmutable $issuedAt = null, ?DateTimeImmutable $expiresAt = null): RefreshToken
-    {
+    private function token(
+        ?string $tokenHash = null,
+        ?Client $client = null,
+        ?RefreshTokenFamily $family = null,
+        ?Scopes $scopes = null,
+        ?array $methods = null,
+        ?DateTimeImmutable $issuedAt = null,
+        ?DateTimeImmutable $expiresAt = null,
+    ): RefreshToken {
         return new RefreshToken(
-            $tokenHash ?? RefreshToken::hash('the-token'),
-            $this->family,
+            $tokenHash ?? DrawnSecret::digestOf('the-token'),
+            $family ?? $this->family,
             $client ?? $this->client,
             $this->session,
-            $scopes ?? [Scope::openid()],
+            $scopes ?? new Scopes([Scope::openid()]),
             null,
-            new AuthenticationSnapshot($this->session->authenticatedAt(), $methods ?? $this->session->methodReferences(), $this->session->authenticationContextClass()->value),
+            null,
+            null,
+            new AuthenticationSnapshot(
+                $this->session->authenticatedAt(),
+                $methods ?? $this->session->methodReferences(),
+                $this->session->authenticationContextClass()->value,
+            ),
             $issuedAt ?? Fixtures::now(),
             $expiresAt ?? Fixtures::now()->modify('+30 days'),
         );

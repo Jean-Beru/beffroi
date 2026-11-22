@@ -2,25 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Discovery;
+namespace Beffroi\Oidc\Tests\Application\Discovery;
 
+use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Oidc\Tests\Fixture\Grants;
 use function array_column;
 use function array_map;
-use Heidi\Core\Bridge\InMemory\InMemorySigningKeyRepository;
-use Heidi\Core\Bridge\Key\SealedKeyProvider;
-use Heidi\Core\Domain\Key\SigningKey;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Keys;
-use Heidi\Oidc\Application\Claims\PublicSubjectIdentifierResolver;
-use Heidi\Oidc\Application\Discovery\JwksHandler;
-use Heidi\Oidc\Application\Token\JwtAccessTokenIssuer;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\Jwts;
-use Heidi\Oidc\Tests\Fixture\Tokens;
+use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
+use Beffroi\Core\Bridge\Key\SealedKeyProvider;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Keys;
+use Beffroi\Oidc\Application\Discovery\JwksHandler;
+use Beffroi\Oidc\Application\Token\JwtAccessTokenIssuer;
+use Beffroi\Oidc\Domain\Token\UserAuthorization;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\Jwts;
+use Beffroi\Oidc\Tests\Fixture\Tokens;
 use function is_array;
 use function is_string;
 use Jose\Component\Core\AlgorithmManager;
@@ -32,36 +33,51 @@ use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Beffroi\Oidc\Tests\Fixture\Subjects;
 use PHPUnit\Framework\TestCase;
 
 final class JwksHandlerTest extends TestCase
 {
     private Jwts $jwts;
 
-    private SigningKey $retiring;
+    private TenantKey $retiring;
 
     private JwksHandler $handler;
 
     protected function setUp(): void
     {
         $this->jwts = new Jwts(Fixtures::tenant());
-        $repository = new InMemorySigningKeyRepository();
+        $repository = new InMemoryTenantKeyRepository();
         $repository->save($this->jwts->key);
-        $this->retiring = new SigningKey(Keys::otherPair()->kid, $this->jwts->tenant, Algorithms::rs256(), Keys::otherPair()->publicJwk, 'sealed', Fixtures::now()->modify('-1 day'), Fixtures::now()->modify('-1 day'));
+        $this->retiring = new TenantKey(
+            Keys::otherPair()->kid,
+            $this->jwts->tenant,
+            Algorithms::rs256(),
+            Keys::otherPair()->publicJwk,
+            'sealed',
+            Fixtures::now()->modify('-1 day'),
+            Fixtures::now()->modify('-1 day'),
+        );
         $this->retiring->activate(Fixtures::now()->modify('-1 day'));
         $this->retiring->startRetiring(Fixtures::now(), Fixtures::now()->modify('+10 minutes'));
         $repository->save($this->retiring);
         $repository->save(self::retiredKey($this->jwts->tenant));
-        $globex = new SigningKey(Keys::pair()->kid, Fixtures::tenant('globex', 'https://id.globex.example'), Algorithms::rs256(), Keys::pair()->publicJwk, 'sealed', Fixtures::now(), Fixtures::now());
+        $globex = new TenantKey(
+            Keys::pair()->kid,
+            Fixtures::tenant('globex', 'https://id.globex.example'),
+            Algorithms::rs256(),
+            Keys::pair()->publicJwk,
+            'sealed',
+            Fixtures::now(),
+            Fixtures::now(),
+        );
         $globex->activate(Fixtures::now());
         $repository->save($globex);
-        $this->handler = new JwksHandler(new SealedKeyProvider($repository, Keys::sealer()));
+        $this->handler = new JwksHandler(new SealedKeyProvider($repository, Keys::opened()));
     }
 
     /**
-     * RFC 7517 §5, architecture §4.8: the active key and the retiring one are served, a retired one and
-     * another tenant's are not, in creation order, read the way Symfony's OidcJwks reads a document
-     * (JSON, "keys" filtered on a string "kty", a string "kid" and "use" equal to "sig").
+     * RFC 7517 §5, Architecture §4.8
      */
     #[Test]
     public function itServesTheActiveAndRetiringKeysOfTheTenant(): void
@@ -76,10 +92,7 @@ final class JwksHandlerTest extends TestCase
     }
 
     /**
-     * RFC 7517 §5 and RFC 7515 §4.1.4: a tenant that signs with two algorithms publishes one key per
-     * algorithm, each naming itself, so that a relying party picks by "kid" and knows what to verify with.
-     * The two keys of the fixture are created at the same instant, and the set orders same-instant keys by
-     * "kid", which is a thumbprint: which of them comes first is not a behaviour, so it is not asserted.
+     * RFC 7517 §5, RFC 7515 §4.1.4
      */
     #[Test]
     public function theSetCarriesOneKeyPerAlgorithmTheTenantSignsWith(): void
@@ -88,13 +101,20 @@ final class JwksHandlerTest extends TestCase
         $es256 = $this->jwts->activate(Algorithms::es256());
 
         // When
-        $keys = self::keysAsOidcJwksReadsThem(new JwksHandler($this->jwts->keys)->handle($this->jwts->tenant)->toJson());
+        $keys = self::keysAsOidcJwksReadsThem(
+            new JwksHandler($this->jwts->keys)
+                ->handle($this->jwts->tenant)
+                ->toJson(),
+        );
 
         // Then
-        static::assertEqualsCanonicalizing([
-            [$this->jwts->key->kid, 'RS256', 'RSA'],
-            [$es256->kid, 'ES256', 'EC'],
-        ], array_map(static fn (array $jwk): array => [$jwk['kid'], $jwk['alg'], $jwk['kty']], $keys));
+        static::assertEqualsCanonicalizing(
+            [
+                [$this->jwts->key->kid, 'RS256', 'RSA'],
+                [$es256->kid, 'ES256', 'EC'],
+            ],
+            array_map(static fn (array $jwk): array => [$jwk['kid'], $jwk['alg'], $jwk['kty']], $keys),
+        );
     }
 
     #[Test]
@@ -104,20 +124,34 @@ final class JwksHandlerTest extends TestCase
         $response = $this->handler->handle($this->jwts->tenant);
 
         // Then
-        static::assertSame([
-            'Cache-Control' => 'public, max-age=300',
-        ], $response->headers);
+        static::assertSame(
+            [
+                'Cache-Control' => 'public, max-age=300',
+            ],
+            $response->headers,
+        );
     }
 
-    /**
-     * A token the tenant signs verifies against the served document.
-     */
     #[Test]
     public function aTokenOfTheTenantVerifiesAgainstTheServedKeys(): void
     {
         // Given
-        $token = new JwtAccessTokenIssuer($this->jwts->signer, new PublicSubjectIdentifierResolver(), Algorithms::all())
-            ->issue(GrantedAuthorization::fromAuthorizationCode(Tokens::code('the-code', Clients::public($this->jwts->tenant), Fixtures::session(Fixtures::user($this->jwts->tenant)), Fixtures::now())), Fixtures::now());
+        $token = Tokens::accessToken(
+            new JwtAccessTokenIssuer(
+                $this->jwts->signer,
+                Subjects::publicKind(),
+                Algorithms::all(),
+                new SymfonyUuidGenerator(),
+                Subjects::sealedPerson(),
+            ),
+            UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+                'the-code',
+                Clients::public($this->jwts->tenant),
+                Fixtures::session(Fixtures::user($this->jwts->tenant)),
+                Fixtures::now(),
+            )),
+            Fixtures::now(),
+        );
         $keys = JWKSet::createFromKeyData([
             'keys' => self::keysAsOidcJwksReadsThem($this->handler->handle($this->jwts->tenant)->toJson()),
         ]);
@@ -129,31 +163,28 @@ final class JwksHandlerTest extends TestCase
         static::assertTrue($verified);
     }
 
-    /**
-     * A tenant without any published key gets an empty set, served but not cached.
-     */
     #[Test]
     public function aTenantWithoutKeysGetsAnEmptyUncachedSet(): void
     {
         // Given
         $tenant = Fixtures::tenant();
-        $repository = new InMemorySigningKeyRepository();
+        $repository = new InMemoryTenantKeyRepository();
         $repository->save(self::retiredKey($tenant));
-        $handler = new JwksHandler(new SealedKeyProvider($repository, Keys::sealer()));
+        $handler = new JwksHandler(new SealedKeyProvider($repository, Keys::opened()));
 
         // When
         $response = $handler->handle($tenant);
 
         // Then
         static::assertSame('{"keys":[]}', $response->toJson());
-        static::assertSame([
-            'Cache-Control' => 'no-store',
-        ], $response->headers);
+        static::assertSame(
+            [
+                'Cache-Control' => 'no-store',
+            ],
+            $response->headers,
+        );
     }
 
-    /**
-     * The cache lifetime is the deployment's, zero meaning "revalidate every time".
-     */
     #[Test]
     #[DataProvider('provideLifetimes')]
     public function theLifetimeIsAnOption(int $lifetime, string $cacheControl): void
@@ -165,9 +196,12 @@ final class JwksHandlerTest extends TestCase
         $response = $handler->handle($this->jwts->tenant);
 
         // Then
-        static::assertSame([
-            'Cache-Control' => $cacheControl,
-        ], $response->headers);
+        static::assertSame(
+            [
+                'Cache-Control' => $cacheControl,
+            ],
+            $response->headers,
+        );
     }
 
     /**
@@ -179,9 +213,6 @@ final class JwksHandlerTest extends TestCase
         yield 'zero' => [0, 'public, max-age=0'];
     }
 
-    /**
-     * A negative lifetime is refused at construction, not on the first request.
-     */
     #[Test]
     public function aNegativeLifetimeIsRefusedAtConstruction(): void
     {
@@ -193,12 +224,20 @@ final class JwksHandlerTest extends TestCase
         new JwksHandler($this->jwts->keys, -1);
     }
 
-    private static function retiredKey(Tenant $tenant): SigningKey
+    private static function retiredKey(Tenant $tenant): TenantKey
     {
-        $retired = new SigningKey(Keys::otherPair()->kid . '-old', $tenant, Algorithms::rs256(), [
-            ...Keys::otherPair()->publicJwk,
-            'kid' => Keys::otherPair()->kid . '-old',
-        ], 'sealed', Fixtures::now()->modify('-2 days'), Fixtures::now()->modify('-2 days'));
+        $retired = new TenantKey(
+            Keys::otherPair()->kid . '-old',
+            $tenant,
+            Algorithms::rs256(),
+            [
+                ...Keys::otherPair()->publicJwk,
+                'kid' => Keys::otherPair()->kid . '-old',
+            ],
+            'sealed',
+            Fixtures::now()->modify('-2 days'),
+            Fixtures::now()->modify('-2 days'),
+        );
         $retired->activate(Fixtures::now()->modify('-2 days'));
         $retired->startRetiring(Fixtures::now()->modify('-1 day'), Fixtures::now());
         $retired->retire(Fixtures::now());
@@ -207,8 +246,6 @@ final class JwksHandlerTest extends TestCase
     }
 
     /**
-     * What Symfony's OidcJwks::fromResponse() keeps of a JWKS payload, with its default strict key usage.
-     *
      * @return list<array<string, mixed>>
      */
     private static function keysAsOidcJwksReadsThem(string $payload): array
@@ -219,7 +256,13 @@ final class JwksHandlerTest extends TestCase
 
         $keys = [];
         foreach ($document['keys'] as $jwk) {
-            if (! is_array($jwk) || ! is_string($jwk['kty'] ?? null) || $jwk['kty'] === '' || ! is_string($jwk['kid'] ?? null) || ($jwk['use'] ?? null) !== 'sig') {
+            if (
+                ! is_array($jwk)
+                || ! is_string($jwk['kty'] ?? null)
+                || $jwk['kty'] === ''
+                || ! is_string($jwk['kid'] ?? null)
+                || ($jwk['use'] ?? null) !== 'sig'
+            ) {
                 continue;
             }
             $members = [];

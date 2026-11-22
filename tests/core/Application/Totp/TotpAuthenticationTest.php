@@ -2,37 +2,39 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Application\Totp;
+namespace Beffroi\Core\Tests\Application\Totp;
 
 use function array_filter;
-use Heidi\Core\Application\Authentication\AuthenticationFailedException;
-use Heidi\Core\Application\Totp\ActiveTotp;
-use Heidi\Core\Application\Totp\TotpAuthentication;
-use Heidi\Core\Application\Totp\TotpCodeMatcher;
-use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
-use Heidi\Core\Domain\Credential\BackupCode;
-use Heidi\Core\Domain\Credential\TotpCredential;
-use Heidi\Core\Domain\Event\AuthenticationFailed;
-use Heidi\Core\Domain\Event\AuthenticationFailureReason;
-use Heidi\Core\Domain\Event\TotpUsed;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Exception\KmsUnavailableException;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\SecretSealerInterface;
-use Heidi\Core\Tests\Fixture\FakeAttemptLimiter;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Authentication\AuthenticationFailedException;
+use Beffroi\Core\Application\Authentication\AuthenticationRefusal;
+use Beffroi\Core\Application\Totp\ActiveTotp;
+use Beffroi\Core\Application\Totp\TotpAuthentication;
+use Beffroi\Core\Application\Totp\TotpCodeMatcher;
+use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Domain\Credential\BackupCode;
+use Beffroi\Core\Domain\Credential\TotpCredential;
+use Beffroi\Core\Domain\Event\AuthenticationFailed;
+use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
+use Beffroi\Core\Domain\Event\BackupCodeUsed;
+use Beffroi\Core\Domain\Event\TotpUsed;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Exception\KmsUnavailableException;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\SecretSealerInterface;
+use Beffroi\Core\Tests\Fixture\FakeAttemptLimiter;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Core\Tests\Fixture\Totps;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Architecture §3.4: a code verified for a user who named themself, accepted once within one step of
- * drift (RFC 6238 §5.2), or a backup code spent once; the attempts counted first.
+ * Architecture §3.4, RFC 6238 §5.2
  */
 final class TotpAuthenticationTest extends TestCase
 {
@@ -60,10 +62,24 @@ final class TotpAuthenticationTest extends TestCase
         $this->attempts = new FakeAttemptLimiter(5);
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-20T12:00:15+00:00');
-        // enrolled an hour ago: the step of its first code is long past
-        $this->totp = Totps::credential($this->alice, $this->hasher, Totps::stepAt($this->clock->now()->modify('-1 hour')), createdAt: $this->clock->now()->modify('-1 hour'));
+        $this->totp = Totps::credential(
+            $this->alice,
+            $this->hasher,
+            Totps::stepAt($this->clock->now()->modify('-1 hour')),
+            createdAt: $this->clock->now()->modify('-1 hour'),
+        );
         $credentials->save($this->totp);
-        $this->authentication = new TotpAuthentication($credentials, new ActiveTotp($credentials), new TotpCodeMatcher(Totps::algorithm()), Totps::sealer(), $this->hasher, $this->attempts, $this->clock, $this->events);
+        $this->authentication = new TotpAuthentication(
+            $credentials,
+            new ActiveTotp(new ActiveCredentials($credentials)),
+            new TotpCodeMatcher(Totps::algorithm()),
+            Totps::sealer(),
+            $this->hasher,
+            $this->attempts,
+            new AuthenticationRefusal($this->clock, $this->events),
+            $this->clock,
+            $this->events,
+        );
     }
 
     #[Test]
@@ -87,19 +103,25 @@ final class TotpAuthenticationTest extends TestCase
         static::assertEquals($this->clock->now(), $this->totp->lastUsedAt);
     }
 
-    /**
-     * The in-memory repository holds the very object, so a save is only seen through a mock.
-     */
     #[Test]
     #[DataProvider('provideAcceptedCodes')]
     public function anAcceptedCodeSavesTheCredential(string $code): void
     {
         // Given
         $credentials = $this->createMock(CredentialRepositoryInterface::class);
-        $credentials->method('findByUser')
-            ->willReturn([$this->totp]);
+        $credentials->method('findByUser')->willReturn([$this->totp]);
         $credentials->expects(static::once())->method('save')->with($this->totp);
-        $authentication = new TotpAuthentication($credentials, new ActiveTotp($credentials), new TotpCodeMatcher(Totps::algorithm()), Totps::sealer(), $this->hasher, $this->attempts, $this->clock, $this->events);
+        $authentication = new TotpAuthentication(
+            $credentials,
+            new ActiveTotp(new ActiveCredentials($credentials)),
+            new TotpCodeMatcher(Totps::algorithm()),
+            Totps::sealer(),
+            $this->hasher,
+            $this->attempts,
+            new AuthenticationRefusal($this->clock, $this->events),
+            $this->clock,
+            $this->events,
+        );
 
         // When
         $authentication->authenticate($this->alice, $code === 'totp' ? Totps::codeAt($this->clock->now()) : $code, Fixtures::context($this->clock->now()));
@@ -132,11 +154,11 @@ final class TotpAuthenticationTest extends TestCase
         static::assertSame($this->totp, $used->credential);
         static::assertSame($context, $used->context);
         static::assertEquals($this->clock->now(), $used->occurredAt);
-        static::assertFalse($used->backupCode);
+        static::assertSame([], $this->events->of(BackupCodeUsed::class));
     }
 
     /**
-     * RFC 6238 §5.2: the same code is not accepted twice.
+     * RFC 6238 §5.2
      */
     #[Test]
     public function theSameCodeTwiceIsRefusedAsReplayed(): void
@@ -154,8 +176,7 @@ final class TotpAuthenticationTest extends TestCase
     }
 
     /**
-     * RFC 6238 §5.2: the accepted step moves forward, never back; after the code of the next step, the
-     * code of this one is refused although it is in the window.
+     * RFC 6238 §5.2
      */
     #[Test]
     public function aCodeOfAnEarlierStepIsRefusedAfterALaterOne(): void
@@ -171,7 +192,7 @@ final class TotpAuthenticationTest extends TestCase
     }
 
     /**
-     * RFC 6238 §5.2: one step of clock drift on each side.
+     * RFC 6238 §5.2
      */
     #[Test]
     #[DataProvider('provideDriftsInTheWindow')]
@@ -230,9 +251,10 @@ final class TotpAuthenticationTest extends TestCase
         static::assertEquals($this->clock->now(), $this->totp->backupCodes[3]->usedAt);
         static::assertCount(9, array_filter($this->totp->backupCodes, static fn (BackupCode $code): bool => ! $code->isSpent()));
         static::assertEquals($this->clock->now(), $this->totp->lastUsedAt);
-        $used = $this->events->of(TotpUsed::class)[0];
-        static::assertTrue($used->backupCode);
+        $used = $this->events->of(BackupCodeUsed::class)[0];
+        static::assertSame($this->totp, $used->credential);
         static::assertSame($context, $used->context);
+        static::assertSame([], $this->events->of(TotpUsed::class), 'A code the authenticator computed and a backup code are not the same act.');
     }
 
     #[Test]
@@ -259,9 +281,6 @@ final class TotpAuthenticationTest extends TestCase
         static::assertTrue($this->totp->backupCodes[0]->isSpent());
     }
 
-    /**
-     * Every unspent backup code is compared, whatever the first one that matches.
-     */
     #[Test]
     public function everyUnspentBackupCodeIsComparedTo(): void
     {
@@ -287,8 +306,7 @@ final class TotpAuthenticationTest extends TestCase
     }
 
     /**
-     * Decision 0006: five attempts a minute, the sixth refused before anything is verified, a right code
-     * included; the limit is read, not counted, on a refusal.
+     * Decision 0006
      */
     #[Test]
     public function theSixthAttemptIsRefusedWhateverTheCode(): void
@@ -307,9 +325,6 @@ final class TotpAuthenticationTest extends TestCase
         static::assertCount(5, $this->attempts->attempts);
     }
 
-    /**
-     * Issue #128: the limit bounds the calls to the KMS as well; past it, the secret is not opened.
-     */
     #[Test]
     public function theSixthAttemptIsRefusedBeforeTheKmsIsAsked(): void
     {
@@ -331,10 +346,6 @@ final class TotpAuthenticationTest extends TestCase
         }
     }
 
-    /**
-     * Issue #128: a KMS that does not open the secret is the KMS's refusal, not the user's; it goes on as
-     * it came.
-     */
     #[Test]
     public function aCodeTheKmsCannotOpenIsTheFailureOfTheKms(): void
     {
@@ -349,10 +360,6 @@ final class TotpAuthenticationTest extends TestCase
         $authentication->authenticate($this->alice, Totps::codeAt($this->clock->now()), Fixtures::context($this->clock->now()));
     }
 
-    /**
-     * Issue #128: nothing is counted against the user, nothing is announced, nothing is recorded; the
-     * same code is tried again once the KMS is back.
-     */
     #[Test]
     public function aCodeTheKmsCannotOpenCostsTheUserNothing(): void
     {
@@ -371,9 +378,6 @@ final class TotpAuthenticationTest extends TestCase
         static::assertNull($this->totp->lastUsedAt);
     }
 
-    /**
-     * A backup code is compared to its hashes: the secret stays sealed, the KMS is not asked.
-     */
     #[Test]
     public function aBackupCodeDoesNotOpenTheSecret(): void
     {
@@ -472,19 +476,25 @@ final class TotpAuthenticationTest extends TestCase
         static::assertSame(Totps::stepAt($this->clock->now()->modify('-1 hour')), $this->totp->lastAcceptedStep);
     }
 
-    /**
-     * The authentication of setUp() on another sealer, everything else shared.
-     */
     private function authenticationWith(SecretSealerInterface $sealer): TotpAuthentication
     {
-        return new TotpAuthentication($this->credentials, new ActiveTotp($this->credentials), new TotpCodeMatcher(Totps::algorithm()), $sealer, $this->hasher, $this->attempts, $this->clock, $this->events);
+        return new TotpAuthentication(
+            $this->credentials,
+            new ActiveTotp(new ActiveCredentials($this->credentials)),
+            new TotpCodeMatcher(Totps::algorithm()),
+            $sealer,
+            $this->hasher,
+            $this->attempts,
+            new AuthenticationRefusal($this->clock, $this->events),
+            $this->clock,
+            $this->events,
+        );
     }
 
     private function sealerThatDoesNotAnswer(): SecretSealerInterface
     {
         $sealer = static::createStub(SecretSealerInterface::class);
-        $sealer->method('unseal')
-            ->willThrowException(new KmsUnavailableException('The sealed secret could not be opened.'));
+        $sealer->method('unseal')->willThrowException(new KmsUnavailableException('The sealed secret could not be opened.'));
 
         return $sealer;
     }

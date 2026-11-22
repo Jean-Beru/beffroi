@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Bridge\Webauthn;
+namespace Beffroi\Core\Tests\Bridge\Webauthn;
 
-use Heidi\Core\Bridge\Webauthn\MetadataBlobVerifier;
-use Heidi\Core\Exception\MetadataBlobRefusedException;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\MetadataBlobs;
-use Heidi\Core\Tests\Fixture\MetadataSigner;
+use Beffroi\Core\Bridge\Webauthn\MetadataBlobVerifier;
+use Beffroi\Core\Exception\MetadataBlobRefusedException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\MetadataBlobs;
+use Beffroi\Core\Tests\Fixture\MetadataSigner;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function str_replace;
@@ -18,8 +18,7 @@ use Webauthn\MetadataService\CertificateChain\PhpCertificateChainValidator;
 use Webauthn\MetadataService\Statement\AuthenticatorStatus;
 
 /**
- * FIDO Metadata Service v3 §3.1.7 and §3.2: a blob is a JWS whose chain leads to the root the relying
- * party pins; anything short of that is refused, whatever it claims.
+ * FIDO Metadata Service v3.1.1 §3.1.7, §3.2
  */
 final class MetadataBlobVerifierTest extends TestCase
 {
@@ -39,7 +38,11 @@ final class MetadataBlobVerifierTest extends TestCase
     public function aBlobSignedUnderThePinnedRootIsVerifiedAndRead(): void
     {
         // Given
-        $payload = MetadataBlobs::payload([MetadataBlobs::entry(self::AAGUID, [AuthenticatorStatus::FIDO_CERTIFIED])], serialNumber: 42, nextUpdate: '2026-10-01');
+        $payload = MetadataBlobs::payload(
+            [MetadataBlobs::entry(self::AAGUID, [AuthenticatorStatus::FIDO_CERTIFIED])],
+            serialNumber: 42,
+            nextUpdate: '2026-10-01',
+        );
         $token = $this->service->sign($payload);
 
         // When
@@ -52,6 +55,25 @@ final class MetadataBlobVerifierTest extends TestCase
         static::assertCount(1, $blob->content->entries);
         static::assertSame(self::AAGUID, $blob->content->entries[0]->aaguid);
         static::assertSame(AuthenticatorStatus::FIDO_CERTIFIED, $blob->content->entries[0]->statusReports[0]->status);
+    }
+
+    /**
+     * FIDO Metadata Statement v3.1 §4
+     */
+    #[Test]
+    public function aBlobWhoseStatementLeavesOutTheUserVerificationDetailsIsVerifiedAndRead(): void
+    {
+        // Given
+        $token = $this->service->sign(MetadataBlobs::payload([
+            MetadataBlobs::entry(self::AAGUID, omitting: ['userVerificationDetails']),
+        ]));
+
+        // When
+        $blob = $this->verifier->verify($token, $this->service->rootCertificate());
+
+        // Then
+        static::assertCount(1, $blob->content->entries);
+        static::assertSame(self::AAGUID, $blob->content->entries[0]->metadataStatement?->aaguid);
     }
 
     #[Test]
@@ -70,9 +92,59 @@ final class MetadataBlobVerifierTest extends TestCase
     }
 
     /**
-     * A chain that leads to the root but is not the signer's: the signature is checked with the key of the
-     * certificate named, and does not hold.
+     * RFC 5280 §6.1.1 (d)
      */
+    #[Test]
+    public function aChainThatEndsWithThePinnedRootIssuedByAnotherRootIsVerifiedUnderThePinnedRoot(): void
+    {
+        // Given
+        $older = MetadataSigner::create('Older Service');
+        $payload = MetadataBlobs::payload([MetadataBlobs::entry(self::AAGUID)]);
+        $token = $this->service->sign($payload, [...$this->service->chain(), $this->service->rootIssuedBy($older)]);
+
+        // When
+        $blob = $this->verifier->verify($token, $this->service->rootCertificate());
+
+        // Then
+        static::assertSame($payload, $blob->payload);
+    }
+
+    #[Test]
+    public function aChainThatEndsWithACrossCertificateIsVerifiedUnderTheRootThatIssuedIt(): void
+    {
+        // Given
+        $older = MetadataSigner::create('Older Service');
+        $payload = MetadataBlobs::payload([MetadataBlobs::entry(self::AAGUID)]);
+        $token = $this->service->sign($payload, [...$this->service->chain(), $this->service->rootIssuedBy($older)]);
+
+        // When
+        $blob = $this->verifier->verify($token, $older->rootCertificate());
+
+        // Then
+        static::assertSame($payload, $blob->payload);
+    }
+
+    /**
+     * RFC 5280 §6.1.1 (d)
+     */
+    #[Test]
+    public function aChainUnderARootThatCarriesTheNameOfThePinnedRootOnAnotherKeyIsRefused(): void
+    {
+        // Given
+        $impostor = MetadataSigner::create();
+        $token = $impostor->sign(MetadataBlobs::payload([MetadataBlobs::entry(self::AAGUID)]), [
+            ...$impostor->chain(),
+            base64_encode($impostor->rootCertificateInDer()),
+        ]);
+
+        // Then
+        $this->expectException(MetadataBlobRefusedException::class);
+        $this->expectExceptionMessageIsOrContains('The certificate chain of the blob does not lead to the pinned root');
+
+        // When
+        $this->verifier->verify($token, $this->service->rootCertificate());
+    }
+
     #[Test]
     public function aBlobWhoseSignatureDoesNotHoldUnderTheCertificateNamedIsRefused(): void
     {
@@ -132,10 +204,6 @@ final class MetadataBlobVerifierTest extends TestCase
         $this->verifier->verify($token, $this->service->rootCertificate());
     }
 
-    /**
-     * The chain is checked whole: the signer alone, without the intermediate that leads to the root, is
-     * not enough.
-     */
     #[Test]
     public function aBlobWhoseChainLacksTheIntermediateIsRefused(): void
     {

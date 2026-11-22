@@ -2,31 +2,62 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Application\Identity;
+namespace Beffroi\Core\Tests\Application\Identity;
 
-use Heidi\Core\Application\Identity\UserAlreadyExistsException;
-use Heidi\Core\Application\Identity\UserProvisioner;
-use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
-use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
-use Heidi\Core\Bridge\Password\NativePasswordHasher;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Identity\Address;
-use Heidi\Core\Domain\Identity\EmailAddress;
-use Heidi\Core\Domain\Identity\Profile;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Domain\Identity\UpstreamProvider;
+use Beffroi\Core\Domain\Identity\EmailDomain;
+use Beffroi\Core\Bridge\InMemory\InMemoryUpstreamProviders;
+use Beffroi\Core\Application\Identity\FederatedDomains;
+use Beffroi\Core\Exception\CredentialEnrolmentFailedException;
+use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Application\Identity\UserAlreadyExistsException;
+use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Credential\ActivePassword;
+use Beffroi\Core\Application\Credential\BreachedPasswordRefusal;
+use Beffroi\Core\Application\Identity\UserProvisioner;
+use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
+use Beffroi\Core\Bridge\Password\NativePasswordHasher;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Application\Credential\EnrolmentRefusal;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Credential\PasswordRefusal;
+use Beffroi\Core\Domain\Identity\Address;
+use Beffroi\Core\Domain\Identity\Claim\Locale;
+use Beffroi\Core\Domain\Identity\Claim\Zoneinfo;
+use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Identity\Profile;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Identity\UserSource;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\PasswordRefusedException;
+use Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord;
+use Beffroi\Core\Tests\Fixture\FixedClaims;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use function sprintf;
 use PHPUnit\Framework\TestCase;
-use function str_repeat;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Uid\UuidV4;
 
 final class UserProvisionerTest extends TestCase
 {
+    private const string A_PASSWORD = 'correct horse battery staple';
+
+    private const string ANOTHER_PASSWORD = 'nine lives of a quiet cat';
+
+    private const string BREACHED = 'monkey business as usual';
+
+    private const string PROVIDER = 'https://idp.acme.example/saml';
+
+    private const array KNOWN_LOCALES = [
+        'en-GB' => 'English (United Kingdom)',
+    ];
+
     private Tenant $tenant;
 
     private InMemoryUserRepository $users;
@@ -39,6 +70,10 @@ final class UserProvisionerTest extends TestCase
 
     private UserProvisioner $provisioner;
 
+    private InMemoryUpstreamProviders $upstreamProviders;
+
+    private FixedClaims $claims;
+
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
@@ -46,7 +81,10 @@ final class UserProvisionerTest extends TestCase
         $this->credentials = new InMemoryCredentialRepository();
         $this->hasher = new NativePasswordHasher();
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
-        $this->provisioner = new UserProvisioner($this->users, $this->credentials, $this->hasher, $this->clock);
+        $this->upstreamProviders = new InMemoryUpstreamProviders();
+        $this->claims = new FixedClaims([new Zoneinfo(), new Locale(self::KNOWN_LOCALES)]);
+        $breaches = BreachedPasswordsOfARecord::holding([self::BREACHED]);
+        $this->provisioner = $this->provisionerAsking($breaches);
     }
 
     #[Test]
@@ -66,7 +104,7 @@ final class UserProvisionerTest extends TestCase
     }
 
     /**
-     * Decision 0002: a stable "sub", distinct from the technical identifier.
+     * Decision 0002
      */
     #[Test]
     public function itGeneratesARandomSubjectDistinctFromTheIdentifier(): void
@@ -158,7 +196,7 @@ final class UserProvisionerTest extends TestCase
     }
 
     /**
-     * OIDC Core §5.1: the attributes the "profile", "phone" and "address" scopes stand for, saved at once.
+     * OIDC Core §5.1
      */
     #[Test]
     public function theProfileThePhoneNumberAndTheAddressAreSetAtOnce(): void
@@ -182,9 +220,6 @@ final class UserProvisionerTest extends TestCase
         static::assertEquals($this->clock->now(), $user->updatedAt);
     }
 
-    /**
-     * A replacement, not a merge: a second description clears what it does not say.
-     */
     #[Test]
     public function aSecondProfileReplacesTheFirstInFull(): void
     {
@@ -217,6 +252,64 @@ final class UserProvisionerTest extends TestCase
     }
 
     #[Test]
+    #[DataProvider('provideValuesOutsideTheSetOfTheirClaim')]
+    public function aValueOutsideTheSetOfItsClaimIsRefused(Profile $profile, string $value): void
+    {
+        // Given
+        $user = $this->provisioner->create($this->tenant, 'alice');
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs(sprintf('The value "%s" is not one this claim may hold.', $value));
+
+        // When
+        $this->provisioner->setProfile($user, $profile);
+    }
+
+    /**
+     * @return iterable<string, array{Profile, string}>
+     */
+    public static function provideValuesOutsideTheSetOfTheirClaim(): iterable
+    {
+        yield 'a zone the zoneinfo database does not carry' => [new Profile(zoneinfo: 'Europe/Atlantis'), 'Europe/Atlantis'];
+        yield 'a language the deployment does not know' => [new Profile(locale: 'tlh'), 'tlh'];
+    }
+
+    #[Test]
+    public function aValueOutsideTheSetOfItsClaimWritesNothing(): void
+    {
+        // Given
+        $user = $this->provisioner->create($this->tenant, 'alice');
+        $this->provisioner->setProfile($user, new Profile('Alice Liddell', zoneinfo: 'Europe/London'), '+44 1865 000000', true);
+
+        // When
+        try {
+            $this->provisioner->setProfile($user, new Profile(givenName: 'Alice', zoneinfo: 'Europe/Atlantis'));
+        } catch (InvalidArgumentException) {
+        }
+
+        // Then
+        static::assertSame('Alice Liddell', $user->profile->name);
+        static::assertSame('Europe/London', $user->profile->zoneinfo);
+        static::assertSame('+44 1865 000000', $user->phoneNumber);
+    }
+
+    #[Test]
+    public function aClaimNothingWiresHoldsNoSet(): void
+    {
+        // Given
+        $this->claims = new FixedClaims();
+        $provisioner = $this->provisionerAsking(BreachedPasswordsOfARecord::holding([]));
+        $user = $provisioner->create($this->tenant, 'alice');
+
+        // When
+        $provisioner->setProfile($user, new Profile(zoneinfo: 'Europe/Atlantis'));
+
+        // Then
+        static::assertSame('Europe/Atlantis', $user->profile->zoneinfo);
+    }
+
+    #[Test]
     public function anAbsentPhoneNumberCannotBeVerified(): void
     {
         // Given
@@ -230,6 +323,147 @@ final class UserProvisionerTest extends TestCase
         $this->provisioner->setProfile($user, Profile::empty(), null, true);
     }
 
+    /**
+     * Decision 0002
+     */
+    #[Test]
+    public function aUserCreatedWithoutASourceIsLocal(): void
+    {
+        // When
+        $user = $this->provisioner->create($this->tenant, 'alice');
+
+        // Then
+        static::assertTrue($user->source->isLocal());
+    }
+
+    /**
+     * Decision 0002
+     */
+    #[Test]
+    public function aUserCreatedByAnUpstreamProviderNamesIt(): void
+    {
+        // When
+        $user = $this->provisioner->create($this->tenant, 'alice', source: UserSource::upstream(self::PROVIDER, ['email', 'given_name']));
+
+        // Then
+        static::assertSame($user, $this->users->find($user->id));
+        static::assertSame(self::PROVIDER, $user->source->provider);
+        static::assertSame(['email', 'given_name'], $user->source->claims);
+    }
+
+    /**
+     * Decision 0002
+     */
+    #[Test]
+    #[DataProvider('provideDescriptionsOfWhatTheSourceHolds')]
+    public function aDescriptionThatSaysOtherwiseAClaimTheSourceHoldsIsRefused(Profile $profile, ?string $phoneNumber, ?Address $address, string $claim): void
+    {
+        // Given
+        $user = $this->createdBySource();
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs(sprintf(
+            'The upstream provider "%s" created this person and holds "%s": a manual description does not change what its source holds.',
+            self::PROVIDER,
+            $claim,
+        ));
+
+        // When
+        $this->provisioner->setProfile($user, $profile, $phoneNumber, false, $address);
+    }
+
+    /**
+     * @return iterable<string, array{Profile, string|null, Address|null, string}>
+     */
+    public static function provideDescriptionsOfWhatTheSourceHolds(): iterable
+    {
+        yield 'a claim of the profile' => [new Profile(givenName: 'Alicia'), null, null, 'given_name'];
+        yield 'the phone number' => [Profile::empty(), '+44 1865 999999', null, 'phone_number'];
+        yield 'the address' => [Profile::empty(), null, new Address(locality: 'London'), 'address'];
+    }
+
+    #[Test]
+    public function aClaimTheSourceHoldsAndHasNotWrittenIsNotTheOperatorsToFill(): void
+    {
+        // Given
+        $user = $this->provisioner->create($this->tenant, 'alice', source: UserSource::upstream(self::PROVIDER, ['family_name']));
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs(sprintf(
+            'The upstream provider "%s" created this person and holds "family_name": a manual description does not change what its source holds.',
+            self::PROVIDER,
+        ));
+
+        // When
+        $this->provisioner->setProfile($user, new Profile(familyName: 'Liddell'));
+    }
+
+    #[Test]
+    public function aPhoneNumberTheSourceHoldsSaidWithAnotherVerificationIsRefused(): void
+    {
+        // Given
+        $user = $this->createdBySource();
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs(sprintf(
+            'The upstream provider "%s" created this person and holds "phone_number": a manual description does not change what its source holds.',
+            self::PROVIDER,
+        ));
+
+        // When
+        $this->provisioner->setProfile($user, Profile::empty(), '+44 1865 000000', false);
+    }
+
+    #[Test]
+    public function aRefusedDescriptionWritesNothing(): void
+    {
+        // Given
+        $user = $this->createdBySource();
+
+        // When
+        try {
+            $this->provisioner->setProfile($user, new Profile(givenName: 'Alicia', nickname: 'Ali'));
+        } catch (InvalidArgumentException) {
+        }
+
+        // Then
+        static::assertSame('Alice', $user->profile->givenName);
+        static::assertNull($user->profile->nickname);
+    }
+
+    #[Test]
+    public function whatTheSourceHoldsStaysWhatItWroteWhenADescriptionDoesNotSayIt(): void
+    {
+        // Given
+        $user = $this->createdBySource();
+
+        // When
+        $this->provisioner->setProfile($user, new Profile(nickname: 'Ali'));
+
+        // Then
+        static::assertSame('Ali', $user->profile->nickname);
+        static::assertSame('Alice', $user->profile->givenName);
+        static::assertSame('+44 1865 000000', $user->phoneNumber);
+        static::assertTrue($user->phoneNumberVerified);
+        static::assertSame('Oxford', $user->address?->locality);
+    }
+
+    #[Test]
+    public function aClaimTheSourceHoldsMayBeSaidAsItIs(): void
+    {
+        // Given
+        $user = $this->createdBySource();
+
+        // When
+        $this->provisioner->setProfile($user, new Profile(givenName: 'Alice', nickname: 'Ali'), '+44 1865 000000', true, new Address(locality: 'Oxford'));
+
+        // Then
+        static::assertSame('Ali', $user->profile->nickname);
+    }
+
     #[Test]
     public function theFirstPasswordCreatesTheCredentialHashedByThePolicyOfTheCore(): void
     {
@@ -237,13 +471,13 @@ final class UserProvisionerTest extends TestCase
         $user = $this->provisioner->create($this->tenant, 'alice');
 
         // When
-        $credential = $this->provisioner->setPassword($user, 'correct horse battery staple');
+        $credential = $this->provisioner->setPassword($user, Fixtures::plainPassword(self::A_PASSWORD));
 
         // Then
         static::assertSame($credential, $this->credentials->findByUser($user, PasswordCredential::class)[0]);
         static::assertSame($user, $credential->user);
-        static::assertSame(PasswordAlgorithm::Argon2id, $credential->hash->algorithm);
-        static::assertTrue($this->hasher->verify($credential->hash, 'correct horse battery staple'));
+        static::assertSame(Argon2id::NAME, $credential->hash->algorithm->name());
+        static::assertTrue($this->hasher->verify($credential->hash, self::A_PASSWORD));
         static::assertEquals($this->clock->now(), $credential->createdAt);
         static::assertEquals($this->clock->now(), $credential->hashChangedAt);
     }
@@ -253,49 +487,19 @@ final class UserProvisionerTest extends TestCase
     {
         // Given
         $user = $this->provisioner->create($this->tenant, 'alice');
-        $first = $this->provisioner->setPassword($user, 'correct horse battery staple');
+        $first = $this->provisioner->setPassword($user, Fixtures::plainPassword(self::A_PASSWORD));
         $this->clock->modify('+1 day');
 
         // When
-        $second = $this->provisioner->setPassword($user, 'another password');
+        $second = $this->provisioner->setPassword($user, Fixtures::plainPassword(self::ANOTHER_PASSWORD));
 
         // Then
         static::assertSame($first, $second);
         static::assertCount(1, $this->credentials->findByUser($user));
-        static::assertTrue($this->hasher->verify($second->hash, 'another password'));
-        static::assertFalse($this->hasher->verify($second->hash, 'correct horse battery staple'));
+        static::assertTrue($this->hasher->verify($second->hash, self::ANOTHER_PASSWORD));
+        static::assertFalse($this->hasher->verify($second->hash, self::A_PASSWORD));
         static::assertEquals($this->clock->now(), $second->hashChangedAt);
         static::assertEquals($this->clock->now()->modify('-1 day'), $second->createdAt);
-    }
-
-    /**
-     * NIST SP 800-63B §5.1.1.2, counted in characters: eight of them, however many bytes they take.
-     */
-    #[Test]
-    public function aPasswordOfEightMultibyteCharactersIsLongEnough(): void
-    {
-        // Given
-        $user = $this->provisioner->create($this->tenant, 'alice');
-
-        // When
-        $this->provisioner->setPassword($user, 'éééééééé');
-
-        // Then
-        static::assertCount(1, $this->credentials->findByUser($user, PasswordCredential::class));
-    }
-
-    #[Test]
-    public function aPasswordOfSevenCharactersIsRefused(): void
-    {
-        // Given
-        $user = $this->provisioner->create($this->tenant, 'alice');
-
-        // Then
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIs('A password is at least 8 characters long.');
-
-        // When
-        $this->provisioner->setPassword($user, 'seven77');
     }
 
     #[Test]
@@ -303,42 +507,162 @@ final class UserProvisionerTest extends TestCase
     {
         // Given
         $user = $this->provisioner->create($this->tenant, 'alice');
-        $this->provisioner->setPassword($user, 'éééééééé');
+        $this->provisioner->setPassword($user, Fixtures::plainPassword(self::A_PASSWORD));
 
         // When
         try {
-            $this->provisioner->setPassword($user, 'seven77');
-        } catch (InvalidArgumentException) {
+            $this->provisioner->setPassword($user, Fixtures::plainPassword('seven77'));
+        } catch (PasswordRefusedException) {
         }
 
         // Then
-        static::assertTrue($this->hasher->verify($this->credentials->findByUser($user, PasswordCredential::class)[0]->hash ?? static::fail('The credential is gone.'), 'éééééééé'));
+        static::assertTrue($this->hasher->verify(
+            $this->credentials->findByUser($user, PasswordCredential::class)[0]->hash ?? static::fail('The credential is gone.'),
+            self::A_PASSWORD,
+        ));
     }
 
+    /**
+     * NIST SP 800-63B §3.1.1.2
+     */
     #[Test]
-    public function aPasswordOf4096BytesIsAccepted(): void
+    public function aPasswordAListCountsIsRefused(): void
     {
         // Given
         $user = $this->provisioner->create($this->tenant, 'alice');
 
         // When
-        $credential = $this->provisioner->setPassword($user, str_repeat('a', UserProvisioner::MAXIMUM_PASSWORD_BYTES));
-
-        // Then
-        static::assertTrue($this->hasher->verify($credential->hash, str_repeat('a', 4096)));
+        try {
+            $this->provisioner->setPassword($user, Fixtures::plainPassword(self::BREACHED));
+            static::fail('A password a list counts is refused.');
+        } catch (PasswordRefusedException $exception) {
+            // Then
+            static::assertSame(PasswordRefusal::Breached, $exception->refusal);
+        }
     }
 
     #[Test]
-    public function aPasswordOf4097BytesIsRefused(): void
+    public function aPasswordAListCountsWritesNothing(): void
     {
         // Given
         $user = $this->provisioner->create($this->tenant, 'alice');
 
+        // When
+        try {
+            $this->provisioner->setPassword($user, Fixtures::plainPassword(self::BREACHED));
+        } catch (PasswordRefusedException) {
+        }
+
         // Then
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIs('A password is at most 4096 bytes long.');
+        static::assertSame([], $this->credentials->findByUser($user, PasswordCredential::class));
+    }
+
+    /**
+     * Decision 0006
+     */
+    #[Test]
+    public function aPasswordNoListCouldBeAskedAboutIsRefused(): void
+    {
+        // Given
+        $provisioner = $this->provisionerAsking(new BreachedPasswordsOfARecord(unreachable: true));
+        $user = $provisioner->create($this->tenant, 'alice');
 
         // When
-        $this->provisioner->setPassword($user, str_repeat('a', 4097));
+        try {
+            $provisioner->setPassword($user, Fixtures::plainPassword(self::A_PASSWORD));
+            static::fail('A password nobody could be asked about is refused.');
+        } catch (PasswordRefusedException $exception) {
+            // Then
+            static::assertSame(PasswordRefusal::NotChecked, $exception->refusal);
+        }
+    }
+
+    #[Test]
+    public function aPasswordAListWasAskedAboutIsMarkedAsLookedUp(): void
+    {
+        // Given
+        $user = $this->provisioner->create($this->tenant, 'alice');
+
+        // When
+        $credential = $this->provisioner->setPassword($user, Fixtures::plainPassword(self::A_PASSWORD));
+
+        // Then
+        static::assertEquals($this->clock->now(), $credential->breachCheckedAt);
+        static::assertNull($credential->breachFoundAt);
+        static::assertFalse($credential->dueForABreachLookup($this->clock->now()));
+    }
+
+    #[Test]
+    public function aDeploymentThatNamesNoListWritesThePasswordAndMarksNothing(): void
+    {
+        // Given
+        $provisioner = $this->provisionerAsking(new BreachedPasswordsOfARecord(looksUp: false));
+        $user = $provisioner->create($this->tenant, 'alice');
+
+        // When
+        $credential = $provisioner->setPassword($user, Fixtures::plainPassword(self::BREACHED));
+
+        // Then
+        static::assertNull($credential->breachCheckedAt);
+        static::assertTrue($credential->dueForABreachLookup($this->clock->now()));
+    }
+
+    #[Test]
+    public function aTenantThatAdmitsNoPasswordPosesNone(): void
+    {
+        // Given
+        $carol = Fixtures::user(Fixtures::hardenedTenant());
+
+        // Then
+        $this->expectException(CredentialEnrolmentFailedException::class);
+        $this->expectExceptionMessageIs('A password proves no login of the tenant "acme", whose logins prove "phishing_resistant" at the least: it is not enrolled here. What it would prove is pwd.');
+
+        // When
+        $this->provisioner->setPassword($carol, Fixtures::plainPassword('correct horse battery staple', $carol->tenant->loginFloor));
+    }
+
+    /**
+     * Decision 0029, spec/saml.md S-63
+     */
+    #[Test]
+    public function aPasswordIsSetForNobodyOfAFederatedDomain(): void
+    {
+        // Given
+        $user = Fixtures::user($this->tenant);
+        $this->upstreamProviders->declare($user->tenant, new UpstreamProvider('https://idp.acme.example/saml', [new EmailDomain('acme.example')]));
+        $user->changeEmail(new EmailAddress('alice@acme.example'), true, Fixtures::now());
+
+        // Then
+        $this->expectException(CredentialEnrolmentFailedException::class);
+        $this->expectExceptionMessageIs('A password is posed for nobody of an e-mail domain the tenant "acme" federates to an upstream provider, through which alone they sign in.');
+
+        // When
+        $this->provisioner->setPassword($user, Fixtures::plainPassword(self::A_PASSWORD));
+    }
+
+    private function createdBySource(): User
+    {
+        $user = $this->provisioner->create($this->tenant, 'alice', source: UserSource::upstream(self::PROVIDER, ['given_name', 'phone_number', 'address']));
+        $now = $this->clock->now();
+        $user->updateProfile(new Profile(givenName: 'Alice'), $now);
+        $user->changePhoneNumber('+44 1865 000000', true, $now);
+        $user->changeAddress(new Address(locality: 'Oxford'), $now);
+
+        return $user;
+    }
+
+    private function provisionerAsking(BreachedPasswordsOfARecord $breaches): UserProvisioner
+    {
+        return new UserProvisioner(
+            $this->users,
+            $this->credentials,
+            new ActivePassword(new ActiveCredentials($this->credentials)),
+            $this->hasher,
+            new BreachedPasswordRefusal($breaches),
+            new EnrolmentRefusal(new FederatedDomains($this->upstreamProviders)),
+            new SymfonyUuidGenerator(),
+            $this->clock,
+            $this->claims,
+        );
     }
 }

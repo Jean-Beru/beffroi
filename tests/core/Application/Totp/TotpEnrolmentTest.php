@@ -2,22 +2,36 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Application\Totp;
+namespace Beffroi\Core\Tests\Application\Totp;
 
+use Beffroi\Core\Domain\Identity\UpstreamProvider;
+use Beffroi\Core\Domain\Identity\EmailDomain;
+use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Bridge\InMemory\InMemoryUpstreamProviders;
+use Beffroi\Core\Application\Identity\FederatedDomains;
+use Beffroi\Core\Bridge\Random\PlatformRandomness;
 use function array_unique;
-use Heidi\Core\Application\Totp\ActiveTotp;
-use Heidi\Core\Application\Totp\TotpCodeMatcher;
-use Heidi\Core\Application\Totp\TotpEnrolment;
-use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
-use Heidi\Core\Domain\Credential\BackupCode;
-use Heidi\Core\Domain\Credential\TotpCredential;
-use Heidi\Core\Domain\Event\CredentialEnrolled;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Exception\CredentialEnrolmentFailedException;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Totp\ActiveTotp;
+use Beffroi\Core\Application\Totp\BackupCodeSet;
+use Beffroi\Core\Application\Totp\TotpCodeMatcher;
+use Beffroi\Core\Application\Totp\TotpEnrolment;
+use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Application\Credential\CredentialRevocation;
+use Beffroi\Core\Application\Credential\EnrolmentRefusal;
+use Beffroi\Core\Domain\Credential\BackupCode;
+use Beffroi\Core\Domain\Credential\TotpCredential;
+use Beffroi\Core\Domain\Event\CredentialEnrolled;
+use Beffroi\Core\Domain\Event\CredentialRevoked;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Exception\CredentialEnrolmentFailedException;
+use Beffroi\Core\Exception\KmsUnavailableException;
+use Beffroi\Core\Port\SecretSealerInterface;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Core\Tests\Fixture\Totps;
 use ParagonIE\ConstantTime\Base32;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -26,8 +40,7 @@ use function rawurlencode;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * Architecture §3.4: a TOTP enrolled in two steps from a session the user already holds, the credential
- * existing only once a first code was verified (RFC 6238 §5.2).
+ * Architecture §3.4, RFC 6238 §5.2
  */
 final class TotpEnrolmentTest extends TestCase
 {
@@ -43,6 +56,8 @@ final class TotpEnrolmentTest extends TestCase
 
     private TotpEnrolment $enrolment;
 
+    private InMemoryUpstreamProviders $upstreamProviders;
+
     protected function setUp(): void
     {
         $this->alice = Fixtures::user();
@@ -50,13 +65,10 @@ final class TotpEnrolmentTest extends TestCase
         $this->hasher = new FakePasswordHasher();
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-20T12:00:15+00:00');
-        $this->enrolment = new TotpEnrolment($this->credentials, new ActiveTotp($this->credentials), Totps::algorithm(), new TotpCodeMatcher(Totps::algorithm()), Totps::sealer(), $this->hasher, $this->clock, $this->events);
+        $this->upstreamProviders = new InMemoryUpstreamProviders();
+        $this->enrolment = $this->enrolmentSealingWith(Totps::sealer());
     }
 
-    /**
-     * The Key Uri Format: the tenant is the issuer, the username the account, the secret the one of the
-     * provisioning in base32.
-     */
     #[Test]
     public function theProvisioningNamesTheTenantTheUserAndAFreshSecret(): void
     {
@@ -154,7 +166,12 @@ final class TotpEnrolmentTest extends TestCase
         $provisioning = $this->enrolment->begin($this->alice);
 
         // When
-        $totp = $this->enrolment->complete($this->alice, $provisioning, Totps::codeAt($this->clock->now(), $provisioning->secret), Fixtures::context($this->clock->now()));
+        $totp = $this->enrolment->complete(
+            $this->alice,
+            $provisioning,
+            Totps::codeAt($this->clock->now(), $provisioning->secret),
+            Fixtures::context($this->clock->now()),
+        );
 
         // Then
         static::assertFalse($totp->acceptsStep(Totps::stepAt($this->clock->now())));
@@ -165,8 +182,7 @@ final class TotpEnrolmentTest extends TestCase
     {
         // Given
         $provisioning = $this->enrolment->begin($this->alice);
-        $early = $this->clock->now()
-            ->modify('-30 seconds');
+        $early = $this->clock->now()->modify('-30 seconds');
 
         // When
         $totp = $this->enrolment->complete($this->alice, $provisioning, Totps::codeAt($early, $provisioning->secret), Fixtures::context($this->clock->now()));
@@ -204,7 +220,12 @@ final class TotpEnrolmentTest extends TestCase
         $this->expectExceptionMessageIs('The code does not match the secret.');
 
         // When
-        $this->enrolment->complete($this->alice, $provisioning, Totps::codeAt($this->clock->now()->modify('-2 minutes'), $provisioning->secret), Fixtures::context($this->clock->now()));
+        $this->enrolment->complete(
+            $this->alice,
+            $provisioning,
+            Totps::codeAt($this->clock->now()->modify('-2 minutes'), $provisioning->secret),
+            Fixtures::context($this->clock->now()),
+        );
     }
 
     #[Test]
@@ -225,9 +246,6 @@ final class TotpEnrolmentTest extends TestCase
         static::assertSame(0, $this->hasher->hashed);
     }
 
-    /**
-     * Two enrolments begun side by side: the second one to complete finds the first one's credential.
-     */
     #[Test]
     public function aSecondActiveTotpIsRefusedAtCompletion(): void
     {
@@ -240,7 +258,12 @@ final class TotpEnrolmentTest extends TestCase
         $this->expectExceptionMessageIs('The user has a TOTP already; it is revoked before another is enrolled.');
 
         // When
-        $this->enrolment->complete($this->alice, $provisioning, Totps::codeAt($this->clock->now(), $provisioning->secret), Fixtures::context($this->clock->now()));
+        $this->enrolment->complete(
+            $this->alice,
+            $provisioning,
+            Totps::codeAt($this->clock->now(), $provisioning->secret),
+            Fixtures::context($this->clock->now()),
+        );
     }
 
     #[Test]
@@ -255,5 +278,216 @@ final class TotpEnrolmentTest extends TestCase
         // Then
         static::assertStringStartsWith('otpauth://totp/' . rawurlencode('Acme:bob.o') . '?', $provisioning->uri);
         static::assertCount(0, $this->credentials->findByUser($bob));
+    }
+
+    #[Test]
+    public function aTenantThatAdmitsNoCodeShowsNoSecretToScan(): void
+    {
+        // Given
+        $carol = Fixtures::user(Fixtures::hardenedTenant());
+
+        // Then
+        $this->expectException(CredentialEnrolmentFailedException::class);
+        $this->expectExceptionMessageIs('A one-time code proves no login of the tenant "acme", whose logins prove "phishing_resistant" at the least: it is not enrolled here. What it would prove is otp.');
+
+        // When
+        $this->enrolment->begin($carol);
+    }
+
+    /**
+     * Decision 0029, spec/saml.md S-63
+     */
+    #[Test]
+    public function aPersonOfAFederatedDomainIsShownNoSecretToScan(): void
+    {
+        // Given
+        $user = $this->alice;
+        $this->upstreamProviders->declare($user->tenant, new UpstreamProvider('https://idp.acme.example/saml', [new EmailDomain('acme.example')]));
+        $user->changeEmail(new EmailAddress('alice@acme.example'), true, Fixtures::now());
+
+        // Then
+        $this->expectException(CredentialEnrolmentFailedException::class);
+        $this->expectExceptionMessageIs('A one-time code is posed for nobody of an e-mail domain the tenant "acme" federates to an upstream provider, through which alone they sign in.');
+
+        // When
+        $this->enrolment->begin($user);
+    }
+
+    /**
+     * Decision 0026
+     */
+    #[Test]
+    public function aProvisioningInPlaceOfTheOneHeldIsDrawnWhileOneIsHeld(): void
+    {
+        // Given
+        $this->credentials->save(Totps::credential($this->alice, $this->hasher));
+
+        // When
+        $provisioning = $this->enrolment->beginInPlaceOfTheOneHeld($this->alice);
+
+        // Then
+        static::assertCount(10, $provisioning->backupCodes);
+    }
+
+    /**
+     * Decision 0026
+     */
+    #[Test]
+    public function theTotpHeldIsRevokedOnceTheCodeOfTheNewOneHolds(): void
+    {
+        // Given
+        $held = Totps::credential($this->alice, $this->hasher);
+        $this->credentials->save($held);
+        $provisioning = $this->enrolment->beginInPlaceOfTheOneHeld($this->alice);
+
+        // When
+        $totp = $this->enrolment->completeInPlaceOfTheOneHeld(
+            $this->alice,
+            $provisioning,
+            Totps::codeAt($this->clock->now(), $provisioning->secret),
+            Fixtures::context($this->clock->now()),
+        );
+
+        // Then
+        static::assertSame([true, $totp], [$held->isRevoked(), new ActiveTotp(new ActiveCredentials($this->credentials))->of($this->alice)]);
+    }
+
+    /**
+     * Decision 0026
+     */
+    #[Test]
+    public function theRevocationOfTheTotpHeldAndTheEnrolmentOfTheNewOneAreActsOfTheAccount(): void
+    {
+        // Given
+        $held = Totps::credential($this->alice, $this->hasher);
+        $this->credentials->save($held);
+        $provisioning = $this->enrolment->beginInPlaceOfTheOneHeld($this->alice);
+
+        // When
+        $totp = $this->enrolment->completeInPlaceOfTheOneHeld(
+            $this->alice,
+            $provisioning,
+            Totps::codeAt($this->clock->now(), $provisioning->secret),
+            Fixtures::context($this->clock->now()),
+        );
+
+        // Then
+        static::assertSame(
+            [$held, $totp],
+            [$this->events->of(CredentialRevoked::class)[0]->credential, $this->events->of(CredentialEnrolled::class)[0]->credential],
+        );
+    }
+
+    /**
+     * Decision 0026
+     */
+    #[Test]
+    public function aFirstCodeThatDoesNotHoldInPlaceOfTheOneHeldIsRefused(): void
+    {
+        // Given
+        $this->credentials->save(Totps::credential($this->alice, $this->hasher));
+        $provisioning = $this->enrolment->beginInPlaceOfTheOneHeld($this->alice);
+
+        // Then
+        $this->expectException(CredentialEnrolmentFailedException::class);
+        $this->expectExceptionMessageIs('The code does not match the secret.');
+
+        // When
+        $this->enrolment->completeInPlaceOfTheOneHeld(
+            $this->alice,
+            $provisioning,
+            Totps::codeAt($this->clock->now()->modify('-2 minutes'), $provisioning->secret),
+            Fixtures::context($this->clock->now()),
+        );
+    }
+
+    /**
+     * Decision 0026
+     */
+    #[Test]
+    public function aRefusedCodeLeavesTheTotpHeld(): void
+    {
+        // Given
+        $held = Totps::credential($this->alice, $this->hasher);
+        $this->credentials->save($held);
+        $provisioning = $this->enrolment->beginInPlaceOfTheOneHeld($this->alice);
+
+        // When
+        try {
+            $this->enrolment->completeInPlaceOfTheOneHeld(
+                $this->alice,
+                $provisioning,
+                Totps::codeAt($this->clock->now()->modify('-2 minutes'), $provisioning->secret),
+                Fixtures::context($this->clock->now()),
+            );
+        } catch (CredentialEnrolmentFailedException) {
+        }
+
+        // Then
+        static::assertFalse($held->isRevoked());
+    }
+
+    /**
+     * Decision 0026
+     */
+    #[Test]
+    public function aSecretTheKmsDoesNotSealLeavesTheTotpHeld(): void
+    {
+        // Given
+        $held = Totps::credential($this->alice, $this->hasher);
+        $this->credentials->save($held);
+        $sealer = static::createStub(SecretSealerInterface::class);
+        $sealer->method('seal')->willThrowException(new KmsUnavailableException('The KMS does not answer.'));
+        $enrolment = $this->enrolmentSealingWith($sealer);
+        $provisioning = $enrolment->beginInPlaceOfTheOneHeld($this->alice);
+
+        // When
+        try {
+            $enrolment->completeInPlaceOfTheOneHeld(
+                $this->alice,
+                $provisioning,
+                Totps::codeAt($this->clock->now(), $provisioning->secret),
+                Fixtures::context($this->clock->now()),
+            );
+        } catch (KmsUnavailableException) {
+        }
+
+        // Then
+        static::assertFalse($held->isRevoked());
+    }
+
+    /**
+     * Decision 0026
+     */
+    #[Test]
+    public function aTenantThatAdmitsNoCodeGivesNoProvisioningInPlaceOfTheOneHeld(): void
+    {
+        // Given
+        $carol = Fixtures::user(Fixtures::hardenedTenant());
+
+        // Then
+        $this->expectException(CredentialEnrolmentFailedException::class);
+        $this->expectExceptionMessageIs('A one-time code proves no login of the tenant "acme", whose logins prove "phishing_resistant" at the least: it is not enrolled here. What it would prove is otp.');
+
+        // When
+        $this->enrolment->beginInPlaceOfTheOneHeld($carol);
+    }
+
+    private function enrolmentSealingWith(SecretSealerInterface $sealer): TotpEnrolment
+    {
+        return new TotpEnrolment(
+            $this->credentials,
+            new EnrolmentRefusal(new FederatedDomains($this->upstreamProviders)),
+            new SymfonyUuidGenerator(),
+            new PlatformRandomness(),
+            new BackupCodeSet(new PlatformRandomness(), $this->hasher),
+            new ActiveTotp(new ActiveCredentials($this->credentials)),
+            Totps::algorithm(),
+            new TotpCodeMatcher(Totps::algorithm()),
+            $sealer,
+            new CredentialRevocation($this->credentials, $this->clock, $this->events),
+            $this->clock,
+            $this->events,
+        );
     }
 }

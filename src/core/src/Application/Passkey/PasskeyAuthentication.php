@@ -2,61 +2,50 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Application\Passkey;
+namespace Beffroi\Core\Application\Passkey;
 
-use function array_filter;
-use function array_values;
-use Heidi\Core\Application\Authentication\AuthenticationFailedException;
-use Heidi\Core\Application\Authentication\SessionOpener;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Event\AuthenticationFailed;
-use Heidi\Core\Domain\Event\AuthenticationFailureReason;
-use Heidi\Core\Domain\Event\PasskeyUsed;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Session\AuthenticationMethod;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\PasskeyCeremonyFailedException;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\PasskeyAuthenticatorInterface;
+use Beffroi\Core\Application\Authentication\AuthenticationFailedException;
+use Beffroi\Core\Application\Authentication\AuthenticationRefusal;
+use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Identity\FederatedDomains;
+use Beffroi\Core\Application\Authentication\SessionOpener;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
+use Beffroi\Core\Domain\Event\PasskeyUsed;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\PasskeyCeremonyFailedException;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\PasskeyAuthenticatorInterface;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Webauthn\PublicKeyCredentialRequestOptions;
 
-/**
- * Authenticates a user with a passkey and opens a session, through the SessionOpener, on what the assertion
- * proved (the ceremony behind PasskeyAuthenticatorInterface, WebAuthn Level 3 §7.2). Every outcome is an
- * event carrying the request context, as with a password.
- */
 final readonly class PasskeyAuthentication
 {
     public function __construct(
         private CredentialRepositoryInterface $credentials,
+        private ActiveCredentials $active,
         private PasskeyAuthenticatorInterface $authenticator,
         private SessionOpener $opener,
+        private AuthenticationRefusal $refusals,
         private ClockInterface $clock,
         private EventDispatcherInterface $events,
+        private FederatedDomains $federated,
     ) {
     }
 
-    /**
-     * The passkeys a user who named themself can still sign in with; none when the authenticator is to
-     * pick a discoverable credential.
-     */
     public function requestOptions(Tenant $tenant, ?User $user = null): PublicKeyCredentialRequestOptions
     {
-        $allowed = $user === null ? [] : array_values(array_filter(
-            $this->credentials->findByUser($user, PasskeyCredential::class),
-            static fn (PasskeyCredential $passkey): bool => ! $passkey->isRevoked(),
-        ));
+        $allowed = $user === null ? [] : $this->active->of($user, PasskeyCredential::class);
 
         return $this->authenticator->requestOptions($tenant, $allowed);
     }
 
     /**
-     * A revoked passkey and a disabled user are refused after the signature was checked, so that a refusal
-     * costs the same as a wrong signature; a sign count that did not grow is told, not refused.
+     * Every refusal comes after the signature was checked, so that it costs the same as a wrong signature.
      *
      * @throws AuthenticationFailedException
      */
@@ -65,46 +54,31 @@ final readonly class PasskeyAuthentication
         try {
             $assertion = $this->authenticator->verifyAssertion($tenant, $options, $response);
         } catch (PasskeyCeremonyFailedException) {
-            throw $this->failure($tenant, $context, null, AuthenticationFailureReason::InvalidCredential, null);
+            throw $this->refusals->refuse($tenant, $context, AuthenticationFailureReason::InvalidCredential, null, null, null);
         }
         $credential = $assertion->credential;
         $methods = $credential->methods($assertion->authenticatorData);
         if (! $credential->tenant->equals($tenant)) {
-            throw $this->failure($tenant, $context, $methods[0], AuthenticationFailureReason::InvalidCredential, null);
+            throw $this->refusals->refuse($tenant, $context, AuthenticationFailureReason::InvalidCredential, $methods[0], null, null);
+        }
+        if ($credential->backupEligibilityChanged($assertion->authenticatorData) || $credential->signCountRegresses($assertion->authenticatorData)) {
+            throw $this->refusals->refuse($tenant, $context, AuthenticationFailureReason::InvalidCredential, $methods[0], null, $credential->user);
         }
         if ($credential->isRevoked()) {
-            throw $this->failure($tenant, $context, $methods[0], AuthenticationFailureReason::RevokedCredential, $credential->user);
+            throw $this->refusals->refuse($tenant, $context, AuthenticationFailureReason::RevokedCredential, $methods[0], null, $credential->user);
         }
         if (! $credential->user->isEnabled()) {
-            throw $this->failure($tenant, $context, $methods[0], AuthenticationFailureReason::DisabledUser, $credential->user);
+            throw $this->refusals->refuse($tenant, $context, AuthenticationFailureReason::DisabledUser, $methods[0], null, $credential->user);
+        }
+        if (! $this->federated->admitsLocalCredentials($credential->user)) {
+            throw $this->refusals->refuse($tenant, $context, AuthenticationFailureReason::FederatedDomain, $methods[0], null, $credential->user);
         }
 
         $now = $this->clock->now();
-        $signCountRegressed = $credential->signCountRegresses($assertion->authenticatorData);
         $credential->recordUse($assertion->authenticatorData, $now);
         $this->credentials->save($credential);
-        $this->events->dispatch(new PasskeyUsed($credential, $now, $context, $signCountRegressed));
+        $this->events->dispatch(new PasskeyUsed($credential, $now, $context));
 
         return $this->opener->open($tenant, $credential->user, $methods, $context);
-    }
-
-    private function failure(
-        Tenant $tenant,
-        RequestContext $context,
-        ?AuthenticationMethod $method,
-        AuthenticationFailureReason $reason,
-        ?User $user,
-    ): AuthenticationFailedException {
-        $this->events->dispatch(new AuthenticationFailed(
-            $this->clock->now(),
-            $tenant,
-            $context,
-            $method,
-            $reason,
-            null,
-            $user,
-        ));
-
-        return new AuthenticationFailedException($reason);
     }
 }

@@ -18,14 +18,14 @@ body:
     id: repro
     attributes:
       label: How to reproduce
-      description: Minimal steps, ideally against `apps/op` started with `castor start`.
+      description: Minimal steps, ideally against `apps/beffroi` started with `castor start`.
     validations:
       required: true
   - type: input
     id: versions
     attributes:
       label: Versions
-      description: Heidi commit or tag, PHP, Symfony, client used (`oidc_login` 8.2, conformance suite version, other).
+      description: Beffroi commit or tag, PHP, Symfony, client used (`oidc_login` 8.2, conformance suite version, other).
   - type: checkboxes
     id: security
     attributes:

@@ -1,0 +1,216 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Beffroi\Core\Tests\Domain\Identity\Claim;
+
+use Beffroi\Core\Domain\Identity\Claim\ClaimField;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use function array_combine;
+use function array_map;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+use function range;
+
+final class ClaimFieldTest extends TestCase
+{
+    #[Test]
+    #[DataProvider('provideKinds')]
+    public function aFieldCarriesTheKindItWasBuiltAs(ClaimField $field, string $kind): void
+    {
+        // When / Then
+        static::assertSame($kind, $field->kind);
+    }
+
+    /**
+     * @return iterable<string, array{ClaimField, string}>
+     */
+    public static function provideKinds(): iterable
+    {
+        yield 'a line of text' => [ClaimField::text(), 'text'];
+        yield 'a telephone number' => [ClaimField::telephone(), 'tel'];
+        yield 'a URL' => [ClaimField::url(), 'url'];
+        yield 'a date' => [ClaimField::date(), 'date'];
+        yield 'one of a closed set' => [ClaimField::oneOf(['fr' => 'français']), 'text'];
+    }
+
+    #[Test]
+    public function aDateCarriesThePatternAndTheExample(): void
+    {
+        // When
+        $field = ClaimField::date('\d{4}', 'profile.birthdate.example');
+
+        // Then
+        static::assertSame('\d{4}', $field->pattern);
+        static::assertSame('profile.birthdate.example', $field->example);
+    }
+
+    #[Test]
+    public function aChoiceOfNothingIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A claim offered as a choice offers something to choose.');
+
+        // When
+        ClaimField::oneOf([]);
+    }
+
+    #[Test]
+    public function aClosedSetCarriesALabelPerValue(): void
+    {
+        // When
+        $field = ClaimField::oneOf([
+            'fr' => 'français',
+            'ja' => '日本語',
+        ]);
+
+        // Then
+        static::assertSame(
+            [
+                'fr' => 'français',
+                'ja' => '日本語',
+            ],
+            $field->choices,
+        );
+    }
+
+    #[Test]
+    public function aSetShortEnoughToReadIsChosenFromAList(): void
+    {
+        // When / Then
+        static::assertFalse(self::setOf(ClaimField::PICKED_BEYOND)->isPicked());
+    }
+
+    #[Test]
+    public function aSetLongerThanThatIsPickedFrom(): void
+    {
+        // When / Then
+        static::assertTrue(self::setOf(ClaimField::PICKED_BEYOND + 1)->isPicked());
+    }
+
+    #[Test]
+    public function aFieldWithNoClosedSetIsNotPickedFrom(): void
+    {
+        // When / Then
+        static::assertFalse(ClaimField::text()->isPicked());
+    }
+
+    #[Test]
+    public function aClosedSetHoldsTheValuesItNames(): void
+    {
+        // When / Then
+        static::assertTrue(ClaimField::oneOf(['fr' => 'français'])->holds('fr'));
+    }
+
+    #[Test]
+    public function aClosedSetDoesNotHoldAValueItDoesNotName(): void
+    {
+        // When / Then
+        static::assertFalse(ClaimField::oneOf(['fr' => 'français'])->holds('ja'));
+    }
+
+    #[Test]
+    #[DataProvider('provideNothing')]
+    public function takingAValueBackIsHeldByAClosedSet(?string $nothing): void
+    {
+        // When / Then
+        static::assertTrue(ClaimField::oneOf(['fr' => 'français'])->holds($nothing));
+    }
+
+    /**
+     * @return iterable<string, array{string|null}>
+     */
+    public static function provideNothing(): iterable
+    {
+        yield 'nothing at all' => [null];
+        yield 'an empty field' => [''];
+    }
+
+    #[Test]
+    public function aFieldWithNoClosedSetHoldsAnything(): void
+    {
+        // When / Then
+        static::assertTrue(ClaimField::text('\d{4}')->holds('not a year at all'));
+    }
+
+    #[Test]
+    public function aValueTheSetDoesNotHoldIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The value "ja" is not one this claim may hold.');
+
+        // When
+        ClaimField::oneOf(['fr' => 'français'])->assertHolds('ja');
+    }
+
+    /**
+     * OIDC Core §5.1, HTML §2.3.5.1, §2.3.5.2
+     */
+    #[Test]
+    #[DataProvider('provideValuesADateInputCannotCarry')]
+    public function aValueADateInputCannotCarryIsOfferedAsALineOfText(string $value): void
+    {
+        // When
+        $field = ClaimField::date('\d{4}(-\d{2}-\d{2})?')->forHolding($value);
+
+        // Then
+        static::assertSame('text', $field->kind);
+        static::assertSame('\d{4}(-\d{2}-\d{2})?', $field->pattern);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideValuesADateInputCannotCarry(): iterable
+    {
+        yield 'a year alone' => ['1815'];
+        yield 'a line feed behind a whole date' => ["1815-12-10\n"];
+        yield 'a day whose year is withheld' => ['0000-05-21'];
+        yield 'the 29th of February of a year withheld' => ['0000-02-29'];
+    }
+
+    /**
+     * HTML §2.3.5.1
+     */
+    #[Test]
+    #[DataProvider('provideWholeDates')]
+    public function aWholeDateIsOfferedAsADate(string $date): void
+    {
+        // When / Then
+        static::assertSame('date', ClaimField::date('\d{4}(-\d{2}-\d{2})?')->forHolding($date)->kind);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideWholeDates(): iterable
+    {
+        yield 'a day of the nineteenth century' => ['1815-12-10'];
+        yield 'a day of the first year' => ['0001-05-21'];
+    }
+
+    #[Test]
+    #[DataProvider('provideNothing')]
+    public function aFieldHoldingNothingIsOfferedAsItself(?string $nothing): void
+    {
+        // When / Then
+        static::assertSame('date', ClaimField::date('\d{4}')->forHolding($nothing)->kind);
+    }
+
+    #[Test]
+    public function aLineOfTextIsOfferedAsItselfWhateverItHolds(): void
+    {
+        // When / Then
+        static::assertSame('text', ClaimField::text('\d{4}')->forHolding('not a year at all')->kind);
+    }
+
+    private static function setOf(int $many): ClaimField
+    {
+        $values = array_map(static fn (int $index): string => 'value-' . $index, range(1, $many));
+
+        return ClaimField::oneOf(array_combine($values, $values));
+    }
+}

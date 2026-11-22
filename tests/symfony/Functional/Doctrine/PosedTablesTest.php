@@ -2,18 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
-use Heidi\Core\Domain\Group\Group;
-use Heidi\Core\Domain\Group\GroupMembership;
-use Heidi\Core\Domain\Group\GroupSource;
-use Heidi\Core\Domain\Identity\LinkedIdentity;
+use Beffroi\Core\Domain\Group\Group;
+use Beffroi\Core\Domain\Group\GroupMembership;
+use Beffroi\Core\Domain\Group\GroupSource;
+use Beffroi\Core\Domain\Identity\LinkedIdentity;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §8: the tables spike 1 poses without using them (linked identities, groups, memberships)
- * are mapped and round-trip through the entity manager, so that spike 3 finds them in place.
+ * Architecture §8
  */
 final class PosedTablesTest extends DatabaseTestCase
 {
@@ -23,10 +22,18 @@ final class PosedTablesTest extends DatabaseTestCase
         // Given
         $entityManager = self::entityManager();
         $user = self::user();
-        $identity = new LinkedIdentity(Uuid::v7(), $user, 'google', '1234567890', [
-            'email' => 'alice@example.com',
-            'email_verified' => true,
-        ], self::now(), self::now());
+        $identity = new LinkedIdentity(
+            Uuid::v7(),
+            $user,
+            'google',
+            '1234567890',
+            [
+                'email' => 'alice@example.com',
+                'email_verified' => true,
+            ],
+            self::now(),
+            self::now(),
+        );
         $entityManager->persist($identity);
         $entityManager->flush();
         self::reload();
@@ -39,10 +46,13 @@ final class PosedTablesTest extends DatabaseTestCase
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
         static::assertSame('google', $found->provider);
         static::assertSame('1234567890', $found->subject);
-        static::assertSame([
-            'email' => 'alice@example.com',
-            'email_verified' => true,
-        ], $found->claims);
+        static::assertSame(
+            [
+                'email' => 'alice@example.com',
+                'email_verified' => true,
+            ],
+            $found->claims,
+        );
         static::assertEquals(self::now(), $found->linkedAt);
         static::assertEquals(self::now(), $found->lastSeenAt);
     }

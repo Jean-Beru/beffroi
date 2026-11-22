@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Token;
+namespace Beffroi\Oidc\Tests\Domain\Token;
 
 use function hash;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Oidc\Domain\Token\TokenHash;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Oidc\Domain\Token\TokenHash;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function preg_match;
@@ -14,10 +14,6 @@ use function strlen;
 
 final class TokenHashTest extends TestCase
 {
-    /**
-     * OIDC Core appendix A.3: the access token "jHkWEdUXMU1BwAsC4vtUsZwnNvTIxEl0z9K3vx5KF0Y" of the
-     * example has the at_hash "77QmUPtjPfzWtF2AnpK9RQ" under RS256.
-     */
     #[Test]
     public function itMatchesTheExampleOfTheSpecification(): void
     {
@@ -26,8 +22,7 @@ final class TokenHashTest extends TestCase
     }
 
     /**
-     * OIDC Core §3.1.3.6: the left-most 128 bits of SHA-256, so 22 base64url characters; the whole
-     * digest is not what is encoded.
+     * OIDC Core §3.1.3.6
      */
     #[Test]
     public function itKeepsTheLeftHalfOfTheDigestOnly(): void

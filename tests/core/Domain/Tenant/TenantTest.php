@@ -2,12 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Domain\Tenant;
+namespace Beffroi\Core\Tests\Domain\Tenant;
 
-use Heidi\Core\Domain\Tenant\Issuer;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Core\Domain\Tenant\LogoUri;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Domain\Tenant\TenantLook;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -38,6 +40,28 @@ final class TenantTest extends TestCase
         yield 'trailing hyphen' => ['acme-'];
         yield 'space' => ['ac me'];
         yield 'too long' => [str_repeat('a', 64)];
+        yield 'a line feed behind a slug that would pass' => ["acme\n"];
+    }
+
+    #[Test]
+    public function aTenantDeclaresNoLookUntilItAdoptsOne(): void
+    {
+        // When / Then
+        static::assertFalse(Fixtures::tenant()->look->isDeclared());
+    }
+
+    #[Test]
+    public function itAdoptsTheLookOfItsPages(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $look = new TenantLook(new LogoUri('https://acme.example/logo.svg'), '#1b4b8f', '#ffffff');
+
+        // When
+        $tenant->adoptLook($look);
+
+        // Then
+        static::assertTrue($tenant->look->equals($look));
     }
 
     #[Test]

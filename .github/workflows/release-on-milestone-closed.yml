@@ -1,0 +1,127 @@
+# https://help.github.com/en/categories/automating-your-workflow-with-github-actions
+
+name: "Automatic Releases"
+
+# The milestones of this repository name the spikes as well as the versions, so
+# closing one is not always a release. "version" reads the title and the release
+# job runs only when it is a version; laminas/automatic-releases fails on any
+# other title, which would turn every closed spike into a red run.
+#
+# The five commands must stay steps of a single job: "release" runs
+# `git checkout <release branch>`, which is what makes that branch available
+# locally, and the following commands require it. Splitting them into separate
+# jobs gives each one a fresh checkout of the default branch, so every release
+# made from an older branch fails with "not a valid object name".
+#
+# The checkout must be unshallow for the same reason: "switch-default-branch-
+# to-next-minor" resolves the newest release branch locally, and the default
+# shallow clone only contains the ref that triggered the workflow.
+#
+# The repository keeps the read-only default for GITHUB_TOKEN; the release job
+# asks for the three writes it uses and no other workflow gets them. "release"
+# and "switch-default-branch-to-next-minor" do not run on GITHUB_TOKEN at all,
+# they need ORGANIZATION_ADMIN_TOKEN. What no permission can grant is the
+# opening of the merge-up pull request: "Allow GitHub Actions to create and
+# approve pull requests" is a repository setting.
+
+on:
+  milestone:
+    types:
+      - "closed"
+
+jobs:
+  version:
+    name: "Is the milestone a version"
+    runs-on: [self-hosted, kloude-light]
+
+    permissions: {}
+
+    outputs:
+      release: ${{ steps.title.outputs.release }}
+
+    steps:
+      - name: "Read the milestone title"
+        id: "title"
+        env:
+          MILESTONE_TITLE: ${{ github.event.milestone.title }}
+        run: |
+          if [[ "${MILESTONE_TITLE}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "release=true" >> "${GITHUB_OUTPUT}"
+            echo "Releasing ${MILESTONE_TITLE}." >> "${GITHUB_STEP_SUMMARY}"
+          else
+            echo "release=false" >> "${GITHUB_OUTPUT}"
+            echo "The milestone \"${MILESTONE_TITLE}\" is not a version, nothing is released." >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
+  release:
+    name: "Release"
+    runs-on: [self-hosted, kloude-light, X64]
+
+    needs: "version"
+    if: "needs.version.outputs.release == 'true'"
+
+    permissions:
+      contents: "write"
+      pull-requests: "write"
+      issues: "write"
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v7"
+        with:
+          fetch-depth: 0
+
+      - name: "Release"
+        uses: "laminas/automatic-releases@1.28.0"
+        with:
+          command-name: "laminas:automatic-releases:release"
+        env:
+          "SHELL_VERBOSITY": "3"
+          "GITHUB_TOKEN": ${{ secrets.ORGANIZATION_ADMIN_TOKEN }}
+          "SIGNING_SECRET_KEY": ${{ secrets.SIGNING_SECRET_KEY }}
+          "GIT_AUTHOR_NAME": ${{ secrets.GIT_AUTHOR_NAME }}
+          "GIT_AUTHOR_EMAIL": ${{ secrets.GIT_AUTHOR_EMAIL }}
+
+      - name: "Create Merge-Up Pull Request"
+        uses: "laminas/automatic-releases@1.28.0"
+        with:
+          command-name: "laminas:automatic-releases:create-merge-up-pull-request"
+        env:
+          "SHELL_VERBOSITY": "3"
+          "GITHUB_TOKEN": ${{ secrets.GITHUB_TOKEN }}
+          "SIGNING_SECRET_KEY": ${{ secrets.SIGNING_SECRET_KEY }}
+          "GIT_AUTHOR_NAME": ${{ secrets.GIT_AUTHOR_NAME }}
+          "GIT_AUTHOR_EMAIL": ${{ secrets.GIT_AUTHOR_EMAIL }}
+
+      - name: "Create and/or Switch to new Release Branch"
+        uses: "laminas/automatic-releases@1.28.0"
+        with:
+          command-name: "laminas:automatic-releases:switch-default-branch-to-next-minor"
+        env:
+          "SHELL_VERBOSITY": "3"
+          "GITHUB_TOKEN": ${{ secrets.ORGANIZATION_ADMIN_TOKEN }}
+          "SIGNING_SECRET_KEY": ${{ secrets.SIGNING_SECRET_KEY }}
+          "GIT_AUTHOR_NAME": ${{ secrets.GIT_AUTHOR_NAME }}
+          "GIT_AUTHOR_EMAIL": ${{ secrets.GIT_AUTHOR_EMAIL }}
+
+      - name: "Bump Changelog Version On Originating Release Branch"
+        uses: "laminas/automatic-releases@1.28.0"
+        with:
+          command-name: "laminas:automatic-releases:bump-changelog"
+        env:
+          "SHELL_VERBOSITY": "3"
+          "GITHUB_TOKEN": ${{ secrets.GITHUB_TOKEN }}
+          "SIGNING_SECRET_KEY": ${{ secrets.SIGNING_SECRET_KEY }}
+          "GIT_AUTHOR_NAME": ${{ secrets.GIT_AUTHOR_NAME }}
+          "GIT_AUTHOR_EMAIL": ${{ secrets.GIT_AUTHOR_EMAIL }}
+
+      - name: "Create new milestones"
+        uses: "laminas/automatic-releases@1.28.0"
+        with:
+          command-name: "laminas:automatic-releases:create-milestones"
+        env:
+          "SHELL_VERBOSITY": "3"
+          "GITHUB_TOKEN": ${{ secrets.GITHUB_TOKEN }}
+          "SIGNING_SECRET_KEY": ${{ secrets.SIGNING_SECRET_KEY }}
+          "GIT_AUTHOR_NAME": ${{ secrets.GIT_AUTHOR_NAME }}
+          "GIT_AUTHOR_EMAIL": ${{ secrets.GIT_AUTHOR_EMAIL }}

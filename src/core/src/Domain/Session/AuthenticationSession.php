@@ -2,20 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Domain\Session;
+namespace Beffroi\Core\Domain\Session;
 
+use Beffroi\Core\Domain\PersonalData\ClassifiedFieldsInterface;
+use Beffroi\Core\Domain\PersonalData\FieldClassificationInterface;
+use Beffroi\Core\Domain\PersonalData\NoPersonalDatum;
+use Beffroi\Core\Domain\PersonalData\Reason;
+use Beffroi\Core\Domain\PersonalData\Sealed;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Exception\LogicException;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\LogicException;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Who is authenticated at the provider, since when, how and from where. Tokens point at a session, which
- * makes them revocable together at logout. "How" is a map of proofs; "acr" is read from it, never stored.
- */
-final class AuthenticationSession
+final class AuthenticationSession implements ClassifiedFieldsInterface
 {
     public private(set) AuthenticationProofs $proofs;
 
@@ -33,7 +34,7 @@ final class AuthenticationSession
         public readonly User $user,
         public readonly DateTimeImmutable $establishedAt,
         AuthenticationProofs $proofs,
-        public readonly RequestContext $createdFrom,
+        public private(set) RequestContext $createdFrom,
         public private(set) DateTimeImmutable $expiresAt,
     ) {
         if (! $user->belongsTo($tenant)) {
@@ -50,50 +51,59 @@ final class AuthenticationSession
         $this->lastSeenAt = $establishedAt;
     }
 
-    /**
-     * The "auth_time" (OIDC Core §2): the most recent proof.
-     */
     public function authenticatedAt(): DateTimeImmutable
     {
         return $this->proofs->latest();
     }
 
-    /**
-     * The "acr" (OIDC Core §2) when no class is requested: the first class of the policy of the tenant the
-     * proofs satisfy (decision 0010).
-     */
     public function authenticationContextClass(): AuthenticationContextClass
     {
         return $this->tenant->authenticationContextPolicy->classOf($this->proofs);
     }
 
     /**
-     * OIDC Core §5.5.1.1: the requested class may be below the strongest one satisfied.
+     * OIDC Core §5.5.1.1
      */
     public function satisfies(AuthenticationContextClass $class): bool
     {
-        return $class->isSatisfiedBy($this->proofs);
+        return $class->isSatisfiedBy($this->proofs->methods());
     }
 
     /**
-     * A re-authentication or a step-up: one more proof, dated now.
+     * Dated at $provenAt when given, else when the request arrived, and never later than the request.
      */
-    public function recordProof(AuthenticationMethod $method, RequestContext $context): void
+    public function recordProof(AuthenticationMethod $method, RequestContext $context, ?DateTimeImmutable $provenAt = null): void
     {
         if ($this->endedAt !== null) {
             throw new LogicException('An ended session cannot receive a proof.');
         }
         if ($context->receivedAt < $this->establishedAt) {
-            throw new LogicException('A proof cannot predate the session.');
+            throw new LogicException('The request that carries a proof cannot predate the session.');
         }
-        $this->proofs = $this->proofs->with($method, $context->receivedAt);
+        $this->proofs = $this->proofs->with($method, $provenAt === null || $provenAt > $context->receivedAt ? $context->receivedAt : $provenAt);
         $this->lastSeenFrom = $context;
         $this->lastSeenAt = $context->receivedAt;
     }
 
     /**
-     * The lifetime policy (sliding, absolute) belongs to the caller.
+     * SAML Core §2.7.2
      */
+    public function expireNoLaterThan(DateTimeImmutable $notOnOrAfter): void
+    {
+        if ($notOnOrAfter < $this->expiresAt) {
+            $this->expiresAt = $notOnOrAfter;
+        }
+    }
+
+    /**
+     * Written on an ended session too: an enrichment that arrives after a logout is late, not wrong.
+     */
+    public function locate(?GeoLocation $createdIn, ?GeoLocation $lastSeenIn): void
+    {
+        $this->createdFrom = $this->createdFrom->withLocation($createdIn);
+        $this->lastSeenFrom = $this->lastSeenFrom->withLocation($lastSeenIn);
+    }
+
     public function touch(RequestContext $context, DateTimeImmutable $expiresAt): void
     {
         if ($this->endedAt !== null) {
@@ -130,10 +140,30 @@ final class AuthenticationSession
     }
 
     /**
-     * @return non-empty-list<string> the "amr" claim values
+     * @return non-empty-list<string>
      */
     public function methodReferences(): array
     {
         return $this->proofs->methodReferences();
+    }
+
+    /**
+     * @return array<string, FieldClassificationInterface>
+     */
+    public static function classifiedFields(): array
+    {
+        return [
+            'establishedAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'proofs' => new NoPersonalDatum(Reason::WHAT_THE_SESSION_PROVED),
+            'createdFrom' => new Sealed('authentication_session'),
+            'lastSeenFrom' => new Sealed('authentication_session'),
+            'lastSeenAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'expiresAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'endedAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'endedBy' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'id' => new NoPersonalDatum(Reason::DRAWN_AT_RANDOM),
+            'tenant' => new NoPersonalDatum(Reason::THE_TENANT),
+            'user' => new NoPersonalDatum(Reason::DRAWN_AT_RANDOM),
+        ];
     }
 }

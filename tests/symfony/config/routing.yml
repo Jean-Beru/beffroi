@@ -1,15 +1,35 @@
-# The routes of the bundle, imported as an application imports them, next to a route of the host
+# The routes of the provider, imported as an application imports them, next to a route of the host
 # application that the plane guard must leave alone.
-heidi:
-    resource: '@HeidiBundle/config/routes.php'
+beffroi:
+    resource: '../../../apps/beffroi/config/beffroi/routes.php'
 
 host_route:
     path: /host
-    controller: Heidi\Bundle\Tests\Functional\Controller\ProbeController
+    controller: App\Tests\Symfony\Functional\Controller\ProbeController
     defaults:
         plane: host
+
+# The application signing its own users in at the provider it serves (issue #282).
+host_application:
+    resource: routing_host_application.yml
+
 # The endpoints of the FIDO2 server API, imported as an application imports them in development, under a
 # prefix of its own.
-heidi_fido_conformance:
-    resource: '@HeidiBundle/config/routes/fido-conformance.php'
+beffroi_fido_conformance:
+    resource: '../../../apps/beffroi/config/beffroi/routes/fido-conformance.php'
     prefix: /fido/conformance
+
+# What the certification suite answers a backchannel request with, imported the same way.
+beffroi_ciba_conformance:
+    resource: '../../../apps/beffroi/config/beffroi/routes/ciba-conformance.php'
+    prefix: /ciba/conformance
+
+# The pages of the profiler, as an application imports them in development: the one test that boots a
+# kernel in debug reads the panel of the provider through them.
+web_profiler:
+    resource: '@WebProfilerBundle/Resources/config/routing/profiler.php'
+    prefix: /_profiler
+
+web_profiler_wdt:
+    resource: '@WebProfilerBundle/Resources/config/routing/wdt.php'
+    prefix: /_wdt

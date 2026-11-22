@@ -2,17 +2,25 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
-use Heidi\Oidc\Domain\Consent\Consent;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Port\ConsentRepositoryInterface;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientPresentation;
+use Beffroi\Oidc\Domain\Client\ClientRegistration;
+use Beffroi\Oidc\Domain\Client\RedirectUri;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Tests\Fixture\Methods;
+use Beffroi\Oidc\Tests\Fixture\Shapes;
+use function array_map;
+use Beffroi\Oidc\Port\ActiveConsentsInterface;
+use Beffroi\Oidc\Port\ConsentRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §4.3, §5.3: the consent in force between a user and a client is the active one granted
- * last; a superseded one stays, revoked.
+ * Architecture §4.3, §5.3
  */
 final class DoctrineConsentRepositoryTest extends DatabaseTestCase
 {
@@ -22,7 +30,7 @@ final class DoctrineConsentRepositoryTest extends DatabaseTestCase
         // Given
         $user = self::user();
         $client = self::client();
-        $consent = new Consent(Uuid::v7(), $user, $client, [new Scope('openid'), new Scope('profile')], self::now());
+        $consent = new Consent(Uuid::v7(), $user, $client, new Scopes([new Scope('openid'), new Scope('profile')]), self::now());
         self::consents()->save($consent);
         self::reload();
 
@@ -34,9 +42,9 @@ final class DoctrineConsentRepositoryTest extends DatabaseTestCase
         static::assertTrue($found->user->id->equals($user->id));
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
         static::assertSame('oidc-demo', $found->clientId);
-        static::assertSame('oidc-demo', $found->client->clientId);
+        static::assertSame('oidc-demo', $found->client->registration->clientId);
         static::assertTrue($found->isFor($user, $client));
-        static::assertEquals([new Scope('openid'), new Scope('profile')], $found->scopes);
+        static::assertEquals([new Scope('openid'), new Scope('profile')], $found->scopes->all);
         static::assertEquals(self::now(), $found->grantedAt);
         static::assertNull($found->revokedAt);
         static::assertTrue($found->isActive());
@@ -48,14 +56,15 @@ final class DoctrineConsentRepositoryTest extends DatabaseTestCase
         // Given
         $alice = self::user();
         $demo = self::client();
-        $superseded = new Consent(Uuid::v7(), $alice, $demo, [new Scope('openid')], self::now()->modify('-1 day'));
+        $superseded = new Consent(Uuid::v7(), $alice, $demo, new Scopes([new Scope('openid')]), self::now()->modify('-1 day'));
         $superseded->revoke(self::now());
         self::consents()->save($superseded);
-        $latest = new Consent(Uuid::v7(), $alice, $demo, [new Scope('openid'), new Scope('email')], self::now());
+        $latest = new Consent(Uuid::v7(), $alice, $demo, new Scopes([new Scope('openid'), new Scope('email')]), self::now());
         self::consents()->save($latest);
-        self::consents()->save(new Consent(Uuid::v7(), $alice, $demo, [new Scope('openid'), new Scope('profile')], self::now()->modify('-1 hour')));
-        self::consents()->save(new Consent(Uuid::v7(), self::user('bob', 'bob-subject'), $demo, [new Scope('openid')], self::now()->modify('+1 hour')));
-        self::consents()->save(new Consent(Uuid::v7(), $alice, self::client('native-app'), [new Scope('openid')], self::now()->modify('+1 hour')));
+        self::consents()->save(new Consent(Uuid::v7(), $alice, $demo, new Scopes([new Scope('openid'), new Scope('profile')]), self::now()->modify('-1 hour')));
+        self::consents()
+            ->save(new Consent(Uuid::v7(), self::user('bob', 'bob-subject'), $demo, new Scopes([new Scope('openid')]), self::now()->modify('+1 hour')));
+        self::consents()->save(new Consent(Uuid::v7(), $alice, self::client('native-app'), new Scopes([new Scope('openid')]), self::now()->modify('+1 hour')));
         self::reload();
 
         // When
@@ -70,7 +79,7 @@ final class DoctrineConsentRepositoryTest extends DatabaseTestCase
     {
         // Given
         $demo = self::client();
-        self::consents()->save(new Consent(Uuid::v7(), self::user(), $demo, [new Scope('openid')], self::now()));
+        self::consents()->save(new Consent(Uuid::v7(), self::user(), $demo, new Scopes([new Scope('openid')]), self::now()));
         self::reload();
 
         // When / Then
@@ -83,7 +92,7 @@ final class DoctrineConsentRepositoryTest extends DatabaseTestCase
         // Given
         $user = self::user();
         $client = self::client();
-        $consent = new Consent(Uuid::v7(), $user, $client, [new Scope('openid')], self::now());
+        $consent = new Consent(Uuid::v7(), $user, $client, new Scopes([new Scope('openid')]), self::now());
         self::consents()->save($consent);
         $consent->revoke(self::now()->modify('+1 hour'));
         self::consents()->save($consent);
@@ -94,8 +103,67 @@ final class DoctrineConsentRepositoryTest extends DatabaseTestCase
         static::assertEquals(self::now()->modify('+1 hour'), self::entityManager()->find(Consent::class, $consent->id)?->revokedAt);
     }
 
+    #[Test]
+    public function theConsentsInForceAreListedForTheirUser(): void
+    {
+        // Given
+        $alice = self::user();
+        self::consents()->save(new Consent(Uuid::v7(), $alice, self::client(), new Scopes([new Scope('openid')]), self::now()->modify('-1 day')));
+        self::consents()->save(new Consent(Uuid::v7(), $alice, self::client('native-app'), new Scopes([new Scope('openid')]), self::now()));
+        self::consents()->save(new Consent(Uuid::v7(), self::user('bob', 'bob-subject'), self::client(), new Scopes([new Scope('openid')]), self::now()));
+        self::reload();
+
+        // When
+        $inForce = self::activeConsents()->activeOf($alice);
+
+        // Then
+        static::assertSame(['native-app', 'oidc-demo'], array_map(static fn (Consent $consent): string => $consent->clientId, $inForce));
+    }
+
+    #[Test]
+    public function aConsentTakenBackIsNotInForce(): void
+    {
+        // Given
+        $alice = self::user();
+        $consent = new Consent(Uuid::v7(), $alice, self::client(), new Scopes([new Scope('openid')]), self::now());
+        $consent->revoke(self::now()->modify('+1 hour'));
+        self::consents()->save($consent);
+        self::reload();
+
+        // When / Then
+        static::assertSame([], self::activeConsents()->activeOf($alice));
+    }
+
+    #[Test]
+    public function aConsentOfAClientNoLongerRegisteredIsNotListed(): void
+    {
+        // Given
+        $alice = self::user();
+        $ghost = new Client(
+            self::tenant(),
+            new ClientRegistration(
+                'ghost',
+                new ClientPresentation('Removed client'),
+                Methods::none(),
+                false,
+                [new RedirectUri('https://ghost.example/callback')],
+                Shapes::jwt(),
+            ),
+        );
+        self::consents()->save(new Consent(Uuid::v7(), $alice, $ghost, new Scopes([new Scope('openid')]), self::now()));
+        self::reload();
+
+        // When / Then
+        static::assertSame([], self::activeConsents()->activeOf($alice));
+    }
+
+    private static function activeConsents(): ActiveConsentsInterface
+    {
+        return self::service('test.beffroi.active_consents', ActiveConsentsInterface::class);
+    }
+
     private static function consents(): ConsentRepositoryInterface
     {
-        return self::service('test.heidi.consents', ConsentRepositoryInterface::class);
+        return self::service('test.beffroi.consents', ConsentRepositoryInterface::class);
     }
 }

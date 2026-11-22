@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\EndSession;
+namespace Beffroi\Oidc\Tests\Domain\EndSession;
 
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Domain\Authorization\IdTokenHint;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\RedirectUri;
-use Heidi\Oidc\Domain\EndSession\EndSessionRequest;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use Heidi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Domain\Authorization\IdTokenHint;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\RedirectUri;
+use Beffroi\Oidc\Domain\EndSession\EndSessionRequest;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -35,14 +35,13 @@ final class EndSessionRequestTest extends TestCase
     }
 
     /**
-     * OIDC RP-Initiated Logout 1.0 §3: the redirect exists when the client asked for one it registered,
-     * with the state of the request.
+     * OIDC RP-Initiated Logout 1.0 §3
      */
     #[Test]
     public function itRedirectsWhereTheClientAskedWithTheState(): void
     {
         // Given
-        $request = new EndSessionRequest($this->tenant, $this->client, $this->hint, $this->client->postLogoutRedirectUris[0], 'af0ifjsldkj');
+        $request = new EndSessionRequest($this->tenant, $this->client, $this->hint, $this->client->registration->postLogoutRedirectUris[0], 'af0ifjsldkj');
 
         // When
         $redirect = $request->redirect() ?? static::fail('The request has a redirect.');
@@ -63,8 +62,7 @@ final class EndSessionRequestTest extends TestCase
     }
 
     /**
-     * A logout link without parameters is a valid request (§2: every parameter is optional); it just
-     * has nowhere to redirect to (§3).
+     * OIDC RP-Initiated Logout 1.0 §2, §3
      */
     #[Test]
     public function itMayNameNoClientAtAllAndThenRedirectsNowhere(): void
@@ -90,9 +88,7 @@ final class EndSessionRequestTest extends TestCase
     }
 
     /**
-     * What the parser establishes, checked again: the client belongs to the tenant, the hint was issued
-     * to it, the redirect URI is registered on it (§3), the state is not empty, a hint is verified or
-     * invalid, not both.
+     * OIDC RP-Initiated Logout 1.0 §3
      */
     #[Test]
     #[DataProvider('provideInconsistentRequests')]
@@ -111,7 +107,12 @@ final class EndSessionRequestTest extends TestCase
     public static function provideInconsistentRequests(): iterable
     {
         yield 'client of another tenant' => [
-            static fn (self $test): EndSessionRequest => new EndSessionRequest($test->tenant, Clients::public(Fixtures::tenant('other', 'https://id.other.example')), null, null),
+            static fn (self $test): EndSessionRequest => new EndSessionRequest(
+                $test->tenant,
+                Clients::public(Fixtures::tenant('other', 'https://id.other.example')),
+                null,
+                null,
+            ),
         ];
         yield 'hint without a client' => [
             static fn (self $test): EndSessionRequest => new EndSessionRequest($test->tenant, null, $test->hint, null),
@@ -123,10 +124,20 @@ final class EndSessionRequestTest extends TestCase
             static fn (self $test): EndSessionRequest => new EndSessionRequest($test->tenant, null, null, new RedirectUri('https://demo.localhost/')),
         ];
         yield 'redirect not registered' => [
-            static fn (self $test): EndSessionRequest => new EndSessionRequest($test->tenant, $test->client, $test->hint, new RedirectUri('https://demo.localhost/other')),
+            static fn (self $test): EndSessionRequest => new EndSessionRequest(
+                $test->tenant,
+                $test->client,
+                $test->hint,
+                new RedirectUri('https://demo.localhost/other'),
+            ),
         ];
         yield 'redirect registered for the authorization response only' => [
-            static fn (self $test): EndSessionRequest => new EndSessionRequest($test->tenant, $test->client, $test->hint, $test->client->redirectUris[0]),
+            static fn (self $test): EndSessionRequest => new EndSessionRequest(
+                $test->tenant,
+                $test->client,
+                $test->hint,
+                $test->client->registration->redirectUris[0],
+            ),
         ];
         yield 'empty state' => [
             static fn (self $test): EndSessionRequest => new EndSessionRequest($test->tenant, $test->client, $test->hint, null, ''),

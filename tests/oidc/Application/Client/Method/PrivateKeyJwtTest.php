@@ -2,42 +2,47 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Client\Method;
+namespace Beffroi\Oidc\Tests\Application\Client\Method;
 
 use function array_map;
 use function count;
 use DateInterval;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\Algorithms;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Oidc\Application\Client\ClientAuthenticator;
-use Heidi\Oidc\Bridge\InMemory\InMemoryClientRepository;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Client\ClientUri;
-use Heidi\Oidc\Domain\Event\ClientAuthenticationFailed;
-use Heidi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
-use Heidi\Oidc\Exception\ClientKeysUnavailableException;
-use Heidi\Oidc\Exception\InvalidClientException;
-use Heidi\Oidc\Exception\OAuth2Exception;
-use Heidi\Oidc\Tests\Fixture\ClientAssertions;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\FakeClientJwksFetcher;
-use Heidi\Oidc\Tests\Fixture\Methods;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Oidc\Application\Client\AuthenticatedClient;
+use Beffroi\Oidc\Application\Client\ClientAuthenticator;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailed;
+use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
+use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
+use Beffroi\Oidc\Exception\InvalidClientException;
+use Beffroi\Oidc\Exception\InvalidRequestException;
+use Beffroi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\FakeClientJwksFetcher;
+use Beffroi\Oidc\Tests\Fixture\FakeClientLoadBudget;
+use Beffroi\Oidc\Tests\Fixture\Grants;
+use Beffroi\Oidc\Tests\Fixture\Methods;
 use Jose\Component\Core\JWK;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
 /**
- * "private_key_jwt" (OIDC Core §9, RFC 7523): the client signs a JWT with a key of its own and the
- * provider verifies it against the keys the client publishes.
+ * OIDC Core §9, RFC 7523
  */
 final class PrivateKeyJwtTest extends TestCase
 {
     private const string ENDPOINT = 'https://id.acme.example/token';
+
+    private const string BACKCHANNEL_ENDPOINT = 'https://id.acme.example/backchannel_authentication';
 
     private const string JWKS_URI = 'https://key.example/jwks';
 
@@ -66,8 +71,7 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: "iss" and "sub" name the client, "aud" names the endpoint, "exp", "iat" and "jti" are
-     * all there, and the signature verifies against a key the client publishes.
+     * RFC 7523 §3
      */
     #[Test]
     public function itAuthenticatesAClientThatSignsWithItsOwnKey(): void
@@ -76,7 +80,7 @@ final class PrivateKeyJwtTest extends TestCase
         $client = $this->authenticate($this->assertion());
 
         // Then
-        static::assertSame($this->client, $client);
+        static::assertSame($this->client, $client->client);
     }
 
     #[Test]
@@ -90,29 +94,40 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * OIDC Core §9 names the token endpoint as the audience, RFC 7523 §3 an identifier of the
-     * authorization server; both are in use, and both are taken.
+     * FAPI 2.0 Security Profile §5.3.2.1 clause 8
      */
     #[Test]
-    public function itTakesTheIssuerAsTheAudienceToo(): void
+    public function itRefusesTheEndpointAsTheAudience(): void
     {
-        // Given
-        $assertion = $this->assertion([
-            'aud' => $this->tenant->issuer->value,
-        ]);
-
         // When
-        $client = $this->authenticate($assertion);
+        $this->failToAuthenticate($this->assertion([
+            'aud' => self::ENDPOINT,
+        ]));
 
         // Then
-        static::assertSame($this->client, $client);
+        $this->assertRefused(ClientAuthenticationFailureReason::InvalidAssertion);
     }
 
     /**
-     * RFC 7523 §3: an audience that is neither is not this provider's.
+     * RFC 7519 §4.1.3
      */
     #[Test]
-    public function itRefusesAnAudienceThatIsNeitherTheEndpointNorTheIssuer(): void
+    public function itRefusesAnAudienceThatNamesMoreThanTheIssuer(): void
+    {
+        // When
+        $this->failToAuthenticate($this->assertion([
+            'aud' => [$this->tenant->issuer->value, self::ENDPOINT],
+        ]));
+
+        // Then
+        $this->assertRefused(ClientAuthenticationFailureReason::InvalidAssertion);
+    }
+
+    /**
+     * RFC 7523 §3
+     */
+    #[Test]
+    public function itRefusesAnAudienceOfAnotherProvider(): void
     {
         // When
         $this->failToAuthenticate($this->assertion([
@@ -124,7 +139,7 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * RFC 7523 §4: an assertion authenticates once.
+     * RFC 7523 §4
      */
     #[Test]
     public function itRefusesAnAssertionReplayedInsideItsValidity(): void
@@ -142,13 +157,13 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: "exp" is required.
+     * RFC 7523 §3
      */
     #[Test]
     public function itRefusesAnAssertionWithoutAnExpiry(): void
     {
         // Given
-        $claims = ClientAssertions::claims($this->client->clientId, self::ENDPOINT, $this->context->receivedAt);
+        $claims = ClientAssertions::claims($this->client->registration->clientId, $this->tenant->issuer->value, $this->context->receivedAt);
         unset($claims['exp']);
 
         // When
@@ -170,9 +185,6 @@ final class PrivateKeyJwtTest extends TestCase
         $this->assertRefused(ClientAuthenticationFailureReason::InvalidAssertion);
     }
 
-    /**
-     * An assertion is minted for one request: an "exp" a year away is a bearer token nobody watches.
-     */
     #[Test]
     public function itRefusesAnExpiryBeyondTheLifetimeItAccepts(): void
     {
@@ -186,13 +198,13 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: "jti" is required, because it is what makes the assertion single-use.
+     * RFC 7523 §3
      */
     #[Test]
     public function itRefusesAnAssertionWithoutAnIdentifier(): void
     {
         // Given
-        $claims = ClientAssertions::claims($this->client->clientId, self::ENDPOINT, $this->context->receivedAt);
+        $claims = ClientAssertions::claims($this->client->registration->clientId, $this->tenant->issuer->value, $this->context->receivedAt);
         unset($claims['jti']);
 
         // When
@@ -203,7 +215,7 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * RFC 7523 §3: an assertion whose "iss" names another client is not this client's.
+     * RFC 7523 §3
      */
     #[Test]
     public function itRefusesAnAssertionIssuedByAnotherName(): void
@@ -218,13 +230,72 @@ final class PrivateKeyJwtTest extends TestCase
     }
 
     /**
-     * The signature is verified against the keys of the client and against nothing else.
+     * RFC 7523 §3
      */
+    #[Test]
+    public function itRefusesAnAssertionThatNamesNoClient(): void
+    {
+        // Given
+        $claims = ClientAssertions::claims($this->client->registration->clientId, $this->tenant->issuer->value, $this->context->receivedAt);
+        unset($claims['sub']);
+
+        // When
+        $exception = $this->failToAuthenticate(ClientAssertions::signedWithKey($claims));
+
+        // Then
+        static::assertInstanceOf(InvalidClientException::class, $exception);
+        $refusal = $this->lastRefusal();
+        static::assertSame(ClientAuthenticationFailureReason::InvalidAssertion, $refusal->reason);
+        static::assertNull($refusal->clientId);
+        static::assertNull($refusal->method);
+    }
+
+    /**
+     * RFC 7523 §3, OIDC Core §9
+     */
+    #[Test]
+    public function theClientIdOfTheBodyNamesTheClientWhenTheAssertionDoesNot(): void
+    {
+        // Given
+        $claims = ClientAssertions::claims($this->client->registration->clientId, $this->tenant->issuer->value, $this->context->receivedAt);
+        unset($claims['sub']);
+
+        // When
+        $this->authenticateFailing(null, [
+            'client_id' => $this->client->registration->clientId,
+            ...ClientAssertions::parameters(ClientAssertions::signedWithKey($claims)),
+        ]);
+
+        // Then
+        $this->assertRefused(ClientAuthenticationFailureReason::InvalidAssertion);
+    }
+
+    /**
+     * RFC 6749 §5.2
+     */
+    #[Test]
+    public function theSubOfTheAssertionNamesTheClientWhenTheBodyNamesAnother(): void
+    {
+        // When
+        $exception = $this->authenticateFailing(null, [
+            'client_id' => 'basic-client',
+            ...ClientAssertions::parameters($this->assertion()),
+        ]);
+
+        // Then
+        static::assertInstanceOf(InvalidRequestException::class, $exception);
+        $this->assertRefused(ClientAuthenticationFailureReason::MismatchedClientId);
+    }
+
     #[Test]
     public function itRefusesAnAssertionSignedByAnotherKey(): void
     {
         // Given
-        $assertion = ClientAssertions::signedWithKey(ClientAssertions::claims($this->client->clientId, self::ENDPOINT, $this->context->receivedAt), [], self::strangerKey());
+        $assertion = ClientAssertions::signedWithKey(
+            ClientAssertions::claims($this->client->registration->clientId, $this->tenant->issuer->value, $this->context->receivedAt),
+            [],
+            self::strangerKey(),
+        );
 
         // When
         $this->failToAuthenticate($assertion);
@@ -233,10 +304,6 @@ final class PrivateKeyJwtTest extends TestCase
         $this->assertRefused(ClientAuthenticationFailureReason::InvalidAssertion);
     }
 
-    /**
-     * A client that publishes its keys behind a "jwks_uri" is read back over HTTPS and authenticated
-     * against what it published there.
-     */
     #[Test]
     public function itAuthenticatesAClientThatPublishesItsKeysBehindAJwksUri(): void
     {
@@ -247,20 +314,22 @@ final class PrivateKeyJwtTest extends TestCase
         $this->clients->save($client);
 
         // When
-        $authenticated = $authenticator->authenticate($this->tenant, self::ENDPOINT, null, ClientAssertions::parameters($this->assertion([
-            'iss' => 'remote-client',
-            'sub' => 'remote-client',
-        ])), $this->context);
+        $authenticated = $authenticator->authenticate(
+            $this->tenant,
+            self::ENDPOINT,
+            null,
+            ClientAssertions::parameters($this->assertion([
+                'iss' => 'remote-client',
+                'sub' => 'remote-client',
+            ])),
+            $this->context,
+        );
 
         // Then
-        static::assertSame($client, $authenticated);
+        static::assertSame($client, $authenticated->client);
         static::assertSame([self::JWKS_URI], array_map(static fn (ClientUri $uri): string => $uri->value, $fetcher->fetched));
     }
 
-    /**
-     * A "jwks_uri" that answers an error, answers too slowly or redirects fails the authentication and
-     * touches nothing else.
-     */
     #[Test]
     public function aJwksUriThatCannotBeReadFailsTheAuthentication(): void
     {
@@ -281,23 +350,67 @@ final class PrivateKeyJwtTest extends TestCase
         $this->assertRefused(ClientAuthenticationFailureReason::UnreadableClientKeys, 'remote-client');
     }
 
-    /**
-     * A client registered for this method and presenting a secret is refused as an unknown client is,
-     * with the same message.
-     */
     #[Test]
     public function aClientPresentingASecretInsteadIsRefusedLikeAnyOther(): void
     {
         // When
         $exception = $this->authenticateFailing(null, [
-            'client_id' => $this->client->clientId,
+            'client_id' => $this->client->registration->clientId,
             'client_secret' => Clients::SECRET,
         ]);
 
         // Then
         static::assertInstanceOf(InvalidClientException::class, $exception);
         static::assertSame('Client authentication failed.', $exception->errorDescription);
-        $this->assertRefused(ClientAuthenticationFailureReason::UnexpectedMethod, $this->client->clientId, 'client_secret_post');
+        $this->assertRefused(ClientAuthenticationFailureReason::UnexpectedMethod, $this->client->registration->clientId, 'client_secret_post');
+    }
+
+    /**
+     * CIBA Core §7.1
+     */
+    #[Test]
+    public function aClientOfTheBackchannelFlowIsAuthenticatedNamingTheTokenEndpoint(): void
+    {
+        // Given
+        $client = $this->backchannelClient();
+
+        // When
+        $authenticated = $this->authenticateBackchannel($client, self::ENDPOINT);
+
+        // Then
+        static::assertSame($client, $authenticated->client);
+    }
+
+    /**
+     * CIBA Core §7.1
+     */
+    #[Test]
+    public function aClientOfTheBackchannelFlowIsAuthenticatedNamingTheBackchannelEndpoint(): void
+    {
+        // Given
+        $client = $this->backchannelClient();
+
+        // When
+        $authenticated = $this->authenticateBackchannel($client, self::BACKCHANNEL_ENDPOINT);
+
+        // Then
+        static::assertSame($client, $authenticated->client);
+    }
+
+    #[Test]
+    public function aClientOfTheBackchannelFlowIsRefusedAnAudienceThatNamesTwoOfThem(): void
+    {
+        // Given
+        $client = $this->backchannelClient();
+
+        // When
+        $this->failToAuthenticate(
+            $this->assertionOf($client, [$this->tenant->issuer->value, self::ENDPOINT]),
+            $this->authenticatorServingCiba(),
+        );
+
+        // Then
+        $this->assertRefused(ClientAuthenticationFailureReason::InvalidAssertion, $client->registration->clientId);
     }
 
     /**
@@ -305,25 +418,90 @@ final class PrivateKeyJwtTest extends TestCase
      */
     private function assertion(array $overrides = []): string
     {
-        return ClientAssertions::signedWithKey(ClientAssertions::claims($this->client->clientId, self::ENDPOINT, $this->context->receivedAt, $overrides));
+        return ClientAssertions::signedWithKey(ClientAssertions::claims(
+            $this->client->registration->clientId,
+            $this->tenant->issuer->value,
+            $this->context->receivedAt,
+            $overrides,
+        ));
+    }
+
+    /**
+     * CIBA Core §7
+     */
+    private function backchannelClient(): Client
+    {
+        $client = Clients::withKeys($this->tenant, 'terminal-client', grantTypes: [Grants::ciba()]);
+        $this->clients->save($client);
+
+        return $client;
+    }
+
+    /**
+     * @param string|list<string> $audience
+     */
+    private function assertionOf(Client $client, string|array $audience): string
+    {
+        return ClientAssertions::signedWithKey(ClientAssertions::claims(
+            $client->registration->clientId,
+            $this->tenant->issuer->value,
+            $this->context->receivedAt,
+            ['aud' => $audience],
+        ));
+    }
+
+    private function authenticateBackchannel(Client $client, string $audience): AuthenticatedClient
+    {
+        return $this->authenticatorServingCiba()->authenticate(
+            $this->tenant,
+            self::BACKCHANNEL_ENDPOINT,
+            null,
+            ClientAssertions::parameters($this->assertionOf($client, $audience)),
+            $this->context,
+        );
+    }
+
+    private function authenticatorServingCiba(): ClientAuthenticator
+    {
+        return new ClientAuthenticator(
+            $this->clients,
+            Methods::all($this->hasher, claims: Methods::assertionValidator(audiences: Methods::acceptedAudiences(Grants::servedWithCiba()))),
+            Methods::requestParser(),
+            new MockClock('2026-09-15T10:00:00+00:00'),
+            $this->events,
+            new FakeClientLoadBudget(),
+        );
     }
 
     private function authenticator(): ClientAuthenticator
     {
-        return new ClientAuthenticator($this->clients, Methods::all($this->hasher), new MockClock('2026-09-15T10:00:00+00:00'), $this->events);
+        return new ClientAuthenticator(
+            $this->clients,
+            Methods::all($this->hasher),
+            Methods::requestParser(),
+            new MockClock('2026-09-15T10:00:00+00:00'),
+            $this->events,
+            new FakeClientLoadBudget(),
+        );
     }
 
     private function authenticatorFetching(FakeClientJwksFetcher $fetcher): ClientAuthenticator
     {
         $keys = Methods::keySetProvider($fetcher, new MockClock('2026-09-15T10:00:00+00:00'), new DateInterval('PT300S'));
 
-        return new ClientAuthenticator($this->clients, Methods::all($this->hasher, $keys), new MockClock('2026-09-15T10:00:00+00:00'), $this->events);
+        return new ClientAuthenticator(
+            $this->clients,
+            Methods::all($this->hasher, $keys),
+            Methods::requestParser(),
+            new MockClock('2026-09-15T10:00:00+00:00'),
+            $this->events,
+            new FakeClientLoadBudget(),
+        );
     }
 
-    private function authenticate(string $assertion): Client
+    private function authenticate(string $assertion): AuthenticatedClient
     {
-        return $this->authenticator()
-            ->authenticate($this->tenant, self::ENDPOINT, null, ClientAssertions::parameters($assertion), $this->context);
+        return $this->authenticator()->authenticate($this->tenant, self::ENDPOINT, null, ClientAssertions::parameters($assertion), $this->context);
     }
 
     private function failToAuthenticate(string $assertion, ?ClientAuthenticator $authenticator = null): OAuth2Exception
@@ -344,8 +522,7 @@ final class PrivateKeyJwtTest extends TestCase
     private function authenticateFailing(?string $header, array $parameters): OAuth2Exception
     {
         try {
-            $this->authenticator()
-                ->authenticate($this->tenant, self::ENDPOINT, $header, $parameters, $this->context);
+            $this->authenticator()->authenticate($this->tenant, self::ENDPOINT, $header, $parameters, $this->context);
         } catch (OAuth2Exception $exception) {
             return $exception;
         }
@@ -354,22 +531,23 @@ final class PrivateKeyJwtTest extends TestCase
 
     private function assertRefused(ClientAuthenticationFailureReason $reason, ?string $clientId = null, string $method = 'private_key_jwt'): void
     {
-        $events = $this->events->of(ClientAuthenticationFailed::class);
-        $last = $events[count($events) - 1];
+        $last = $this->lastRefusal();
         static::assertSame($reason, $last->reason);
-        static::assertSame($clientId ?? $this->client->clientId, $last->clientId);
+        static::assertSame($clientId ?? $this->client->registration->clientId, $last->clientId);
         static::assertSame($method, $last->method);
     }
 
-    /**
-     * A key of somebody else, with the "kid" the client's assertions name, so that the signature and not
-     * the lookup is what fails.
-     */
+    private function lastRefusal(): ClientAuthenticationFailed
+    {
+        $events = $this->events->of(ClientAuthenticationFailed::class);
+
+        return $events[count($events) - 1];
+    }
+
     private static function strangerKey(): JWK
     {
         return new JWK([
-            ...Algorithms::es256()->generateKey()
-                ->all(),
+            ...Algorithms::es256()->generateKey()->all(),
             'kid' => ClientAssertions::KEY_ID,
         ]);
     }

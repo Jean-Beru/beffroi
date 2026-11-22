@@ -2,15 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Key;
+namespace App\Tests\Symfony\Functional\Key;
 
 use function base64_encode;
 use function getenv;
-use Heidi\Bundle\Tests\Functional\Doctrine\DatabaseTestCase;
-use Heidi\Core\Application\Key\SigningKeyRotator;
-use Heidi\Core\Port\SigningKeyRepositoryInterface;
-use Heidi\Core\Tests\Fixture\Algorithms;
+use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
+use Beffroi\Core\Application\Key\KeyTakeOver;
+use Beffroi\Core\Port\TenantKeyRepositoryInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
 use function is_string;
+use function random_bytes;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
@@ -20,45 +21,35 @@ use Symfony\Component\KeyManagement\Dsn;
 use Symfony\Component\KeyManagement\Envelope;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-/**
- * Issue #57, against a real Vault: the Transit key of the tenant is what docker/vault/init.sh creates, the
- * OP holds a token under the policy of docker/vault/heidi-op.hcl and that policy allows the sealing and
- * nothing else. Skipped unless the kernel seals with Vault (HEIDI_TEST_KMS_DSN), which the CI does in a
- * job of its own against a Vault service; every other test of the suite then runs against it too.
- */
 final class VaultTransitCustodyTest extends DatabaseTestCase
 {
     private const string SCHEME = 'hashicorp-vault-transit://';
 
-    private const string TRANSIT_KEY = 'heidi-default';
+    private const string TRANSIT_KEY = 'beffroi-default';
 
     private HttpClientInterface $vault;
 
     protected function setUp(): void
     {
-        $dsn = getenv('HEIDI_TEST_KMS_DSN');
+        $dsn = getenv('BEFFROI_TEST_KMS_DSN');
         if (! is_string($dsn) || ! str_starts_with($dsn, self::SCHEME)) {
-            static::markTestSkipped('The kernel seals with sodium; set HEIDI_TEST_KMS_DSN to a Vault DSN to run this test.');
+            static::markTestSkipped('The kernel seals with sodium; set BEFFROI_TEST_KMS_DSN to a Vault DSN to run this test.');
         }
         parent::setUp();
         $this->vault = self::vaultClient(Dsn::fromString($dsn));
     }
 
-    /**
-     * The envelope of a sealed key names the Transit key of the tenant and carries the data key as Vault
-     * wrapped it: the KMS kept, it did not sign, and the private JWK stayed in the process.
-     */
     #[Test]
     public function theDataKeyOfASealedKeyIsWrappedByTheTransitKeyOfTheTenant(): void
     {
         // Given
-        $rotator = self::service('test.heidi.key_rotator', SigningKeyRotator::class);
+        $takeOver = self::service('test.beffroi.key_take_over', KeyTakeOver::class);
 
         // When
-        $rotated = $rotator->rotate(self::tenant(), Algorithms::rs256(), self::context());
+        $rotated = $takeOver->rotate(self::tenant(), Algorithms::rs256(), self::context());
 
         // Then
-        $stored = self::service('test.heidi.keys', SigningKeyRepositoryInterface::class)
+        $stored = self::service('test.beffroi.keys', TenantKeyRepositoryInterface::class)
             ->find(self::tenant(), $rotated->kid) ?? static::fail('The key is stored.');
         $envelope = Envelope::fromBytes($stored->sealedPrivateJwk);
         static::assertSame(self::TRANSIT_KEY, $envelope->keyId);
@@ -66,10 +57,6 @@ final class VaultTransitCustodyTest extends DatabaseTestCase
         static::assertStringStartsWith('vault:v', $envelope->wrappedDek);
     }
 
-    /**
-     * The key docker/vault/init.sh creates: derived, so that the context of the envelope (the AAD that
-     * binds it to its tenant) is honoured; not exportable, no plaintext backup, deletion refused.
-     */
     #[Test]
     public function theTransitKeyOfTheTenantKeepsItsMaterialToItself(): void
     {
@@ -87,9 +74,6 @@ final class VaultTransitCustodyTest extends DatabaseTestCase
         static::assertFalse($key['deletion_allowed'] ?? null);
     }
 
-    /**
-     * What the policy of the OP grants: a data key under the Transit key of a tenant, with a context.
-     */
     #[Test]
     public function theTokenOfTheOpMintsADataKeyUnderTheKeyOfTheTenant(): void
     {
@@ -97,7 +81,7 @@ final class VaultTransitCustodyTest extends DatabaseTestCase
         $response = $this->vault->request('POST', 'transit/datakey/plaintext/' . self::TRANSIT_KEY, [
             'json' => [
                 'bits' => 256,
-                'context' => base64_encode('heidi:signing-key:v2:default'),
+                'context' => base64_encode('beffroi:signing-key:v2:default'),
             ],
         ]);
 
@@ -109,10 +93,25 @@ final class VaultTransitCustodyTest extends DatabaseTestCase
         static::assertStringStartsWith('vault:v', $data['ciphertext']);
     }
 
-    /**
-     * What the policy of the OP refuses: every path that would read, move, replace or delete the key
-     * material, and every key outside the "heidi-" prefix.
-     */
+    #[Test]
+    public function theTokenOfTheOpWrapsADataKeyItHoldsUnderTheKeyOfTheTenant(): void
+    {
+        // When
+        $response = $this->vault->request('POST', 'transit/encrypt/' . self::TRANSIT_KEY, [
+            'json' => [
+                'plaintext' => base64_encode(random_bytes(32)),
+                'context' => base64_encode('beffroi:data-key:default.user'),
+            ],
+        ]);
+
+        // Then
+        static::assertSame(200, $response->getStatusCode());
+        $data = $response->toArray()['data'] ?? [];
+        static::assertIsArray($data);
+        static::assertIsString($data['ciphertext'] ?? null);
+        static::assertStringStartsWith('vault:v', $data['ciphertext']);
+    }
+
     #[Test]
     #[DataProvider('provideRefusedRequests')]
     public function theTokenOfTheOpIsRefusedEverythingElse(string $method, string $path): void
@@ -134,28 +133,27 @@ final class VaultTransitCustodyTest extends DatabaseTestCase
         yield 'rotating the key' => ['POST', 'transit/keys/' . self::TRANSIT_KEY . '/rotate'];
         yield 'changing the configuration of the key' => ['POST', 'transit/keys/' . self::TRANSIT_KEY . '/config'];
         yield 'deleting the key' => ['DELETE', 'transit/keys/' . self::TRANSIT_KEY];
-        yield 'creating a key of another tenant' => ['POST', 'transit/keys/heidi-other'];
+        yield 'creating a key of another tenant' => ['POST', 'transit/keys/beffroi-other'];
         yield 'listing the keys' => ['GET', 'transit/keys?list=true'];
-        yield 'encrypting directly' => ['POST', 'transit/encrypt/' . self::TRANSIT_KEY];
         yield 'a data key outside the prefix' => ['POST', 'transit/datakey/plaintext/other'];
         yield 'decrypting outside the prefix' => ['POST', 'transit/decrypt/other'];
+        yield 'encrypting outside the prefix' => ['POST', 'transit/encrypt/other'];
         yield 'reading a key outside the prefix' => ['GET', 'transit/keys/other'];
-        yield 'the policies' => ['GET', 'sys/policies/acl/heidi-op'];
+        yield 'the policies' => ['GET', 'sys/policies/acl/beffroi-op'];
     }
 
-    /**
-     * A client on the Vault of the DSN, with its token, as the bridge builds it (the base URI from the host,
-     * the port and the path, "/v1/" unless said otherwise, the scheme from the option).
-     */
     private static function vaultClient(Dsn $dsn): HttpClientInterface
     {
         $scheme = $dsn->getOption('scheme', 'https');
         $path = $dsn->path === '' || $dsn->path === '/' ? '/v1/' : $dsn->path;
 
-        return HttpClient::createForBaseUri(sprintf('%s://%s%s%s', is_string($scheme) ? $scheme : 'https', $dsn->host, $dsn->port === null ? '' : ':' . $dsn->port, $path), [
-            'headers' => [
-                'X-Vault-Token' => (string) $dsn->user,
+        return HttpClient::createForBaseUri(
+            sprintf('%s://%s%s%s', is_string($scheme) ? $scheme : 'https', $dsn->host, $dsn->port === null ? '' : ':' . $dsn->port, $path),
+            [
+                'headers' => [
+                    'X-Vault-Token' => (string) $dsn->user,
+                ],
             ],
-        ]);
+        );
     }
 }

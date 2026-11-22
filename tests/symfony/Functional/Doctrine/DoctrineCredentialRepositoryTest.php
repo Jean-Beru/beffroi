@@ -2,24 +2,25 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Doctrine;
+namespace App\Tests\Symfony\Functional\Doctrine;
 
 use DateTimeImmutable;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
-use Heidi\Bundle\Doctrine\Type\BytesType;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Credential\PasskeyUserHandle;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Domain\Credential\TotpCredential;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Port\SecretSealerInterface;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\Totps;
+use App\Doctrine\Type\BytesType;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Bridge\Password\Algorithm\Bcrypt;
+use Beffroi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Domain\Credential\TotpCredential;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\SecretSealerInterface;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Totps;
 use function is_string;
 use ParagonIE\ConstantTime\Base32;
 use PHPUnit\Framework\Attributes\Test;
@@ -29,9 +30,7 @@ use Symfony\Component\KeyManagement\Envelope;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §3.4, §5.3: the credentials of a user, one table per kind, the password with a hash that
- * names its algorithm and keeps the parameters of an import (decision 0002), the passkeys with their
- * record, the TOTP with its secret sealed.
+ * Architecture §3.4, §5.3, Decision 0002
  */
 final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
 {
@@ -40,7 +39,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     {
         // Given
         $user = self::user();
-        $hash = new PasswordHash(PasswordAlgorithm::Pbkdf2Sha256, 'base64digest', [
+        $hash = new PasswordHash(new Pbkdf2Sha256(), 'base64digest', [
             'salt' => 'c2FsdA',
             'iterations' => 27500,
         ]);
@@ -56,12 +55,15 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
         static::assertTrue($found->id->equals($credential->id));
         static::assertTrue($found->user->id->equals($user->id));
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
-        static::assertSame(PasswordAlgorithm::Pbkdf2Sha256, $found->hash->algorithm);
+        static::assertSame(Pbkdf2Sha256::NAME, $found->hash->algorithm->name());
         static::assertSame('base64digest', $found->hash->encoded);
-        static::assertSame([
-            'salt' => 'c2FsdA',
-            'iterations' => 27500,
-        ], $found->hash->parameters);
+        static::assertSame(
+            [
+                'salt' => 'c2FsdA',
+                'iterations' => 27500,
+            ],
+            $found->hash->parameters,
+        );
         static::assertEquals(self::now(), $found->createdAt);
         static::assertEquals(self::now(), $found->hashChangedAt);
         static::assertEquals(self::now()->modify('+1 minute'), $found->lastUsedAt);
@@ -72,7 +74,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     {
         // Given
         $user = self::user();
-        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), self::now());
+        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(new Argon2id(), '$argon2id$alice'), self::now());
         $passkey = self::passkey($user, createdAt: self::now()->modify('-1 day'));
         self::credentials()->save($password);
         self::credentials()->save($passkey);
@@ -92,10 +94,23 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     {
         // Given
         $user = self::user();
-        $handle = PasskeyUserHandle::generate();
+        $handle = Fixtures::userHandle();
         $credentialId = random_bytes(32);
         $aaguid = Uuid::v4();
-        $passkey = new PasskeyCredential(Uuid::v7(), $user, 'Pixel', $credentialId, "\xa5\x01\x02\x03\x26", 7, ['internal', 'hybrid'], true, true, $aaguid, $handle, self::now());
+        $passkey = new PasskeyCredential(
+            Uuid::v7(),
+            $user,
+            'Pixel',
+            $credentialId,
+            "\xa5\x01\x02\x03\x26",
+            7,
+            ['internal', 'hybrid'],
+            true,
+            true,
+            $aaguid,
+            $handle,
+            self::now(),
+        );
         $passkey->markUsed(self::now()->modify('+1 minute'));
         $passkey->revoke(self::now()->modify('+2 minutes'));
         self::credentials()->save($passkey);
@@ -127,7 +142,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     {
         // Given
         $user = self::user();
-        $passkey = self::passkey($user);
+        $passkey = self::passkey($user, synced: true);
         self::credentials()->save($passkey);
         $passkey->recordUse(Fixtures::authenticatorData(backupEligible: true, backedUp: true, signCount: 12), self::now()->modify('+1 hour'));
         self::credentials()->save($passkey);
@@ -148,7 +163,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     {
         // Given
         $user = self::user();
-        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), self::now());
+        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(new Argon2id(), '$argon2id$alice'), self::now());
         $passkey = self::passkey($user);
         self::credentials()->save($password);
         self::credentials()->save($passkey);
@@ -190,7 +205,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * WebAuthn Level 3 §7.1, step 26: one credential ID per tenant.
+     * WebAuthn Level 3 §7.1, step 26
      */
     #[Test]
     public function aSecondPasskeyWithTheSameCredentialIdIsRefusedByTheTable(): void
@@ -211,9 +226,9 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     {
         // Given
         $user = self::user();
-        $credential = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(PasswordAlgorithm::Bcrypt, '$2y$old'), self::now());
+        $credential = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(new Bcrypt(), '$2y$old'), self::now());
         self::credentials()->save($credential);
-        $credential->rehash(new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$new'), self::now()->modify('+1 hour'));
+        $credential->rehash(new PasswordHash(new Argon2id(), '$argon2id$new'), self::now()->modify('+1 hour'));
         self::credentials()->save($credential);
         self::reload();
 
@@ -221,7 +236,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
         $found = self::credentials()->findByUser($user, PasswordCredential::class)[0] ?? static::fail('The credential was not stored.');
 
         // Then
-        static::assertSame(PasswordAlgorithm::Argon2id, $found->hash->algorithm);
+        static::assertSame(Argon2id::NAME, $found->hash->algorithm->name());
         static::assertSame('$argon2id$new', $found->hash->encoded);
         static::assertSame([], $found->hash->parameters);
         static::assertEquals(self::now()->modify('+1 hour'), $found->hashChangedAt);
@@ -232,7 +247,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     {
         // Given
         $bob = self::user('bob', 'bob-subject');
-        self::credentials()->save(new PasswordCredential(Uuid::v7(), self::user(), new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), self::now()));
+        self::credentials()->save(new PasswordCredential(Uuid::v7(), self::user(), new PasswordHash(new Argon2id(), '$argon2id$alice'), self::now()));
         self::reload();
 
         // When / Then
@@ -259,7 +274,8 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
         static::assertTrue($found->id->equals($totp->id));
         static::assertTrue($found->user->id->equals($user->id));
         static::assertTrue($found->tenant->id->equals(self::tenant()->id));
-        static::assertSame(Totps::SEED, self::service('test.heidi.secret_sealer', SecretSealerInterface::class)->unseal(self::tenant(), $found->sealedSecret));
+        static::assertSame(Totps::SEED, self::service('test.beffroi.secret_sealer', SecretSealerInterface::class)
+            ->unseal(self::tenant(), $found->sealedSecret));
         static::assertSame(59_000_001, $found->lastAcceptedStep);
         static::assertCount(10, $found->backupCodes);
         static::assertTrue($found->backupCodes[3]->isSpent());
@@ -272,8 +288,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * Architecture §3.3: the secret in the row is an envelope of the KMS and nothing else, neither the
-     * bytes nor their base32 (the sibling of the test that greps the key files for a private member).
+     * Architecture §3.3
      */
     #[Test]
     public function theRowHoldsTheSecretAsAnEnvelopeAndNothingElse(): void
@@ -283,7 +298,7 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
         self::credentials()->save($totp);
 
         // When
-        $row = self::entityManager()->getConnection()->fetchAssociative('SELECT * FROM heidi_totp_credential WHERE id = ?', [$totp->id->toBinary()]);
+        $row = self::entityManager()->getConnection()->fetchAssociative('SELECT * FROM beffroi_totp_credential WHERE id = ?', [$totp->id->toBinary()]);
 
         // Then
         static::assertIsArray($row);
@@ -300,26 +315,38 @@ final class DoctrineCredentialRepositoryTest extends DatabaseTestCase
     }
 
     /**
-     * A TOTP on the seed of RFC 6238, sealed by the sealer of the kernel, its backup codes hashed by the
-     * hasher of the test suite.
+     * RFC 6238
      */
     private static function totp(User $user): TotpCredential
     {
-        $sealed = self::service('test.heidi.secret_sealer', SecretSealerInterface::class)->seal(self::tenant(), Totps::SEED);
+        $sealed = self::service('test.beffroi.secret_sealer', SecretSealerInterface::class)->seal(self::tenant(), Totps::SEED);
 
         return new TotpCredential(Uuid::v7(), $user, $sealed, Totps::credential($user, new FakePasswordHasher())->backupCodes, 59_000_000, self::now());
     }
 
     /**
-     * A device-bound passkey, with a handle of its own.
+     * WebAuthn Level 3 §6.1.3
      */
-    private static function passkey(User $user, ?string $credentialId = null, ?DateTimeImmutable $createdAt = null): PasskeyCredential
+    private static function passkey(User $user, ?string $credentialId = null, ?DateTimeImmutable $createdAt = null, bool $synced = false): PasskeyCredential
     {
-        return new PasskeyCredential(Uuid::v7(), $user, 'YubiKey 5', $credentialId ?? random_bytes(16), 'cose-public-key', 0, ['usb'], false, false, Uuid::v4(), PasskeyUserHandle::generate(), $createdAt ?? self::now());
+        return new PasskeyCredential(
+            Uuid::v7(),
+            $user,
+            'YubiKey 5',
+            $credentialId ?? random_bytes(16),
+            'cose-public-key',
+            0,
+            ['usb'],
+            $synced,
+            false,
+            Uuid::v4(),
+            Fixtures::userHandle(),
+            $createdAt ?? self::now(),
+        );
     }
 
     private static function credentials(): CredentialRepositoryInterface
     {
-        return self::service('test.heidi.credentials', CredentialRepositoryInterface::class);
+        return self::service('test.beffroi.credentials', CredentialRepositoryInterface::class);
     }
 }

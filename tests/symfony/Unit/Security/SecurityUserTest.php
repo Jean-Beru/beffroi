@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Security;
+namespace App\Tests\Symfony\Unit\Security;
 
-use Heidi\Bundle\Security\CorePasswordHasher;
-use Heidi\Bundle\Security\SecurityUser;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Tests\Fixture\Fixtures;
+use App\Security\CorePasswordHasher;
+use App\Security\SecurityUser;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -21,8 +21,7 @@ use Symfony\Component\Uid\Uuid;
 use function unserialize;
 
 /**
- * Architecture §5.4, decision 0002: the adapter the security component sees, over a user of the core
- * and never over the User of a host application.
+ * Architecture §5.4, Decision 0002
  */
 final class SecurityUserTest extends TestCase
 {
@@ -31,7 +30,7 @@ final class SecurityUserTest extends TestCase
     {
         // Given
         $user = Fixtures::user();
-        $hash = new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$aGFzaA');
+        $hash = new PasswordHash(new Argon2id(), '$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$aGFzaA');
         $credential = new PasswordCredential(Uuid::v7(), $user, $hash, Fixtures::now());
 
         // When
@@ -69,10 +68,6 @@ final class SecurityUserTest extends TestCase
         static::assertFalse(new SecurityUser($user, null)->enabled);
     }
 
-    /**
-     * The token of the firewall goes to the HTTP session between two requests: the identifier, the
-     * username, the state and the hash survive, the entities do not.
-     */
     #[Test]
     public function theSerialisedFormHoldsNoEntity(): void
     {
@@ -142,12 +137,9 @@ final class SecurityUserTest extends TestCase
         $this->expectExceptionMessageIs('The serialised user is not one this class wrote.');
 
         // When
-        unserialize('O:34:"Heidi\Bundle\Security\SecurityUser":1:{s:2:"id";s:3:"foo";}');
+        unserialize('O:25:"App\Security\SecurityUser":1:{s:2:"id";s:3:"foo";}');
     }
 
-    /**
-     * A rename does not sign the other browsers out.
-     */
     #[Test]
     public function aRenamedUserIsStillEqual(): void
     {
@@ -161,25 +153,19 @@ final class SecurityUserTest extends TestCase
         static::assertTrue($adapter->isEqualTo(new SecurityUser($user, new PasswordCredential(Uuid::v7(), $user, $hash, Fixtures::now()))));
     }
 
-    /**
-     * A password change signs the other browsers out.
-     */
     #[Test]
     public function aUserWithAnotherHashIsNotEqual(): void
     {
         // Given
         $user = Fixtures::user();
         $adapter = new SecurityUser($user, new PasswordCredential(Uuid::v7(), $user, self::hash(), Fixtures::now()));
-        $changed = new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$b3RoZXI');
+        $changed = new PasswordHash(new Argon2id(), '$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$b3RoZXI');
 
         // When / Then
         static::assertFalse($adapter->isEqualTo(new SecurityUser($user, new PasswordCredential(Uuid::v7(), $user, $changed, Fixtures::now()))));
         static::assertFalse($adapter->isEqualTo(new SecurityUser($user, null)));
     }
 
-    /**
-     * Another user never compares equal, nor does a user of a host application.
-     */
     #[Test]
     #[DataProvider('provideOtherUsers')]
     public function anotherUserIsNotEqual(UserInterface $other): void
@@ -197,12 +183,12 @@ final class SecurityUserTest extends TestCase
     public static function provideOtherUsers(): iterable
     {
         yield 'another user of the core' => [new SecurityUser(Fixtures::user(username: 'bob', subject: 'bob-subject'), null)];
-        yield 'a user of a host application' => [new InMemoryUser('alice', null)];
+        yield 'a user of another application' => [new InMemoryUser('alice', null)];
     }
 
     private static function hash(): PasswordHash
     {
-        return new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$aGFzaA');
+        return new PasswordHash(new Argon2id(), '$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$aGFzaA');
     }
 
     private static function adapterOfAlice(): SecurityUser

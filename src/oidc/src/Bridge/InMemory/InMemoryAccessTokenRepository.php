@@ -2,50 +2,41 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Bridge\InMemory;
+namespace Beffroi\Oidc\Bridge\InMemory;
 
 use function array_filter;
 use function array_values;
-use DateTimeImmutable;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
-use Heidi\Oidc\Domain\Token\OpaqueTokenValue;
-use Heidi\Oidc\Domain\Token\StoredAccessToken;
-use Heidi\Oidc\Port\AccessTokenRepositoryInterface;
-use Heidi\Oidc\Port\CanRevokeAccessTokenInterface;
-use Heidi\Oidc\Port\CanRevokeAccessTokensByGrantInterface;
-use Heidi\Oidc\Port\CanRevokeAccessTokensBySessionInterface;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Domain\Token\StoredAccessToken;
+use Beffroi\Oidc\Domain\Token\StoredUserAccessToken;
+use Beffroi\Oidc\Port\AccessTokenRepositoryInterface;
+use Beffroi\Oidc\Port\CanRevokeAccessTokenInterface;
+use Beffroi\Oidc\Port\CanRevokeAccessTokensByConsentInterface;
+use Beffroi\Oidc\Port\CanRevokeAccessTokensByGrantInterface;
+use Beffroi\Oidc\Port\CanRevokeAccessTokensBySessionInterface;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * For tests and for the examples: nothing here survives the process.
- */
-final class InMemoryAccessTokenRepository implements AccessTokenRepositoryInterface, CanRevokeAccessTokenInterface, CanRevokeAccessTokensByGrantInterface, CanRevokeAccessTokensBySessionInterface
+final class InMemoryAccessTokenRepository implements
+    AccessTokenRepositoryInterface,
+    CanRevokeAccessTokenInterface,
+    CanRevokeAccessTokensByConsentInterface,
+    CanRevokeAccessTokensByGrantInterface,
+    CanRevokeAccessTokensBySessionInterface
 {
     /**
      * @var array<string, StoredAccessToken> by token hash
      */
     private array $tokens = [];
 
-    public function issue(GrantedAuthorization $authorization, DateTimeImmutable $now, DateTimeImmutable $expiresAt): string
-    {
-        $value = OpaqueTokenValue::draw();
-        $hash = OpaqueTokenValue::hash($value);
-        $this->tokens[$hash] = StoredAccessToken::fromAuthorization($hash, $authorization, $now, $expiresAt);
-
-        return $value;
-    }
-
-    /**
-     * For tests: a record under the hash of the value they chose.
-     */
-    public function keep(StoredAccessToken $token): void
+    public function save(StoredAccessToken $token): void
     {
         $this->tokens[$token->tokenHash] = $token;
     }
 
     public function find(string $token): ?StoredAccessToken
     {
-        return $this->tokens[OpaqueTokenValue::hash($token)] ?? null;
+        return $this->tokens[DrawnSecret::digestOf($token)] ?? null;
     }
 
     public function revoke(StoredAccessToken $token): void
@@ -60,7 +51,14 @@ final class InMemoryAccessTokenRepository implements AccessTokenRepositoryInterf
 
     public function revokeBySession(Uuid $session): array
     {
-        return $this->remove(static fn (StoredAccessToken $token): bool => $token->session->id->equals($session));
+        return $this->remove(static fn (StoredAccessToken $token): bool => $token instanceof StoredUserAccessToken && $token->session->id->equals($session));
+    }
+
+    public function revokeByConsent(Consent $consent): array
+    {
+        return $this->remove(
+            static fn (StoredAccessToken $token): bool => $token instanceof StoredUserAccessToken && $consent->covers($token->session, $token->clientId),
+        );
     }
 
     /**

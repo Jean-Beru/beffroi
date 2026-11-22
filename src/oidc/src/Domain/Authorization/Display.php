@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Authorization;
+namespace Beffroi\Oidc\Domain\Authorization;
 
 /**
- * OIDC Core §3.1.2.1 "display": a hint for the integration.
+ * OIDC Core §3.1.2.1
  */
 enum Display: string
 {

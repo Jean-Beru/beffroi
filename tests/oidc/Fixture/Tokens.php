@@ -2,35 +2,53 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Fixture;
+namespace Beffroi\Oidc\Tests\Fixture;
 
 use function array_map;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
-use Heidi\Oidc\Domain\Authorization\AuthorizationCode;
-use Heidi\Oidc\Domain\Authorization\ClaimsRequest;
-use Heidi\Oidc\Domain\Authorization\CodeChallenge;
-use Heidi\Oidc\Domain\Authorization\CodeChallengeMethod;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Token\OpaqueTokenValue;
-use Heidi\Oidc\Domain\Token\RefreshToken;
-use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
-use Heidi\Oidc\Domain\Token\StoredAccessToken;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Authorization\AuthenticationSnapshot;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationCode;
+use Beffroi\Oidc\Domain\Authorization\ClaimsRequest;
+use Beffroi\Oidc\Domain\Authorization\CodeChallenge;
+use Beffroi\Oidc\Domain\Authorization\Sha256CodeChallengeMethod;
+use Beffroi\Oidc\Domain\Ciba\BackchannelAuthenticationRecord;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Device\DeviceAuthorizationRecord;
+use Beffroi\Oidc\Domain\Device\UserCode;
+use Beffroi\Oidc\Domain\Exchange\Actor;
+use Beffroi\Oidc\Domain\Exchange\MayAct;
+use Beffroi\Oidc\Domain\Exchange\PresentedToken;
+use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Token\AccessToken;
+use Beffroi\Oidc\Domain\Token\AuthorizationInterface;
+use Beffroi\Oidc\Domain\Token\ConfirmationInterface;
+use Beffroi\Oidc\Domain\Token\KeyConfirmation;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
+use Beffroi\Oidc\Domain\Token\RefreshToken;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Oidc\Domain\Token\RefreshTokenFamily;
+use Beffroi\Oidc\Domain\Token\StoredClientAccessToken;
+use Beffroi\Oidc\Domain\Token\StoredSubjectAccessToken;
+use Beffroi\Oidc\Domain\Token\StoredUserAccessToken;
+use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
+use Beffroi\Oidc\Port\AccessTokenIssuerInterface;
+use Beffroi\Oidc\Domain\Token\TokenAudience;
+use Beffroi\Oidc\Domain\Token\TokenSignIn;
 use Symfony\Component\Uid\Uuid;
 
 final class Tokens
 {
     /**
-     * RFC 7636 appendix B: the verifier whose S256 challenge is Requests::CHALLENGE.
+     * RFC 7636 appendix B
      */
     public const string CODE_VERIFIER = 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk';
 
     /**
-     * A code issued now for sixty seconds, for the first redirect URI of the client, bound to
-     * Requests::CHALLENGE unless the request carried no challenge, with the authentication of the session.
-     *
      * @param list<string> $scopes
      */
     public static function code(
@@ -43,16 +61,22 @@ final class Tokens
         ?ClaimsRequest $claims = null,
         bool $pkce = true,
         ?Uuid $grantId = null,
+        ?KeyConfirmation $dpopKey = null,
+        ?ResourceIndicators $resources = null,
+        ?AuthorizationDetails $authorizationDetails = null,
     ): AuthorizationCode {
         return new AuthorizationCode(
-            AuthorizationCode::hash($code),
+            DrawnSecret::digestOf($code),
             $grantId ?? Uuid::v7(),
             $client,
             $session,
-            $client->redirectUris[0],
-            array_map(static fn (string $scope): Scope => new Scope($scope), $scopes),
+            $client->registration->redirectUris[0],
+            new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
+            $resources,
+            $authorizationDetails,
             $nonce,
-            $pkce ? new CodeChallenge(Requests::CHALLENGE, CodeChallengeMethod::S256) : null,
+            $pkce ? new CodeChallenge(Requests::CHALLENGE, new Sha256CodeChallengeMethod()) : null,
+            $dpopKey,
             $claims,
             AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
             $issuedAt,
@@ -61,9 +85,66 @@ final class Tokens
     }
 
     /**
-     * The record of an opaque access token issued now for ten minutes, under the hash of the value given,
-     * with the authentication of the session.
+     * RFC 8628 §3.3
      *
+     * @param list<string> $scopes
+     */
+    public static function approvedDeviceRecord(
+        Client $client,
+        AuthenticationSession $session,
+        DateTimeImmutable $issuedAt,
+        array $scopes = ['openid'],
+        ?Uuid $grantId = null,
+    ): DeviceAuthorizationRecord {
+        $record = new DeviceAuthorizationRecord(
+            DrawnSecret::digestOf('the-device-code'),
+            UserCode::hashOf('BCDFGHJK'),
+            $grantId ?? Uuid::v7(),
+            $client,
+            new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
+            null,
+            Fixtures::context($issuedAt),
+            $issuedAt,
+            $issuedAt->modify('+600 seconds'),
+        );
+        $record->approve($session, AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()), $issuedAt);
+
+        return $record;
+    }
+
+    /**
+     * CIBA Core §7.1
+     *
+     * @param list<string> $scopes
+     */
+    public static function approvedBackchannelRecord(
+        Client $client,
+        AuthenticationSession $session,
+        DateTimeImmutable $issuedAt,
+        array $scopes = ['openid'],
+        ?Uuid $grantId = null,
+    ): BackchannelAuthenticationRecord {
+        $record = new BackchannelAuthenticationRecord(
+            DrawnSecret::digestOf('the-auth-req-id'),
+            $grantId ?? Uuid::v7(),
+            $client,
+            $session->user,
+            new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
+            null,
+            null,
+            [],
+            null,
+            null,
+            Fixtures::context($issuedAt),
+            $issuedAt,
+            $issuedAt->modify('+600 seconds'),
+        );
+        $record->approve($session, AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()), $issuedAt);
+
+        return $record;
+    }
+
+    /**
      * @param list<string> $scopes
      */
     public static function storedAccessToken(
@@ -74,13 +155,17 @@ final class Tokens
         ?Uuid $grantId = null,
         array $scopes = ['openid'],
         ?ClaimsRequest $claims = null,
-    ): StoredAccessToken {
-        return new StoredAccessToken(
-            OpaqueTokenValue::hash($value),
+        ?ResourceIndicators $resources = null,
+        ?AuthorizationDetails $authorizationDetails = null,
+    ): StoredUserAccessToken {
+        return new StoredUserAccessToken(
+            DrawnSecret::digestOf($value),
             $grantId ?? Uuid::v7(),
             $client,
             $session,
-            array_map(static fn (string $scope): Scope => new Scope($scope), $scopes),
+            new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
+            $resources,
+            $authorizationDetails,
             $claims,
             AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
             $issuedAt,
@@ -89,17 +174,102 @@ final class Tokens
     }
 
     /**
-     * A family started now, from a code, for ninety days.
+     * RFC 6749 §4.4
+     *
+     * @param list<string> $scopes
      */
-    public static function family(DateTimeImmutable $startedAt, string $code = 'the-code', ?Uuid $grantId = null): RefreshTokenFamily
-    {
-        return new RefreshTokenFamily(Uuid::v7(), AuthorizationCode::hash($code), $grantId ?? Uuid::v7(), $startedAt, $startedAt->modify('+90 days'));
+    public static function storedClientAccessToken(
+        string $value,
+        Client $client,
+        DateTimeImmutable $issuedAt,
+        ?ResourceIndicators $resources = null,
+        ?Uuid $grantId = null,
+        array $scopes = ['invoices.read'],
+    ): StoredClientAccessToken {
+        return new StoredClientAccessToken(
+            DrawnSecret::digestOf($value),
+            $grantId ?? Uuid::v7(),
+            $client,
+            new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
+            $resources ?? ResourceIndicators::of([Clients::CALENDAR]),
+            $issuedAt,
+            $issuedAt->modify('+10 minutes'),
+        );
     }
 
     /**
-     * A refresh token issued now for thirty days, in the family given or a fresh one, with the
-     * authentication of the session.
+     * RFC 8693 §2.1, RFC 7523 §2.1
      *
+     * @param list<string> $scopes
+     */
+    public static function storedSubjectAccessToken(
+        string $value,
+        Client $client,
+        Subject $subject,
+        DateTimeImmutable $issuedAt,
+        ?ResourceIndicators $resources = null,
+        ?Uuid $grantId = null,
+        array $scopes = ['invoices.read'],
+        ?AuthenticationSession $session = null,
+        ?Actor $actor = null,
+        ?Subject $person = null,
+    ): StoredSubjectAccessToken {
+        return new StoredSubjectAccessToken(
+            DrawnSecret::digestOf($value),
+            $grantId ?? Uuid::v7(),
+            $client,
+            $subject,
+            $person ?? $session?->user->subject,
+            new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
+            $resources ?? ResourceIndicators::of([Clients::CALENDAR]),
+            $session?->id,
+            $session === null ? null : AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
+            $actor,
+            $issuedAt,
+            $issuedAt->modify('+10 minutes'),
+        );
+    }
+
+    /**
+     * RFC 8693 §2.1, RFC 6749 §4.4
+     *
+     * @param list<string> $scopes
+     * @param list<string>|null $audience
+     */
+    public static function presented(
+        Client $client,
+        Subject $subject,
+        ?AuthenticationSession $session = null,
+        array $scopes = ['invoices.read', 'invoices.write'],
+        ?array $audience = null,
+        ?Uuid $grantId = null,
+        ?Actor $actor = null,
+        ?MayAct $mayAct = null,
+    ): PresentedToken {
+        return new PresentedToken(
+            $subject,
+            $client,
+            new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
+            new TokenAudience($audience ?? [Clients::CALENDAR]),
+            $grantId ?? Uuid::v7(),
+            $session === null ? null : new TokenSignIn($session->id, AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass())),
+            $actor,
+            $mayAct,
+            $session?->user->subject,
+        );
+    }
+
+    public static function accessToken(AccessTokenIssuerInterface $issuer, AuthorizationInterface $authorization, DateTimeImmutable $now): AccessToken
+    {
+        return $issuer->issue($authorization, $issuer->addressFor($authorization), $now);
+    }
+
+    public static function family(DateTimeImmutable $startedAt, Tenant $tenant, string $code = 'the-code', ?Uuid $grantId = null): RefreshTokenFamily
+    {
+        return new RefreshTokenFamily(Uuid::v7(), $tenant, DrawnSecret::digestOf($code), $grantId ?? Uuid::v7(), $startedAt, $startedAt->modify('+90 days'));
+    }
+
+    /**
      * @param list<string> $scopes
      */
     public static function refreshToken(
@@ -110,19 +280,25 @@ final class Tokens
         ?RefreshTokenFamily $family = null,
         array $scopes = ['openid'],
         ?ClaimsRequest $claims = null,
+        ?ConfirmationInterface $confirmation = null,
+        ?ResourceIndicators $resources = null,
+        ?AuthorizationDetails $authorizationDetails = null,
     ): RefreshToken {
-        $family ??= self::family($issuedAt);
+        $family ??= self::family($issuedAt, $client->tenant);
 
         return new RefreshToken(
-            RefreshToken::hash($value),
+            DrawnSecret::digestOf($value),
             $family,
             $client,
             $session,
-            array_map(static fn (string $scope): Scope => new Scope($scope), $scopes),
+            new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
+            $resources,
+            $authorizationDetails,
             $claims,
             AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass()),
             $issuedAt,
             $issuedAt->modify('+30 days') < $family->expiresAt ? $issuedAt->modify('+30 days') : $family->expiresAt,
+            $confirmation,
         );
     }
 }

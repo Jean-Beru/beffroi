@@ -2,33 +2,47 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Event;
+namespace Beffroi\Oidc\Domain\Event;
 
 use DateTimeImmutable;
-use Heidi\Core\Domain\Event\DomainEventInterface;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Token\RefreshToken;
-use Heidi\Oidc\Domain\Token\StoredAccessToken;
+use Beffroi\Core\Domain\Event\ConcernsAPersonInterface;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Symfony\Component\Uid\Uuid;
 
-/**
- * A client gave a token back at the revocation endpoint (RFC 7009 §2.1).
- */
-final readonly class TokenRevoked implements DomainEventInterface
+final readonly class TokenRevoked implements ConcernsAPersonInterface
 {
-    public Tenant $tenant;
+    public const string NAME = 'token.revoked';
+
+    public const string REFRESH_TOKEN = 'refresh_token';
+
+    public const string ACCESS_TOKEN = 'access_token';
 
     /**
-     * @param list<StoredAccessToken> $accessTokens revoked along with a refresh token (§2.1)
+     * @param string $tokenType "refresh_token" or "access_token"
+     * @param list<string> $revokedAccessTokenHashes
      */
     public function __construct(
         public DateTimeImmutable $occurredAt,
-        public RefreshToken|StoredAccessToken $token,
-        public Client $revokedBy,
-        public array $accessTokens,
+        public Tenant $tenant,
+        public string $revokedBy,
+        public ?Subject $subject,
+        public string $tokenType,
+        public string $tokenHash,
+        public Uuid $grantId,
+        public array $revokedAccessTokenHashes,
         public RequestContext $context,
     ) {
-        $this->tenant = $revokedBy->tenant;
+    }
+
+    public function name(): string
+    {
+        return self::NAME;
+    }
+
+    public function subject(): ?Subject
+    {
+        return $this->subject;
     }
 }

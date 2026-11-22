@@ -2,22 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Event;
+namespace Beffroi\Oidc\Domain\Event;
 
 use DateTimeImmutable;
-use Heidi\Core\Domain\Event\DomainEventInterface;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Domain\Event\DomainEventInterface;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Tenant\Tenant;
 
-/**
- * A client failed to authenticate at the token endpoint, whatever the reason.
- */
 final readonly class ClientAuthenticationFailed implements DomainEventInterface
 {
-    /**
-     * @param string|null $clientId kept as typed
-     * @param string|null $method the name of the method the request presented, null when the request presented none the provider could name
-     */
+    public const string NAME = 'client_authentication.failed';
+
     public function __construct(
         public DateTimeImmutable $occurredAt,
         public Tenant $tenant,
@@ -26,5 +21,10 @@ final readonly class ClientAuthenticationFailed implements DomainEventInterface
         public ?string $clientId,
         public ?string $method,
     ) {
+    }
+
+    public function name(): string
+    {
+        return self::NAME;
     }
 }

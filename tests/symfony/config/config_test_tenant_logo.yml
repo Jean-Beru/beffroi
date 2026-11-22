@@ -1,0 +1,7 @@
+# A deployment that serves the logo of its tenant from a host of its own and not from its issuer, a CDN or the site
+# of its organisation (issue #926): every page that shows that logo names that host in the "img-src" of its policy
+# (TenantLogoOriginTest).
+beffroi:
+    tenant:
+        look:
+            logo_uri: 'https://brand.test/logo.svg'

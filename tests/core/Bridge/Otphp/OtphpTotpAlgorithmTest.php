@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Bridge\Otphp;
+namespace Beffroi\Core\Tests\Bridge\Otphp;
 
-use Heidi\Core\Domain\Credential\TotpCredential;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Core\Domain\Credential\TotpCredential;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Tests\Fixture\Totps;
 use function intdiv;
 use const PHP_INT_MAX;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -14,13 +14,12 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 6238 on spomky-labs/otphp, with the parameters of TotpCredential.
+ * RFC 6238
  */
 final class OtphpTotpAlgorithmTest extends TestCase
 {
     /**
-     * RFC 6238 Appendix B, the SHA-1 rows, on six digits (the last six of the eight the table gives):
-     * the code at the step of each Unix time.
+     * RFC 6238 Appendix B, the SHA-1 rows on six digits
      */
     #[Test]
     #[DataProvider('provideTestVectors')]
@@ -43,11 +42,6 @@ final class OtphpTotpAlgorithmTest extends TestCase
         yield '2603-10-11T11:33:20Z' => [20_000_000_000, '353130'];
     }
 
-    /**
-     * The Key Uri Format: the label is "issuer:account", the issuer repeated as a parameter, the secret
-     * in base32 without padding; the parameters at their default are not written, because every
-     * authenticator assumes them.
-     */
     #[Test]
     public function theProvisioningUriNamesTheIssuerTheAccountAndTheSecret(): void
     {

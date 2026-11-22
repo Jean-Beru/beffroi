@@ -2,18 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Command;
+namespace App\Tests\Symfony\Unit\Command;
 
 use function array_keys;
 use function file_put_contents;
-use Heidi\Bundle\Command\WebauthnMdsImportCommand;
-use Heidi\Bundle\Command\WebauthnMdsRefreshCommand;
-use Heidi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
-use Heidi\Core\Bridge\Webauthn\MetadataBlobVerifier;
-use Heidi\Core\Bridge\Webauthn\StoredMetadata;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\MetadataBlobs;
-use Heidi\Core\Tests\Fixture\MetadataSigner;
+use App\Command\WebauthnMdsImportCommand;
+use App\Command\WebauthnMdsRefreshCommand;
+use App\Webauthn\DocumentDownload;
+use Beffroi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
+use Beffroi\Core\Bridge\Webauthn\MetadataBlobVerifier;
+use Beffroi\Core\Bridge\Webauthn\StoredMetadata;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\MetadataBlobs;
+use Beffroi\Core\Tests\Fixture\MetadataSigner;
 use function json_decode;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
@@ -31,8 +32,7 @@ use function uniqid;
 use Webauthn\MetadataService\CertificateChain\PhpCertificateChainValidator;
 
 /**
- * Architecture §5.5: the FIDO metadata refreshed by hand from the service and verified under the pinned
- * root, a statement of a manufacturer or of the conformance tools imported as it is.
+ * Architecture §5.5
  */
 final class WebauthnMdsCommandsTest extends TestCase
 {
@@ -48,15 +48,13 @@ final class WebauthnMdsCommandsTest extends TestCase
     {
         $this->service = MetadataSigner::create();
         $this->store = new InMemoryMetadataBlobStore();
-        $this->directory = sys_get_temp_dir() . '/heidi-bundle-tests/mds-' . uniqid();
-        new Filesystem()
-            ->mkdir($this->directory);
+        $this->directory = sys_get_temp_dir() . '/beffroi-integration-tests/mds-' . uniqid();
+        new Filesystem()->mkdir($this->directory);
     }
 
     protected function tearDown(): void
     {
-        new Filesystem()
-            ->remove($this->directory);
+        new Filesystem()->remove($this->directory);
     }
 
     #[Test]
@@ -124,11 +122,14 @@ final class WebauthnMdsCommandsTest extends TestCase
         // Then
         static::assertSame(Command::FAILURE, $tester->getStatusCode(), $tester->getDisplay());
         static::assertSame([], $this->store->readAll());
-        static::assertStringContainsString('refused, nothing of it is kept: The certificate chain of the blob does not lead to the pinned root', self::flattened($tester));
+        static::assertStringContainsString(
+            'refused, nothing of it is kept: The certificate chain of the blob does not lead to the pinned root',
+            self::flattened($tester),
+        );
     }
 
     /**
-     * Decision 0006: no outbound request follows a redirect; the URL the service redirects to is named.
+     * Decision 0006
      */
     #[Test]
     public function aServiceThatRedirectsIsRefusedWithTheUrlItNames(): void
@@ -151,7 +152,28 @@ final class WebauthnMdsCommandsTest extends TestCase
         // Then
         static::assertSame(Command::FAILURE, $tester->getStatusCode(), $tester->getDisplay());
         static::assertSame([], $this->store->readAll());
-        static::assertStringContainsString('the service redirects to https://mds.fidoalliance.org/, and no outbound request follows a redirect; name that URL instead', self::flattened($tester));
+        static::assertStringContainsString(
+            'the service redirects to https://mds.fidoalliance.org/, and no outbound request follows a redirect; name that URL instead',
+            self::flattened($tester),
+        );
+    }
+
+    #[Test]
+    public function theRootMayBeGivenInDer(): void
+    {
+        // Given
+        $blob = $this->service->sign(MetadataBlobs::payload([MetadataBlobs::entry(self::AAGUID)]));
+        $tester = $this->refresh(new MockHttpClient([new MockResponse($blob)]));
+        file_put_contents($this->directory . '/root.crt', $this->service->rootCertificateInDer());
+
+        // When
+        $tester->execute([
+            '--url' => ['https://mds.example/blob.jwt'],
+            '--root' => $this->directory . '/root.crt',
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
     }
 
     #[Test]
@@ -160,7 +182,11 @@ final class WebauthnMdsCommandsTest extends TestCase
         // Given
         $blob = $this->service->sign(MetadataBlobs::payload([MetadataBlobs::entry(self::AAGUID)]));
         $root = $this->service->rootCertificate();
-        $tester = $this->refresh(new MockHttpClient(static fn (string $method, string $url): MockResponse => new MockResponse($url === 'https://mds.example/root.crt' ? $root : $blob)));
+        $tester = $this->refresh(
+            new MockHttpClient(
+                static fn (string $method, string $url): MockResponse => new MockResponse($url === 'https://mds.example/root.crt' ? $root : $blob),
+            ),
+        );
 
         // When
         $tester->execute([
@@ -191,20 +217,44 @@ final class WebauthnMdsCommandsTest extends TestCase
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         static::assertSame(['statement-' . self::AAGUID], array_keys($this->store->readAll()));
         $document = json_decode($this->store->readAll()['statement-' . self::AAGUID], true, 16, JSON_THROW_ON_ERROR);
-        static::assertSame([
-            'legalHeader' => 'For the tests.',
-            'no' => 0,
-            'nextUpdate' => '2026-09-15',
-            'entries' => [[
-                'aaguid' => self::AAGUID,
-                'metadataStatement' => $statement,
-                'statusReports' => [],
-                'timeOfLastStatusChange' => '2026-09-15',
-            ]],
-        ], $document);
+        static::assertSame(
+            [
+                'legalHeader' => 'For the tests.',
+                'no' => 0,
+                'nextUpdate' => '2026-09-15',
+                'entries' => [[
+                    'aaguid' => self::AAGUID,
+                    'metadataStatement' => $statement,
+                    'statusReports' => [],
+                    'timeOfLastStatusChange' => '2026-09-15',
+                ]],
+            ],
+            $document,
+        );
         $metadata = new StoredMetadata($this->store);
         static::assertSame('Virtual authenticator of the tools', $metadata->findOneByAAGUID(self::AAGUID)?->description);
         static::assertSame([], $metadata->findStatusReportsByAAGUID(self::AAGUID));
+    }
+
+    /**
+     * FIDO Metadata Statement v3.1 §4
+     */
+    #[Test]
+    public function aStatementThatLeavesOutTheUserVerificationDetailsIsImported(): void
+    {
+        // Given
+        $statement = MetadataBlobs::entry(self::AAGUID, omitting: ['userVerificationDetails'])['metadataStatement'];
+        file_put_contents($this->directory . '/statement.json', json_encode($statement, JSON_THROW_ON_ERROR));
+        $tester = $this->import();
+
+        // When
+        $tester->execute([
+            'files' => [$this->directory . '/statement.json'],
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertSame(['statement-' . self::AAGUID], array_keys($this->store->readAll()));
     }
 
     #[Test]
@@ -229,12 +279,16 @@ final class WebauthnMdsCommandsTest extends TestCase
     {
         $verifier = new MetadataBlobVerifier(PhpCertificateChainValidator::create(new MockHttpClient(), new MockClock(Fixtures::now())));
 
-        return new CommandTester(new Command('heidi:webauthn:mds-refresh')->setCode(new WebauthnMdsRefreshCommand($http, $verifier, $this->store)));
+        return new CommandTester(new Command('beffroi:webauthn:mds-refresh')->setCode(
+            new WebauthnMdsRefreshCommand($http, new DocumentDownload($http), $verifier, $this->store),
+        ));
     }
 
     private function import(): CommandTester
     {
-        return new CommandTester(new Command('heidi:webauthn:mds-import')->setCode(new WebauthnMdsImportCommand($this->store, new MockClock(Fixtures::now()))));
+        return new CommandTester(new Command('beffroi:webauthn:mds-import')->setCode(
+            new WebauthnMdsImportCommand($this->store, new MockClock(Fixtures::now())),
+        ));
     }
 
     private static function flattened(CommandTester $tester): string

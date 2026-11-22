@@ -2,20 +2,23 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Functional\Command;
+namespace App\Tests\Symfony\Functional\Command;
 
-use Heidi\Bundle\Tests\Functional\MessageHandler\RecordingEventHandler;
-use Heidi\Core\Domain\Credential\PasskeyCredential;
-use Heidi\Core\Domain\Credential\PasskeyUserHandle;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Domain\Credential\RevocableCredentialInterface;
-use Heidi\Core\Domain\Event\CredentialRevoked;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\CredentialRepositoryInterface;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler;
+use Beffroi\Core\Domain\Credential\Attestation\AttestationEvidence;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Domain\Credential\RevocableCredentialInterface;
+use Beffroi\Core\Domain\Event\CredentialRevoked;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\MetadataBlobStoreInterface;
+use Beffroi\Core\Tests\Fixture\MetadataBlobs;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Totps;
 use PHPUnit\Framework\Attributes\Test;
 use function preg_replace;
 use function random_bytes;
@@ -23,8 +26,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Architecture §5.5: the console lists the credentials of a user and revokes a passkey, the only
- * administration of spike 3.
+ * Architecture §5.5
  */
 final class CredentialsTest extends ConsoleTestCase
 {
@@ -33,7 +35,7 @@ final class CredentialsTest extends ConsoleTestCase
     {
         // Given
         $user = self::user('alice');
-        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), self::now());
+        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(new Argon2id(), '$argon2id$alice'), self::now());
         $passkey = self::passkey($user);
         $passkey->markUsed(self::now()->modify('+1 hour'));
         $passkey->revoke(self::now()->modify('+2 hours'));
@@ -41,7 +43,7 @@ final class CredentialsTest extends ConsoleTestCase
         self::credentials()->save($passkey);
 
         // When
-        $tester = self::console('heidi:user:show', [
+        $tester = self::console('beffroi:user:show', [
             'username' => 'alice',
         ]);
 
@@ -49,7 +51,65 @@ final class CredentialsTest extends ConsoleTestCase
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         $display = self::string(preg_replace('/ +/', ' ', $tester->getDisplay(true)));
         static::assertStringContainsString('password ' . $password->id->toRfc4122() . ' 2026-09-15 10:00:00', $display);
-        static::assertStringContainsString('passkey ' . $passkey->id->toRfc4122() . ' YubiKey 5 2026-09-15 10:00:00 2026-09-15 11:00:00 2026-09-15 12:00:00', $display);
+        static::assertStringContainsString(
+            'passkey '
+            . $passkey->id->toRfc4122()
+            . ' YubiKey 5 unknown (AAGUID '
+            . $passkey->aaguid->toRfc4122()
+            . ', declared) 2026-09-15 10:00:00 2026-09-15 11:00:00 2026-09-15 12:00:00',
+            $display,
+        );
+    }
+
+    #[Test]
+    public function theAuthenticatorOfAPasskeyIsShownWithTheSourceThatNamesIt(): void
+    {
+        // Given
+        $user = self::user('alice');
+        $passkey = self::passkey($user);
+        self::credentials()->save($passkey);
+        self::service('test.beffroi.metadata_store', MetadataBlobStoreInterface::class)
+            ->write(
+                'mds-user-show',
+                MetadataBlobs::payload([MetadataBlobs::entry($passkey->aaguid->toRfc4122(), description: 'YubiKey 5 Series')]),
+            );
+
+        // When
+        $tester = self::console('beffroi:user:show', [
+            'username' => 'alice',
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        $display = self::string(preg_replace('/ +/', ' ', $tester->getDisplay(true)));
+        static::assertStringContainsString(
+            'passkey ' . $passkey->id->toRfc4122() . ' YubiKey 5 YubiKey 5 Series (fido-metadata, declared) 2026-09-15',
+            $display,
+        );
+    }
+
+    /**
+     * WebAuthn Level 3 §8.2.2, Decision 0046
+     */
+    #[Test]
+    public function whatTheEnrolmentOfAPasskeyProvedIsShownWithItsAuthenticator(): void
+    {
+        // Given
+        $user = self::user('alice');
+        $passkey = self::passkey($user, AttestationEvidence::enterprise('0ada', underSecurityAlert: true));
+        self::credentials()->save($passkey);
+
+        // When
+        $tester = self::console('beffroi:user:show', [
+            'username' => 'alice',
+        ]);
+
+        // Then
+        static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertStringContainsString(
+            'unknown (AAGUID ' . $passkey->aaguid->toRfc4122() . ', enterprise, serial number 0ada, under a security alert)',
+            self::string(preg_replace('/ +/', ' ', $tester->getDisplay(true))),
+        );
     }
 
     #[Test]
@@ -59,7 +119,7 @@ final class CredentialsTest extends ConsoleTestCase
         self::user('alice');
 
         // When
-        $tester = self::console('heidi:user:show', [
+        $tester = self::console('beffroi:user:show', [
             'username' => 'alice',
         ]);
 
@@ -77,7 +137,7 @@ final class CredentialsTest extends ConsoleTestCase
         self::credentials()->save($passkey);
 
         // When
-        $tester = self::console('heidi:user:revoke-credential', [
+        $tester = self::console('beffroi:user:revoke-credential', [
             'username' => 'alice',
             'id' => $passkey->id->toRfc4122(),
         ]);
@@ -93,13 +153,9 @@ final class CredentialsTest extends ConsoleTestCase
         static::assertInstanceOf(CredentialRevoked::class, $events[0]);
         static::assertTrue($events[0]->credential->id->equals($passkey->id));
         static::assertNull($events[0]->context->ipAddress);
-        static::assertStringStartsWith('heidi-console/heidi:user:revoke-credential (', $events[0]->context->userAgent ?? '');
+        static::assertStringStartsWith('beffroi-console/beffroi:user:revoke-credential (', $events[0]->context->userAgent ?? '');
     }
 
-    /**
-     * Issue #91: the TOTP is revoked from the console like a passkey, by the identifier heidi:user:show
-     * lists; the kind has no label, the identifier stands for it.
-     */
     #[Test]
     public function aTotpIsRevokedByItsIdentifier(): void
     {
@@ -109,14 +165,17 @@ final class CredentialsTest extends ConsoleTestCase
         self::credentials()->save($totp);
 
         // When
-        $tester = self::console('heidi:user:revoke-credential', [
+        $tester = self::console('beffroi:user:revoke-credential', [
             'username' => 'alice',
             'id' => $totp->id->toRfc4122(),
         ]);
 
         // Then
         static::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
-        static::assertStringContainsString('The totp "' . $totp->id->toRfc4122() . '" of the user "alice" is revoked; it never authenticates again.', self::flattened($tester));
+        static::assertStringContainsString(
+            'The totp "' . $totp->id->toRfc4122() . '" of the user "alice" is revoked; it never authenticates again.',
+            self::flattened($tester),
+        );
         $revoked = self::credentials()->find($totp->id) ?? static::fail('The TOTP is gone.');
         static::assertInstanceOf(RevocableCredentialInterface::class, $revoked);
         static::assertTrue($revoked->isRevoked());
@@ -133,7 +192,7 @@ final class CredentialsTest extends ConsoleTestCase
         self::credentials()->save($passkey);
 
         // When
-        $tester = self::console('heidi:user:revoke-credential', [
+        $tester = self::console('beffroi:user:revoke-credential', [
             'username' => 'alice',
             'id' => $passkey->id->toRfc4122(),
         ]);
@@ -149,18 +208,21 @@ final class CredentialsTest extends ConsoleTestCase
     {
         // Given
         $user = self::user('alice');
-        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(PasswordAlgorithm::Argon2id, '$argon2id$alice'), self::now());
+        $password = new PasswordCredential(Uuid::v7(), $user, new PasswordHash(new Argon2id(), '$argon2id$alice'), self::now());
         self::credentials()->save($password);
 
         // When
-        $tester = self::console('heidi:user:revoke-credential', [
+        $tester = self::console('beffroi:user:revoke-credential', [
             'username' => 'alice',
             'id' => $password->id->toRfc4122(),
         ]);
 
         // Then
         static::assertSame(Command::INVALID, $tester->getStatusCode(), $tester->getDisplay());
-        static::assertStringContainsString('The password "' . $password->id->toRfc4122() . '" cannot be revoked; a password is replaced, not revoked.', self::flattened($tester));
+        static::assertStringContainsString(
+            'The password "' . $password->id->toRfc4122() . '" cannot be revoked; a password is replaced, not revoked.',
+            self::flattened($tester),
+        );
     }
 
     #[Test]
@@ -172,7 +234,7 @@ final class CredentialsTest extends ConsoleTestCase
         self::user('alice');
 
         // When
-        $tester = self::console('heidi:user:revoke-credential', [
+        $tester = self::console('beffroi:user:revoke-credential', [
             'username' => 'alice',
             'id' => $passkey->id->toRfc4122(),
         ]);
@@ -189,7 +251,7 @@ final class CredentialsTest extends ConsoleTestCase
     public function anIdentifierThatIsNotOneIsRefusedBeforeAnyLookup(): void
     {
         // When
-        $tester = self::console('heidi:user:revoke-credential', [
+        $tester = self::console('beffroi:user:revoke-credential', [
             'username' => 'nobody',
             'id' => 'not-a-uuid',
         ]);
@@ -203,7 +265,7 @@ final class CredentialsTest extends ConsoleTestCase
     public function anUnknownUserIsRefused(): void
     {
         // When
-        $tester = self::console('heidi:user:revoke-credential', [
+        $tester = self::console('beffroi:user:revoke-credential', [
             'username' => 'nobody',
             'id' => Uuid::v7()->toRfc4122(),
         ]);
@@ -213,13 +275,27 @@ final class CredentialsTest extends ConsoleTestCase
         static::assertStringContainsString('There is no user named "nobody"', self::flattened($tester));
     }
 
-    private static function passkey(User $user): PasskeyCredential
+    private static function passkey(User $user, ?AttestationEvidence $evidence = null): PasskeyCredential
     {
-        return new PasskeyCredential(Uuid::v7(), $user, 'YubiKey 5', random_bytes(16), 'cose-public-key', 0, ['usb'], false, false, Uuid::v4(), PasskeyUserHandle::generate(), self::now());
+        return new PasskeyCredential(
+            Uuid::v7(),
+            $user,
+            'YubiKey 5',
+            random_bytes(16),
+            'cose-public-key',
+            0,
+            ['usb'],
+            false,
+            false,
+            Uuid::v4(),
+            Fixtures::userHandle(),
+            self::now(),
+            $evidence ?? AttestationEvidence::declared(),
+        );
     }
 
     private static function credentials(): CredentialRepositoryInterface
     {
-        return self::service('test.heidi.credentials', CredentialRepositoryInterface::class);
+        return self::service('test.beffroi.credentials', CredentialRepositoryInterface::class);
     }
 }

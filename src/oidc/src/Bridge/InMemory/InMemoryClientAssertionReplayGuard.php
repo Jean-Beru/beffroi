@@ -2,17 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Bridge\InMemory;
+namespace Beffroi\Oidc\Bridge\InMemory;
 
 use DateTimeImmutable;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Port\ClientAssertionReplayGuardInterface;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Port\ClientAssertionReplayGuardInterface;
 use function sprintf;
 
 /**
- * The "jti" already seen, kept for the life of the process. What a single-process integration and the
- * tests use; a deployment of several workers points the port at a store they share, or one worker would
- * take an assertion another one already took.
+ * One process only: workers that share no store would each accept the same assertion.
  */
 final class InMemoryClientAssertionReplayGuard implements ClientAssertionReplayGuardInterface
 {
@@ -23,7 +21,7 @@ final class InMemoryClientAssertionReplayGuard implements ClientAssertionReplayG
 
     public function remember(Client $client, string $jti, DateTimeImmutable $expiresAt): bool
     {
-        $key = sprintf('%s|%s|%s', $client->tenant->id->toRfc4122(), $client->clientId, $jti);
+        $key = sprintf('%s|%s|%s', $client->tenant->id->toRfc4122(), $client->registration->clientId, $jti);
         if (isset($this->seen[$key])) {
             return false;
         }

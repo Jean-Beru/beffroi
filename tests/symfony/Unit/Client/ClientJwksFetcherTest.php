@@ -2,11 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Client;
+namespace App\Tests\Symfony\Unit\Client;
 
-use Heidi\Bundle\Client\ClientJwksFetcher;
-use Heidi\Oidc\Domain\Client\ClientUri;
-use Heidi\Oidc\Exception\ClientKeysUnavailableException;
+use App\Http\ByteLimit;
+use App\Http\Timeout;
+use App\Client\ClientJwksFetcher;
+use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\Test;
@@ -17,8 +19,7 @@ use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
- * Reading back the JWK Set a client publishes (RFC 7591 §2): one GET, bounded, no redirect followed
- * (decision 0006).
+ * RFC 7591 §2, Decision 0006
  */
 final class ClientJwksFetcherTest extends TestCase
 {
@@ -42,8 +43,7 @@ final class ClientJwksFetcherTest extends TestCase
     }
 
     /**
-     * Decision 0006: no outbound request follows a redirect, so a client that moves its keys is told to
-     * publish them where it registered them.
+     * Decision 0006
      */
     #[Test]
     public function itRefusesToFollowARedirect(): void
@@ -80,9 +80,6 @@ final class ClientJwksFetcherTest extends TestCase
         $fetcher->fetch(new ClientUri(self::JWKS_URI));
     }
 
-    /**
-     * A client that hangs must not hold a worker: an endpoint authenticating it is waiting on this read.
-     */
     #[Test]
     public function itRefusesAClientThatDoesNotAnswerInTime(): void
     {
@@ -145,7 +142,7 @@ final class ClientJwksFetcherTest extends TestCase
 
     private function fetcher(ResponseInterface $response): ClientJwksFetcher
     {
-        return new ClientJwksFetcher(new MockHttpClient($response), 1.0, self::MAX_SIZE);
+        return new ClientJwksFetcher(new MockHttpClient($response), new Timeout(1.0), new ByteLimit(self::MAX_SIZE));
     }
 
     /**

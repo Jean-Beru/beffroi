@@ -1,0 +1,192 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Beffroi\Saml2\Model\Tests\PhpStan;
+
+use PhpParser\Node;
+use PhpParser\Node\Expr\CallLike;
+use PhpParser\Node\Expr\FuncCall;
+use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\New_;
+use PhpParser\Node\Expr\NullsafeMethodCall;
+use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\Identifier;
+use PhpParser\Node\Name;
+use PhpParser\Node\Stmt\Class_;
+use PHPStan\Analyser\Scope;
+use PHPStan\Rules\IdentifierRuleError;
+use PHPStan\Rules\Rule;
+use PHPStan\Rules\RuleErrorBuilder;
+use function array_any;
+use function implode;
+use function rtrim;
+use function sprintf;
+use function str_ends_with;
+use function str_starts_with;
+use function strtolower;
+
+/**
+ * Section 8, enc.md E-15
+ *
+ * @implements Rule<CallLike>
+ */
+final class BannedCallsRule implements Rule
+{
+    private const string PACKAGE = 'beffroi\\saml2\\model\\';
+
+    /**
+     * @var array<string, string> lowercased name to its configured spelling
+     */
+    private array $methods = [];
+
+    /**
+     * @var array<string, string> lowercased name to its configured spelling
+     */
+    private array $functions = [];
+
+    /**
+     * @var array<string, string> lowercased prefix to its configured spelling
+     */
+    private array $prefixes = [];
+
+    /**
+     * @var array<string, array{spelling: string, allowedIn: list<string>}> keyed by lowercased name
+     */
+    private array $confined = [];
+
+    /**
+     * @param list<string> $methods
+     * @param list<string> $functions a name, or a prefix followed by *
+     * @param list<array{method: string, allowedIn: list<string>}> $confined allowedIn relative to $workingDirectory
+     */
+    public function __construct(
+        array $methods,
+        array $functions,
+        array $confined = [],
+        private readonly string $workingDirectory = '',
+    ) {
+        foreach ($confined as $call) {
+            $this->confined[strtolower($call['method'])] = [
+                'spelling' => $call['method'],
+                'allowedIn' => $call['allowedIn'],
+            ];
+        }
+        foreach ($methods as $method) {
+            $this->methods[strtolower($method)] = $method;
+        }
+        foreach ($functions as $function) {
+            if (str_ends_with($function, '*')) {
+                $this->prefixes[strtolower(rtrim($function, '*'))] = $function;
+                continue;
+            }
+            $this->functions[strtolower($function)] = $function;
+        }
+    }
+
+    public function getNodeType(): string
+    {
+        return CallLike::class;
+    }
+
+    /**
+     * @return list<IdentifierRuleError>
+     */
+    public function processNode(Node $node, Scope $scope): array
+    {
+        if ($node instanceof New_) {
+            return (
+                $node->class instanceof Name || $node->class instanceof Class_
+                    ? []
+                    : [$this->error('A dynamic instantiation escapes the review: name the class.')]
+            );
+        }
+        if ($node instanceof FuncCall) {
+            if (! $node->name instanceof Name) {
+                return [$this->error('A dynamic call escapes the review: name the function.')];
+            }
+
+            return $this->banned($this->function($node->name));
+        }
+        if (! $node instanceof MethodCall && ! $node instanceof NullsafeMethodCall && ! $node instanceof StaticCall) {
+            return [];
+        }
+        if (! $node->name instanceof Identifier) {
+            return [$this->error('A dynamic call escapes the review: name the method.')];
+        }
+        $confined = $this->confined[$node->name->toLowerString()] ?? null;
+        if ($confined !== null) {
+            return $this->outside($confined, $scope);
+        }
+        $method = $this->methods[$node->name->toLowerString()] ?? null;
+        if ($method === null || $this->ofThePackage($node, $scope)) {
+            return [];
+        }
+
+        return $this->banned($method . '()');
+    }
+
+    private function function(Name $name): ?string
+    {
+        $function = $this->functions[$name->toLowerString()] ?? null;
+        if ($function !== null) {
+            return $function . '()';
+        }
+        foreach ($this->prefixes as $prefix => $spelling) {
+            if (str_starts_with($name->toLowerString(), $prefix)) {
+                return sprintf('%s(), of %s,', $name->toString(), $spelling);
+            }
+        }
+
+        return null;
+    }
+
+    private function ofThePackage(MethodCall|NullsafeMethodCall|StaticCall $node, Scope $scope): bool
+    {
+        if ($node instanceof StaticCall) {
+            return $node->class instanceof Name && str_starts_with(strtolower($scope->resolveName($node->class)), self::PACKAGE);
+        }
+
+        return array_any(
+            $scope->getType($node->var)->getObjectClassNames(),
+            static fn (string $class): bool => str_starts_with(strtolower($class), self::PACKAGE),
+        );
+    }
+
+    /**
+     * @param array{spelling: string, allowedIn: list<string>} $confined
+     *
+     * @return list<IdentifierRuleError>
+     */
+    private function outside(array $confined, Scope $scope): array
+    {
+        foreach ($confined['allowedIn'] as $path) {
+            if ($scope->getFile() === $this->workingDirectory . '/' . $path) {
+                return [];
+            }
+        }
+
+        return [$this->error(sprintf(
+            '%s() is called in %s only: section 8 of the specification confines it there.',
+            $confined['spelling'],
+            implode(', ', $confined['allowedIn']),
+        ))];
+    }
+
+    /**
+     * @return list<IdentifierRuleError>
+     */
+    private function banned(?string $call): array
+    {
+        if ($call === null) {
+            return [];
+        }
+
+        return [$this->error(sprintf('%s is never called: section 8 of the specification bans it.', $call))];
+    }
+
+    private function error(string $message): IdentifierRuleError
+    {
+        return RuleErrorBuilder::message($message)->identifier('beffroi.bannedCall')->nonIgnorable()->build();
+    }
+}

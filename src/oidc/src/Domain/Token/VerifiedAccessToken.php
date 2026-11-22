@@ -2,45 +2,47 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Token;
+namespace Beffroi\Oidc\Domain\Token;
 
-use function array_any;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Identity\Subject;
-use Heidi\Oidc\Domain\Authorization\AuthenticationSnapshot;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Core\Domain\Identity\Subject;
+use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Exchange\Actor;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * What a verified access token says, whatever its shape (RFC 9068 §4, architecture §4.6). Neither the
- * user nor the grant is looked up here.
+ * What a verified access token says, whatever its shape; neither its user nor its grant is looked up here.
  */
 final readonly class VerifiedAccessToken
 {
     /**
-     * @param list<Scope> $scopes
-     * @param list<string> $userinfoClaims the names of OIDC Core §5.5
+     * @param list<string> $userinfoClaims
      */
     public function __construct(
         public Client $client,
+        public TokenAudience $audience,
         public Subject $subject,
-        public Uuid $sessionId,
         public Uuid $grantId,
-        public array $scopes,
+        public ?Scopes $scopes,
+        public ?TokenSignIn $signIn,
         public array $userinfoClaims,
-        public AuthenticationSnapshot $authentication,
         public DateTimeImmutable $issuedAt,
         public DateTimeImmutable $expiresAt,
+        public ?ConfirmationInterface $confirmation = null,
+        public ?Actor $actor = null,
+        public ?AuthorizationDetails $authorizationDetails = null,
+        public ?Subject $person = null,
     ) {
         if ($expiresAt <= $issuedAt) {
             throw new InvalidArgumentException('An access token expires after it was issued.');
         }
     }
 
-    public function hasScope(Scope $scope): bool
+    public function namesAPerson(): bool
     {
-        return array_any($this->scopes, static fn (Scope $granted): bool => $granted->equals($scope));
+        return $this->signIn !== null || $this->person !== null;
     }
 }

@@ -10,7 +10,14 @@ updates:
       dev:
         dependency-type: development
   - package-ecosystem: composer
-    directory: /apps/op
+    directory: /apps/beffroi
+    schedule:
+      interval: weekly
+    groups:
+      symfony:
+        patterns: ["symfony/*"]
+  - package-ecosystem: composer
+    directory: /apps/tui
     schedule:
       interval: weekly
     groups:
@@ -21,6 +28,6 @@ updates:
     schedule:
       interval: weekly
   - package-ecosystem: docker
-    directory: /apps/op
+    directory: /apps/beffroi
     schedule:
       interval: weekly

@@ -2,21 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Application\EndSession;
+namespace Beffroi\Oidc\Application\EndSession;
 
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Oidc\Domain\Event\LogoutTokenIssued;
-use Heidi\Oidc\Port\LoggedInClientsInterface;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Oidc\Domain\Event\LogoutTokenIssued;
+use Beffroi\Oidc\Port\LoggedInClientsInterface;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
- * Back-Channel Logout 1.0 §2.6: a session that ended is announced to every client it signed in that
- * registered a back-channel logout URI, once each, whatever ended it (the user, a relying party, an
- * administrator, the expiry) since the announcement is made on the end and not on the request that
- * asked for it. Minting is here, delivery is not (architecture §5.6): a client that cannot be reached
- * must not hold a logout back, and a retry must not ask the KMS to sign again.
+ * Back-Channel Logout 1.0 §2.6
  */
 final readonly class BackChannelLogout
 {
@@ -32,11 +28,20 @@ final readonly class BackChannelLogout
     {
         $now = $this->clock->now();
         foreach ($this->clients->ofSession($session->id) as $client) {
-            $logoutUri = $client->backChannelLogoutUri;
+            $logoutUri = $client->registration->backChannelLogoutUri;
             if ($logoutUri === null) {
                 continue;
             }
-            $this->events->dispatch(new LogoutTokenIssued($client, $logoutUri, $session, $this->tokens->issue($client, $session, $now), $now, $context));
+            $this->events->dispatch(new LogoutTokenIssued(
+                $now,
+                $client->tenant,
+                $client->registration->clientId,
+                $session->user->subject,
+                $logoutUri,
+                $session->id,
+                $this->tokens->issue($client, $session, $now),
+                $context,
+            ));
         }
     }
 }

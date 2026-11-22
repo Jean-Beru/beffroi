@@ -2,23 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Port;
+namespace Beffroi\Oidc\Port;
 
-use DateTimeImmutable;
-use Heidi\Oidc\Domain\Token\GrantedAuthorization;
-use Heidi\Oidc\Domain\Token\StoredAccessToken;
+use Beffroi\Oidc\Domain\Token\StoredAccessToken;
 use SensitiveParameter;
 
 /**
- * Where the opaque access tokens live (architecture §4.6): the store draws the value and keeps the hash.
- * What else it can do is declared by the CanRevoke* companion interfaces.
+ * Opaque access tokens, kept under the digest of their value and never the value.
  */
 interface AccessTokenRepositoryInterface
 {
-    /**
-     * @return string the value, for the response and nothing else
-     */
-    public function issue(GrantedAuthorization $authorization, DateTimeImmutable $now, DateTimeImmutable $expiresAt): string;
+    public function save(StoredAccessToken $token): void;
 
     public function find(#[SensitiveParameter] string $token): ?StoredAccessToken;
 }

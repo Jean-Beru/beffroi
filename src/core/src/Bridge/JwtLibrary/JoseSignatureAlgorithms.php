@@ -2,23 +2,25 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Bridge\JwtLibrary;
+namespace Beffroi\Core\Bridge\JwtLibrary;
 
-use function array_values;
-use Heidi\Core\Exception\InvalidArgumentException;
-use Heidi\Core\Exception\UnsupportedAlgorithmException;
-use Heidi\Core\Port\SignatureAlgorithmsInterface;
+use function array_map;
+use Beffroi\Core\Bridge\Algorithm\WiredAlgorithms;
+use Beffroi\Core\Exception\InvalidArgumentException;
+use Beffroi\Core\Exception\UnsupportedAlgorithmException;
+use Beffroi\Core\Port\SignatureAlgorithmsInterface;
 use function implode;
 use Jose\Component\Core\AlgorithmManager;
+use Jose\Component\Signature\Algorithm\SignatureAlgorithm as JoseAlgorithm;
 use function sprintf;
 
-/**
- * The algorithms the wiring gave the provider, and the algorithm manager web-token/jwt-library signs and
- * verifies with, built from the same list: the document cannot announce an algorithm the signer refuses,
- * nor the signer accept one the document leaves out. The first wired one is the default.
- */
-final readonly class JoseSignatureAlgorithms implements SignatureAlgorithmsInterface
+final readonly class JoseSignatureAlgorithms implements JoseAlgorithmRegistryInterface, SignatureAlgorithmsInterface
 {
+    /**
+     * @var WiredAlgorithms<JoseSignatureAlgorithmInterface>
+     */
+    private WiredAlgorithms $wired;
+
     /**
      * @var non-empty-list<JoseSignatureAlgorithmInterface>
      */
@@ -31,21 +33,16 @@ final readonly class JoseSignatureAlgorithms implements SignatureAlgorithmsInter
      */
     public function __construct(iterable $algorithms)
     {
-        $wired = [];
-        $jose = [];
-        foreach ($algorithms as $algorithm) {
-            $name = $algorithm->name();
-            if (isset($wired[$name])) {
-                throw new InvalidArgumentException(sprintf('The algorithm "%s" is wired twice.', $name));
-            }
-            $wired[$name] = $algorithm;
-            $jose[] = $algorithm->joseAlgorithm();
-        }
-        if ($wired === []) {
+        $wired = new WiredAlgorithms($algorithms);
+        if ($wired->algorithms === []) {
             throw new InvalidArgumentException('A provider signs with at least one algorithm.');
         }
-        $this->algorithms = array_values($wired);
-        $this->manager = new AlgorithmManager($jose);
+        $this->wired = $wired;
+        $this->algorithms = $wired->algorithms;
+        $this->manager = new AlgorithmManager(array_map(
+            static fn (JoseSignatureAlgorithmInterface $algorithm): JoseAlgorithm => $algorithm->joseAlgorithm(),
+            $this->algorithms,
+        ));
     }
 
     /**
@@ -56,15 +53,23 @@ final readonly class JoseSignatureAlgorithms implements SignatureAlgorithmsInter
         return $this->algorithms;
     }
 
+    public function find(string $name): ?JoseSignatureAlgorithmInterface
+    {
+        return $this->wired->named($name);
+    }
+
     public function named(string $name): JoseSignatureAlgorithmInterface
     {
-        foreach ($this->algorithms as $algorithm) {
-            if ($algorithm->name() === $name) {
-                return $algorithm;
-            }
-        }
+        return $this->find($name) ?? throw $this->refusalOf($name);
+    }
 
-        throw new UnsupportedAlgorithmException(sprintf('This provider does not sign with "%s"; it signs with %s.', $name, implode(', ', $this->names())));
+    public function refusalOf(string $name): UnsupportedAlgorithmException
+    {
+        return new UnsupportedAlgorithmException(sprintf(
+            'This provider does not sign with "%s"; it signs with %s.',
+            $name,
+            implode(', ', $this->wired->names()),
+        ));
     }
 
     public function defaultAlgorithm(): JoseSignatureAlgorithmInterface
@@ -72,24 +77,8 @@ final readonly class JoseSignatureAlgorithms implements SignatureAlgorithmsInter
         return $this->algorithms[0];
     }
 
-    /**
-     * What a builder and a verifier of the library are given.
-     */
     public function manager(): AlgorithmManager
     {
         return $this->manager;
-    }
-
-    /**
-     * @return non-empty-list<non-empty-string>
-     */
-    private function names(): array
-    {
-        $names = [];
-        foreach ($this->algorithms as $algorithm) {
-            $names[] = $algorithm->name();
-        }
-
-        return $names;
     }
 }

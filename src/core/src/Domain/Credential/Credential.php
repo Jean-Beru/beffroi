@@ -2,21 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Domain\Credential;
+namespace Beffroi\Core\Domain\Credential;
 
+use Beffroi\Core\Domain\PersonalData\ClassifiedFieldsInterface;
+use Beffroi\Core\Domain\PersonalData\FieldClassificationInterface;
+use Beffroi\Core\Domain\PersonalData\NoPersonalDatum;
+use Beffroi\Core\Domain\PersonalData\Reason;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Tenant\Tenant;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * A way for a user to prove who they are; a user has N of them.
- */
-abstract class Credential
+abstract class Credential implements ClassifiedFieldsInterface
 {
-    /**
-     * Restated from the user (decision 0002).
-     */
     public readonly Tenant $tenant;
 
     public private(set) ?DateTimeImmutable $lastUsedAt = null;
@@ -29,22 +27,32 @@ abstract class Credential
         $this->tenant = $user->tenant;
     }
 
-    /**
-     * What the kind is called, for a console or an audit trail: "password", "passkey". Each kind names
-     * itself; nothing reads a class name.
-     */
     abstract public function kind(): string;
 
-    /**
-     * What the user called it, when the kind lets them name one (a passkey); null otherwise.
-     */
     public function label(): ?string
     {
         return null;
     }
 
+    /**
+     * For a store or an import: a login calls recordUse(), which also moves a sign count or a spent code.
+     */
     public function markUsed(DateTimeImmutable $now): void
     {
         $this->lastUsedAt = $now;
+    }
+
+    /**
+     * @return array<string, FieldClassificationInterface>
+     */
+    public static function classifiedFields(): array
+    {
+        return [
+            'createdAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'lastUsedAt' => new NoPersonalDatum(Reason::NAMES_NO_PERSON),
+            'id' => new NoPersonalDatum(Reason::DRAWN_AT_RANDOM),
+            'tenant' => new NoPersonalDatum(Reason::THE_TENANT),
+            'user' => new NoPersonalDatum(Reason::DRAWN_AT_RANDOM),
+        ];
     }
 }

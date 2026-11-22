@@ -1,0 +1,200 @@
+name: gitsplit
+
+# gitsplit walks every branch and tag matching the "origins" patterns of
+# .gitsplit.yml, so the checkout must be unshallow: fetch-depth: 0.
+#
+# It also reads a single .gitsplit.yml, the one in the working copy, and
+# applies it to all of those references. Checking out the ref that triggered
+# the run keeps that config in step with the branch being pushed, instead of
+# whatever the default branch happens to declare at that moment.
+#
+# The container is not given the repository credentials: it pushes with a
+# token of the GitHub App of the organisation that is installed on the
+# mirrors, and the step after it uses that same token. The token is created at
+# each run, lives an hour, and reaches the repositories .gitsplit.yml names as
+# targets and nothing else, with write access to their code and, for their
+# default branch, to their administration: everything that is done to a
+# mirror and nothing that is done here. A mirror named there and left out of
+# the installation fails the step that creates the token, which names it. The
+# App's client ID is the variable SPLIT_APP_CLIENT_ID and its private key the
+# secret SPLIT_APP_PRIVATE_KEY. The container never reads origin either, which
+# is why .gitsplit.yml declares no cache url; the cache volume below is
+# mounted and left unused, as in jwt-framework.
+#
+# A closed milestone is where a release starts this: "release-on-milestone-
+# closed.yml" tags the version, creates the next maintenance branch, switches
+# the default branch of this repository to it and publishes the release. Its
+# pushes go under the credentials of its checkout, GITHUB_TOKEN, and start no
+# workflow; the publication goes under ORGANIZATION_ADMIN_TOKEN and starts
+# this one, on the tag. The split sends the tag and the new branch to the
+# mirrors with every other reference the "origins" name, and the step after
+# it is what makes a mirror look like this repository: its default branch
+# becomes the newest branch it carries, and a branch the split does not push
+# is deleted. So a mirror holds the maintained branches and the release tags
+# and nothing else, which is what the "origins" of .gitsplit.yml declare;
+# neither that list nor the list of targets is restated here, both are read
+# from that file.
+#
+# Runs can queue back to back, a release behind a push, so the workflow takes
+# one at a time and cancels none: two force-pushes of the same mirror at once
+# is not a thing to find out about afterwards.
+#
+# The image the split runs is pinned by digest and kept in the cache of this
+# repository (issue #541). It used to be pulled anonymously from Docker Hub by
+# the "docker run" below, on every push to a maintenance branch and on every
+# tag, and that limit is counted per address of the runner pool, which this
+# repository shares with everybody else running there: a push that landed on a
+# busy address was answered "toomanyrequests", the mirrors fell behind,
+# and nothing of the repository was wrong. A cache entry of 19 MB restores in
+# a second, the key is the digest, so the normal path reaches no registry at
+# all and the one pull that fills the entry again is a digest somebody edited
+# here. "latest" of an image nobody has rebuilt in five years was a pin
+# without a name; this is the same pin with its name on it.
+#
+# That one pull is authenticated when the run is given DOCKERHUB_USERNAME
+# and DOCKERHUB_TOKEN, secrets of this repository (issue #543), because an anonymous pull cannot be
+# answered at all on an address of the pool that is already spent, and the
+# entry cannot be filled on an address like that: the first two runs of the
+# cache were refused on two runners. Authenticated, the pull is counted against
+# the account instead, and what it is asked for is once a week at most. Docker
+# Hub, GitHub's registry and GitLab's are the only registries this repository
+# reads, and the image is on Docker Hub alone. A run given no credential says so
+# and pulls anonymously, which is what this workflow has always done.
+
+on:
+  push:
+    tags:
+      - '*'
+    branches:
+      - '*.*.x'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  # jderusse/gitsplit, by digest and never by tag, and the name it is loaded under, which is what the
+  # run below names. Taking a newer image is editing this digest: the cache key follows it, so the
+  # edit is also what empties the entry.
+  GITSPLIT_IMAGE: "jderusse/gitsplit@sha256:ca619e08d0608d7ab8067be02db13409ec63a0e241c6308be42593f0c0ac705d"
+  GITSPLIT_LOADED: "gitsplit:pinned"
+
+jobs:
+  gitsplit:
+    runs-on: [self-hosted, kloude-light, X64]
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v7"
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: "The image of the split"
+        id: image
+        uses: actions/cache@v6
+        with:
+          path: /tmp/gitsplit-image.tar
+          key: "gitsplit-image-${{ env.GITSPLIT_IMAGE }}"
+
+      # Reached only by a run that found no entry, which is the run after a digest was edited and the
+      # first run after an entry expired. An entry is kept for as long as something reads it and this
+      # workflow runs several times a day, so the pull is rare rather than avoided: what it must not be
+      # is the normal path.
+      - name: "The one pull that fills the cache"
+        if: steps.image.outputs.cache-hit != 'true'
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -n "${DOCKERHUB_TOKEN}" ]; then
+            printf '%s' "${DOCKERHUB_TOKEN}" | docker login --username "${DOCKERHUB_USERNAME}" --password-stdin
+          else
+            echo "::warning title=The pull that fills the cache is anonymous::This run is given no DOCKERHUB_USERNAME and DOCKERHUB_TOKEN, so the pull below is counted against the address of the runner, which is shared and may be spent. It is the pull every later run is spared by the cache entry it writes."
+          fi
+          docker pull "${GITSPLIT_IMAGE}"
+          docker tag "${GITSPLIT_IMAGE}" "${GITSPLIT_LOADED}"
+          docker save -o /tmp/gitsplit-image.tar "${GITSPLIT_LOADED}"
+
+      # The tag and not the digest: a "docker load" restores what was saved under the name it was saved
+      # with, and a digest reference of an image the daemon holds under no repository would send the run
+      # back to the registry.
+      - name: "Load it"
+        run: docker load -i /tmp/gitsplit-image.tar
+
+      # The mirrors are the targets of .gitsplit.yml, named once there.
+      - name: "The mirrors"
+        id: mirrors
+        run: |
+          set -o pipefail
+          names=$(grep -oP '(?<=github\.com/${{ github.repository_owner }}/)[^"]+(?=\.git)' .gitsplit.yml | paste -sd, -)
+          echo "repositories=${names}" >> "${GITHUB_OUTPUT}"
+
+      - name: "The token of the split"
+        id: token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.SPLIT_APP_CLIENT_ID }}
+          private-key: ${{ secrets.SPLIT_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ steps.mirrors.outputs.repositories }}
+          permission-contents: write
+          permission-administration: write
+
+      - name: "Split repositories"
+        run: docker run --rm -t -e GH_TOKEN -v /cache/gitsplit:/cache/gitsplit -v ${{ github.workspace }}:/srv "${GITSPLIT_LOADED}" gitsplit
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+
+      # The token of the split, and not the one of this repository: changing a default branch
+      # needs "administration" and deleting a branch needs "contents", neither of which the
+      # GITHUB_TOKEN of Actions can be granted on another repository, and ORGANIZATION_ADMIN_TOKEN,
+      # which can do everything here, reaches no mirror and is not given one. There is nothing to
+      # check before running: this step is reached only when the split above has pushed with the same
+      # token.
+      #
+      # The targets and the patterns are read from .gitsplit.yml, so a prefix added there is a mirror
+      # this step aligns without being told twice. The newest branch is taken from what the mirror
+      # carries and never from what this repository carries: a default branch is a branch that exists,
+      # and the push above is what makes it exist. The default is moved before anything is deleted,
+      # because a default branch cannot be deleted.
+      - name: "Align the mirrors on this repository"
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+        run: |
+          mapfile -t PATTERNS < <(sed -n '/^origins:/,$ s/^  - //p' .gitsplit.yml)
+          mapfile -t MIRRORS < <(grep -oP '(?<=github\.com/)[^"]+(?=\.git)' .gitsplit.yml)
+
+          for repo in "${MIRRORS[@]}"; do
+            kept=()
+            stale=()
+            while read -r branch; do
+              matched=false
+              for pattern in "${PATTERNS[@]}"; do
+                if grep -Pq -- "${pattern}" <<< "${branch}"; then
+                  matched=true
+                  break
+                fi
+              done
+              if [ "${matched}" = true ]; then kept+=("${branch}"); else stale+=("${branch}"); fi
+            done < <(gh api "repos/${repo}/branches" --paginate --jq '.[].name')
+
+            if [ ${#kept[@]} -eq 0 ]; then
+              echo "::warning title=${repo}::Not one branch of this mirror is named by the origins of .gitsplit.yml, so none of them can be its default: nothing was touched."
+              continue
+            fi
+
+            newest=$(printf '%s\n' "${kept[@]}" | sort -V | tail -1)
+            current=$(gh repo view "${repo}" --json defaultBranchRef --jq '.defaultBranchRef.name')
+            if [ "${current}" != "${newest}" ]; then
+              gh api -X PATCH "repos/${repo}" -f "default_branch=${newest}" --silent
+              echo "${repo}: default branch ${current} is now ${newest}." >> "${GITHUB_STEP_SUMMARY}"
+            fi
+
+            for branch in "${stale[@]}"; do
+              gh api -X DELETE "repos/${repo}/git/refs/heads/${branch}" --silent
+              echo "${repo}: branch ${branch} deleted, the split does not push it." >> "${GITHUB_STEP_SUMMARY}"
+            done
+          done

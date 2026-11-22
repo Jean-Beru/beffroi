@@ -2,23 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Application\EndSession;
+namespace Beffroi\Oidc\Application\EndSession;
 
+use Beffroi\Core\Port\UuidGeneratorInterface;
 use DateTimeImmutable;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Port\JwsSignerInterface;
-use Heidi\Core\Port\SignatureAlgorithmsInterface;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\EndSession\LogoutToken;
-use Heidi\Oidc\Domain\Token\JwtPayload;
-use Heidi\Oidc\Port\SubjectIdentifierResolverInterface;
-use Symfony\Component\Uid\Uuid;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Port\JwsSignerInterface;
+use Beffroi\Core\Port\SignatureAlgorithmsInterface;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\EndSession\LogoutToken;
+use Beffroi\Oidc\Domain\Token\JwtPayload;
+use Beffroi\Oidc\Port\LogoutTokenDeliveryInterface;
+use Beffroi\Oidc\Port\SubjectIdentifierResolverInterface;
 
 /**
- * Mints the logout token of one client of one ended session (Back-Channel Logout 1.0 §2.4, architecture
- * §4.9), signed by the active key of the tenant in the algorithm the client registered for its ID
- * tokens, since that is the one it knows how to verify (§2.6). The "sub" is the one the client already
- * sees (OIDC Core §8), never the internal identifier.
+ * Back-Channel Logout 1.0 §2.4
  */
 final readonly class LogoutTokenIssuer
 {
@@ -26,25 +24,30 @@ final readonly class LogoutTokenIssuer
         private JwsSignerInterface $signer,
         private SubjectIdentifierResolverInterface $subjects,
         private SignatureAlgorithmsInterface $algorithms,
+        private UuidGeneratorInterface $uuids,
+        private LogoutTokenDeliveryInterface $delivery,
     ) {
     }
 
-    /**
-     * @return string the compact JWS
-     */
     public function issue(Client $client, AuthenticationSession $session, DateTimeImmutable $now): string
     {
         $token = new LogoutToken(
             $session->tenant->issuer,
-            $client->clientId,
+            $client->registration->clientId,
             $this->subjects->resolve($session->user, $client),
             $session->id,
-            Uuid::v4(),
+            $this->uuids->opaque(),
             $now,
+            $now->add($this->delivery->deliveryBudget()),
         );
 
-        return $this->signer->sign($session->tenant, $client->idTokenSignedResponseAlg ?? $this->algorithms->defaultAlgorithm(), JwtPayload::encode($token->claims()), [
-            'typ' => LogoutToken::TYPE,
-        ]);
+        return $this->signer->sign(
+            $session->tenant,
+            $client->registration->idToken->signature ?? $this->algorithms->defaultAlgorithm(),
+            JwtPayload::encode($token->claims()),
+            [
+                'typ' => LogoutToken::TYPE,
+            ],
+        );
     }
 }

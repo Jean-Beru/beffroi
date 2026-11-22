@@ -2,25 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Fixture;
+namespace Beffroi\Core\Tests\Fixture;
 
 use function array_filter;
 use function array_values;
 use function count;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Port\CodeAttemptLimiterInterface;
-use Heidi\Core\Port\PasswordAttemptLimiterInterface;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\CodeAttemptLimiterInterface;
+use Beffroi\Core\Port\PasswordAttemptLimiterInterface;
 use const PHP_INT_MAX;
 
-/**
- * Counts the attempts of each user and refuses past the number allowed, without a clock: a window that
- * never slides, enough to see that a use case asks before it verifies and forgets when it should. One
- * fixture for the two ports, as the bundle has one class for the two limiters.
- */
 final class FakeAttemptLimiter implements CodeAttemptLimiterInterface, PasswordAttemptLimiterInterface
 {
     /**
-     * @var list<string> the users of every attempt still counted, in order
+     * @var list<string>
      */
     public private(set) array $attempts = [];
 

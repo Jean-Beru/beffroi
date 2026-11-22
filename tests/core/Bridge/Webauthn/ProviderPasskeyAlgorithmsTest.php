@@ -1,0 +1,68 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Beffroi\Core\Tests\Bridge\Webauthn;
+
+use function array_map;
+use Beffroi\Core\Bridge\Webauthn\ProviderPasskeyAlgorithms;
+use Beffroi\Core\Bridge\Webauthn\Rs1RefusingAttestationStatementSupport;
+use function iterator_to_array;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+use Webauthn\AttestationStatement\NoneAttestationStatementSupport;
+use Webauthn\PublicKeyCredentialParameters;
+
+final class ProviderPasskeyAlgorithmsTest extends TestCase
+{
+    /**
+     * Decision 0033
+     */
+    #[Test]
+    public function theOptionsOfferTheAlgorithmsOfTheProviderFromTheStrongest(): void
+    {
+        // Given
+        $algorithms = new ProviderPasskeyAlgorithms();
+
+        // When
+        $parameters = $algorithms->parameters();
+
+        // Then
+        static::assertSame(
+            [-8, -7, -257],
+            array_map(static fn (PublicKeyCredentialParameters $parameter): int => $parameter->alg, $parameters),
+        );
+    }
+
+    /**
+     * Decision 0033
+     */
+    #[Test]
+    public function theSignaturesAreVerifiedWithTheOfferedAlgorithmsAlone(): void
+    {
+        // Given
+        $algorithms = new ProviderPasskeyAlgorithms();
+
+        // When
+        $verified = iterator_to_array($algorithms->verifiers()->list(), false);
+
+        // Then
+        static::assertSame([-8, -7, -257], $verified);
+    }
+
+    /**
+     * Decision 0033
+     */
+    #[Test]
+    public function anAttestationFormatIsRunRefusingRs1(): void
+    {
+        // Given
+        $algorithms = new ProviderPasskeyAlgorithms();
+
+        // When
+        $support = $algorithms->attestation(NoneAttestationStatementSupport::create());
+
+        // Then
+        static::assertInstanceOf(Rs1RefusingAttestationStatementSupport::class, $support);
+    }
+}

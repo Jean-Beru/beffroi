@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Client;
+namespace Beffroi\Oidc\Domain\Client;
 
-use Heidi\Core\Domain\Tenant\Issuer;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Core\Domain\Encoding\Host;
+use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use function http_build_query;
 use function is_string;
 use function parse_url;
@@ -16,20 +17,25 @@ use Stringable;
 use function strtolower;
 
 /**
- * A URI a client registers with the provider, whatever the provider does with it: send a browser to it
- * (RFC 6749 §3.1.2, RP-Initiated Logout §2), or post to it from the provider itself (Back-Channel Logout
- * 1.0 §2.2). Absolute, no fragment, no credentials, HTTPS; plain HTTP on a loopback host only. No custom
- * scheme, no variable loopback port (RFC 8252 §7.3). What it is for is the class that holds it.
+ * A host never holds the ";" or "," RFC 3986 §3.2.2 admits: it is written into Content-Security-Policy headers.
  */
 final readonly class ClientUri implements Stringable
 {
     public string $value;
 
-    /**
-     * RFC 6454 §3.2: the scheme, the host and the port, which is what a Content-Security-Policy source
-     * expression names when a page is allowed to post here (Form Post Response Mode §2).
-     */
     public string $origin;
+
+    /**
+     * RFC 3986 §3.1, lowercased
+     */
+    public string $scheme;
+
+    /**
+     * RFC 3986 §3.2.2, lowercased; an IPv6 literal keeps its brackets
+     */
+    public string $host;
+
+    private string $afterAuthority;
 
     public function __construct(string $value)
     {
@@ -43,21 +49,34 @@ final readonly class ClientUri implements Stringable
         if (isset($parts['user']) || isset($parts['pass'])) {
             throw new InvalidArgumentException(sprintf('The URI "%s" registered for a client must not carry credentials.', $value));
         }
+        if (! Host::isHost($parts['host'])) {
+            throw new InvalidArgumentException(sprintf(
+                'The URI "%s" registered for a client must name a host of letters, digits, hyphens and dots, or an IP address (RFC 3986 §3.2.2).',
+                $value,
+            ));
+        }
         $scheme = strtolower($parts['scheme']);
         if ($scheme !== 'https' && ! ($scheme === 'http' && Issuer::isLoopbackHost(strtolower($parts['host'])))) {
-            throw new InvalidArgumentException(sprintf('The URI "%s" registered for a client must use HTTPS; plain HTTP is only accepted on a loopback host.', $value));
+            throw new InvalidArgumentException(sprintf(
+                'The URI "%s" registered for a client must use HTTPS; plain HTTP is only accepted on a loopback host.',
+                $value,
+            ));
         }
 
         $this->value = $value;
         $port = $parts['port'] ?? null;
-        $this->origin = $scheme . '://' . strtolower($parts['host']) . ($port === null ? '' : ':' . $port);
+        $this->scheme = $scheme;
+        $this->host = strtolower($parts['host']);
+        $this->origin = $scheme . '://' . $this->host . ($port === null ? '' : ':' . $port);
+        $this->afterAuthority = ($parts['path'] ?? '') . (isset($parts['query']) ? '?' . $parts['query'] : '');
+    }
+
+    public function sameExceptThePort(self $other): bool
+    {
+        return $this->scheme === $other->scheme && $this->host === $other->host && $this->afterAuthority === $other->afterAuthority;
     }
 
     /**
-     * The registered query is kept and the parameters are added to it, every value percent-encoded
-     * (RFC 3986 §2.1): what a redirection carries back (RFC 6749 §4.1.2) and what a front-channel logout
-     * URI is given (Front-Channel Logout 1.0 §2).
-     *
      * @param non-empty-array<string, string> $parameters
      */
     public function withParameters(array $parameters): string

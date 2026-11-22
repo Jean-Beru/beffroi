@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Application\Token;
+namespace Beffroi\Oidc\Tests\Application\Token;
 
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Oidc\Application\Token\RefreshTokenRevocation;
-use Heidi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Token\RefreshToken;
-use Heidi\Oidc\Domain\Token\RefreshTokenFamily;
-use Heidi\Oidc\Tests\Fixture\Clients;
-use Heidi\Oidc\Tests\Fixture\Tokens;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Token\RefreshTokenRevocation;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Token\RefreshToken;
+use Beffroi\Oidc\Domain\Token\RefreshTokenFamily;
+use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -49,14 +49,19 @@ final class RefreshTokenRevocationTest extends TestCase
         $this->session = Fixtures::session($this->alice);
         $this->clock = new MockClock('2026-09-20T10:00:00+00:00');
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
-        $issuedAt = $this->clock->now()
-            ->modify('-1 hour');
-        $this->family = Tokens::family($issuedAt, 'the-code');
+        $issuedAt = $this->clock->now()->modify('-1 hour');
+        $this->family = Tokens::family($issuedAt, $this->client->tenant, 'the-code');
         $this->first = Tokens::refreshToken('first', $this->client, $this->session, $issuedAt, $this->family);
         $this->second = Tokens::refreshToken('second', $this->client, $this->session, $issuedAt->modify('+10 minutes'), $this->family);
         $this->alreadyRevoked = Tokens::refreshToken('revoked', $this->client, $this->session, $issuedAt, $this->family);
         $this->alreadyRevoked->revoke($issuedAt->modify('+5 minutes'));
-        $this->ofAnotherFamily = Tokens::refreshToken('other', $this->client, $this->session, $issuedAt, Tokens::family($issuedAt, 'another-code'));
+        $this->ofAnotherFamily = Tokens::refreshToken(
+            'other',
+            $this->client,
+            $this->session,
+            $issuedAt,
+            Tokens::family($issuedAt, $this->client->tenant, 'another-code'),
+        );
         foreach ([$this->first, $this->second, $this->alreadyRevoked, $this->ofAnotherFamily] as $token) {
             $this->refreshTokens->save($token);
         }
@@ -138,7 +143,7 @@ final class RefreshTokenRevocationTest extends TestCase
     public function itRevokesTheTokensDescendingFromACode(): void
     {
         // When
-        $revoked = $this->revocation->revokeByAuthorizationCode($this->family->authorizationCodeHash, $this->clock->now());
+        $revoked = $this->revocation->revokeByAuthorizationCode($this->family->grantingRecordHash, $this->clock->now());
 
         // Then
         static::assertSame([$this->first, $this->second], $revoked);
@@ -165,7 +170,7 @@ final class RefreshTokenRevocationTest extends TestCase
     public function anUnknownFamilyRevokesNothing(): void
     {
         // When
-        $revoked = $this->revocation->revokeFamily(Tokens::family($this->clock->now())->id, $this->clock->now());
+        $revoked = $this->revocation->revokeFamily(Tokens::family($this->clock->now(), $this->client->tenant)->id, $this->clock->now());
 
         // Then
         static::assertSame([], $revoked);

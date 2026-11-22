@@ -1,0 +1,11 @@
+# The application of this kernel (issue #282): the routes its firewall asks the route loader of Symfony for, the
+# callback and the start of its flow, imported as an application imports them, and its one page behind that firewall,
+# which it also comes back to after a logout. They are under the origin of the issuer whatever its path, under which
+# only the routes of the provider are mounted.
+security:
+    resource: security.route_loader
+    type: service
+
+host_application_user:
+    path: /application/me
+    controller: App\Tests\Symfony\Functional\Security\ApplicationUserController

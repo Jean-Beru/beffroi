@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Tests\Domain\Scope;
+namespace Beffroi\Oidc\Tests\Domain\Scope;
 
 use function array_map;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Exception\InvalidArgumentException;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 final class ScopeTest extends TestCase
 {
     /**
-     * RFC 6749 §3.3: scope-token = 1*( %x21 / %x23-5B / %x5D-7E ).
+     * RFC 6749 §3.3
      */
     #[Test]
     #[DataProvider('provideScopeTokens')]
@@ -42,7 +42,7 @@ final class ScopeTest extends TestCase
     }
 
     /**
-     * OIDC Core §11.
+     * OIDC Core §11
      */
     #[Test]
     public function offlineAccessIsAScope(): void
@@ -88,10 +88,11 @@ final class ScopeTest extends TestCase
         yield 'backslash' => ['open\\id'];
         yield 'control character' => ["open\tid"];
         yield 'beyond ASCII' => ['profilé'];
+        yield 'a line feed behind a token that would pass' => ["openid\n"];
     }
 
     /**
-     * RFC 6749 §3.3: space-delimited, case-sensitive.
+     * RFC 6749 §3.3
      */
     #[Test]
     public function itParsesASpaceDelimitedListInOrder(): void

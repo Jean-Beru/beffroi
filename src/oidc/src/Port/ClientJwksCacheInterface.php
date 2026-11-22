@@ -2,19 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Port;
+namespace Beffroi\Oidc\Port;
 
-use Heidi\Oidc\Domain\Client\CachedClientJwks;
-use Heidi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\CachedClientJwks;
+use Beffroi\Oidc\Domain\Client\ClientUri;
 
 /**
- * Where the keys read back from a client's "jwks_uri" are kept between requests, with the moment they
- * were read. Shared by the workers of a deployment, so that a rotation of a client costs one fetch and
- * not one per worker.
+ * Filed under the URL it was read from, never under the client: a client that moves its keys is never verified
+ * against what the URL it left answered.
  */
 interface ClientJwksCacheInterface
 {
-    public function read(Client $client): ?CachedClientJwks;
+    public function read(ClientUri $jwksUri): ?CachedClientJwks;
 
-    public function write(Client $client, CachedClientJwks $keys): void;
+    public function write(ClientUri $jwksUri, CachedClientJwks $keys): void;
 }

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Bridge\Webauthn;
+namespace Beffroi\Core\Tests\Bridge\Webauthn;
 
-use Heidi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
-use Heidi\Core\Bridge\Webauthn\StoredMetadata;
-use Heidi\Core\Exception\RuntimeException;
-use Heidi\Core\Tests\Fixture\MetadataBlobs;
+use Beffroi\Core\Bridge\InMemory\InMemoryMetadataBlobStore;
+use Beffroi\Core\Bridge\Webauthn\StoredMetadata;
+use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Core\Tests\Fixture\MetadataBlobs;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -15,10 +15,6 @@ use function strtoupper;
 use Webauthn\MetadataService\Statement\AuthenticatorStatus;
 use Webauthn\MetadataService\Statement\StatusReport;
 
-/**
- * The metadata of the store as the ceremonies read it: by AAGUID, with the status reports in the order
- * the service issued them.
- */
 final class StoredMetadataTest extends TestCase
 {
     private const string AAGUID = '2fc0579f-8113-47ea-b116-bb5a8db9202a';
@@ -38,7 +34,11 @@ final class StoredMetadataTest extends TestCase
     public function theStatementAndTheReportsOfAnAuthenticatorAreFoundByItsAaguid(string $aaguid): void
     {
         // Given
-        $this->store->write('mds', MetadataBlobs::payload([MetadataBlobs::entry(self::AAGUID, [AuthenticatorStatus::FIDO_CERTIFIED, AuthenticatorStatus::USER_VERIFICATION_BYPASS], 'Compromised key')]));
+        $this->store->write('mds', MetadataBlobs::payload([MetadataBlobs::entry(
+            self::AAGUID,
+            [AuthenticatorStatus::FIDO_CERTIFIED, AuthenticatorStatus::USER_VERIFICATION_BYPASS],
+            'Compromised key',
+        )]));
 
         // When
         $statement = $this->metadata->findOneByAAGUID($aaguid);
@@ -46,7 +46,10 @@ final class StoredMetadataTest extends TestCase
 
         // Then
         static::assertSame('Compromised key', $statement?->description);
-        static::assertSame([AuthenticatorStatus::FIDO_CERTIFIED, AuthenticatorStatus::USER_VERIFICATION_BYPASS], array_map(static fn (StatusReport $report): string => $report->status, $reports));
+        static::assertSame(
+            [AuthenticatorStatus::FIDO_CERTIFIED, AuthenticatorStatus::USER_VERIFICATION_BYPASS],
+            array_map(static fn (StatusReport $report): string => $report->status, $reports),
+        );
     }
 
     /**
@@ -59,9 +62,23 @@ final class StoredMetadataTest extends TestCase
     }
 
     /**
-     * The other way round: a document that spells an AAGUID in upper case describes the authenticator
-     * whose data spell it in lower case, as webauthn-lib reads them.
+     * FIDO Metadata Statement v3.1 §4
      */
+    #[Test]
+    public function aStatementThatLeavesOutTheUserVerificationDetailsIsFoundByItsAaguid(): void
+    {
+        // Given
+        $this->store->write('mds', MetadataBlobs::payload([
+            MetadataBlobs::entry(self::AAGUID, description: 'Passkey provider', omitting: ['userVerificationDetails']),
+        ]));
+
+        // When
+        $statement = $this->metadata->findOneByAAGUID(self::AAGUID);
+
+        // Then
+        static::assertSame('Passkey provider', $statement?->description);
+    }
+
     #[Test]
     public function aDocumentSpellingAnAaguidInUpperCaseIsFoundByTheLowerCaseSpelling(): void
     {
@@ -130,8 +147,7 @@ final class StoredMetadataTest extends TestCase
     }
 
     /**
-     * An entry the service keys by attestation certificate identifiers rather than by AAGUID (FIDO
-     * Metadata Service v3 §3.1.1, a U2F authenticator): nothing to find it by here.
+     * FIDO Metadata Service v3.1.1 §3.1.1
      */
     #[Test]
     public function anEntryWithoutAaguidIsIgnored(): void
@@ -149,9 +165,6 @@ final class StoredMetadataTest extends TestCase
         static::assertNull($statement);
     }
 
-    /**
-     * Read once and kept for the life of the process: what the store gets afterwards waits for the next.
-     */
     #[Test]
     public function theStoreIsReadOnce(): void
     {

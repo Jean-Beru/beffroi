@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Domain\Credential;
+namespace Beffroi\Core\Domain\Credential;
 
+use Beffroi\Core\Domain\Encoding\Base64Url;
 use function hash_equals;
-use Heidi\Core\Exception\InvalidArgumentException;
-use function random_bytes;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use function sprintf;
 use function strlen;
 
 /**
- * The "user.id" of WebAuthn Level 3 §5.4.3, what an authenticator stores with a passkey and hands back
- * with an assertion: 64 random bytes drawn once per user, never the "sub" nor the e-mail (§14.6.1, a user
- * handle carries no personal information), and shared by every passkey of the user.
+ * WebAuthn Level 3 §5.4.3, §14.6.1
+ *
+ * Random bytes, never the "sub" nor the e-mail: a user handle carries no personal information.
  */
 final readonly class PasskeyUserHandle
 {
@@ -27,9 +27,17 @@ final readonly class PasskeyUserHandle
         }
     }
 
-    public static function generate(): self
+    public function toDocument(): string
     {
-        return new self(random_bytes(self::LENGTH));
+        return Base64Url::encode($this->value);
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    public static function fromDocument(string $document): self
+    {
+        return new self(Base64Url::decode($document) ?? throw new InvalidArgumentException('A user handle is base64url.'));
     }
 
     public function equals(self $other): bool

@@ -2,42 +2,36 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Domain\Introspection;
+namespace Beffroi\Oidc\Domain\Introspection;
 
-use function array_map;
-use Heidi\Core\Domain\Tenant\Issuer;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Domain\Token\JwtPayload;
-use Heidi\Oidc\Domain\Token\TokenResponse;
-use Heidi\Oidc\Domain\Token\VerifiedAccessToken;
-use Heidi\Oidc\Exception\InvalidArgumentException;
-use function implode;
+use Beffroi\Core\Domain\Tenant\Issuer;
+use Beffroi\Oidc\Domain\Token\JwtPayload;
+use Beffroi\Oidc\Domain\Token\TokenResponse;
+use Beffroi\Oidc\Domain\Token\VerifiedAccessToken;
+use Beffroi\Oidc\Exception\InvalidArgumentException;
 use SensitiveParameter;
 
 /**
- * The answer of the introspection endpoint (RFC 7662 §2.2): "active" as a real boolean, alone when the
- * token is inactive, followed otherwise by the members of §2.2, those of RFC 9068 §2.2.1 and the private
- * ones of the provider (architecture §4.6). Signed on request (RFC 9701 §4).
+ * RFC 7662 §2.2, RFC 9701 §4
  */
 final readonly class IntrospectionResponse
 {
     public const string CONTENT_TYPE = 'application/json';
 
     /**
-     * RFC 9701 §5; the "typ" header drops the "application/" prefix (RFC 7515 §4.1.9).
+     * RFC 9701 §5
      */
     public const string JWT_CONTENT_TYPE = 'application/token-introspection+jwt';
 
     public const string JWT_TYPE = 'token-introspection+jwt';
 
     /**
-     * RFC 7662 §2.2, RFC 6749 §5.1: never cached.
+     * RFC 7662 §2.2, RFC 6749 §5.1
      */
     public const array HEADERS = TokenResponse::HEADERS;
 
     /**
      * @param array<string, mixed> $members "active" first
-     * @param string|null $jwt the signed form of the members (RFC 9701)
      */
     private function __construct(
         public array $members,
@@ -57,28 +51,45 @@ final readonly class IntrospectionResponse
     }
 
     /**
-     * RFC 7662 §2.2, in the order of the section, then the ones of the provider.
+     * RFC 7662 §2.2
      */
     public static function active(VerifiedAccessToken $token, Issuer $issuer): self
     {
-        return new self([
-            'active' => true,
-            'scope' => implode(' ', array_map(static fn (Scope $scope): string => $scope->value, $token->scopes)),
-            'client_id' => $token->client->clientId,
-            'token_type' => TokenResponse::TOKEN_TYPE,
-            'exp' => $token->expiresAt->getTimestamp(),
-            'iat' => $token->issuedAt->getTimestamp(),
-            'sub' => $token->subject->value,
-            'aud' => $token->client->clientId,
-            'iss' => $issuer->value,
-            ...$token->authentication->toClaims(),
-            'sid' => $token->sessionId->toRfc4122(),
-            'grant_id' => $token->grantId->toRfc4122(),
-        ], null);
+        return new self(
+            [
+                'active' => true,
+                'scope' => (string) $token->scopes,
+                'client_id' => $token->client->registration->clientId,
+                'token_type' => $token->confirmation?->scheme() ?? TokenResponse::BEARER,
+                'exp' => $token->expiresAt->getTimestamp(),
+                'iat' => $token->issuedAt->getTimestamp(),
+                'sub' => $token->subject->value,
+                'aud' => $token->audience->claim(),
+                'iss' => $issuer->value,
+                ...($token->signIn?->toClaims() ?? []),
+                'grant_id' => $token->grantId->toRfc4122(),
+                ...(
+                    $token->actor === null
+                        ? []
+                        : [
+                            'act' => $token->actor->toClaim(),
+                        ]
+                ),
+                ...(
+                    $token->authorizationDetails === null
+                        ? []
+                        : [
+                            'authorization_details' => $token->authorizationDetails->toClaim(),
+                        ]
+                ),
+                ...($token->confirmation?->toClaims() ?? []),
+            ],
+            null,
+        );
     }
 
     /**
-     * RFC 9701 §4.
+     * RFC 9701 §4
      */
     public function signed(#[SensitiveParameter] string $jwt): self
     {

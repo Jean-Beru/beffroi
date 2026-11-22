@@ -2,35 +2,48 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Core\Tests\Application\Authentication;
+namespace Beffroi\Core\Tests\Application\Authentication;
 
+use Beffroi\Core\Domain\Identity\UpstreamProvider;
+use Beffroi\Core\Domain\Identity\EmailDomain;
+use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Bridge\InMemory\InMemoryUpstreamProviders;
+use Beffroi\Core\Application\Identity\FederatedDomains;
 use function array_map;
 use DateInterval;
-use Heidi\Core\Application\Authentication\AuthenticationFailedException;
-use Heidi\Core\Application\Authentication\DecoyHash;
-use Heidi\Core\Application\Authentication\PasswordAuthenticator;
-use Heidi\Core\Application\Authentication\SecondFactorRequirement;
-use Heidi\Core\Application\Authentication\SessionOpener;
-use Heidi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
-use Heidi\Core\Bridge\InMemory\InMemoryCredentialRepository;
-use Heidi\Core\Bridge\InMemory\InMemoryUserRepository;
-use Heidi\Core\Bridge\Password\NativePasswordHasher;
-use Heidi\Core\Domain\Credential\PasswordAlgorithm;
-use Heidi\Core\Domain\Credential\PasswordCredential;
-use Heidi\Core\Domain\Credential\PasswordHash;
-use Heidi\Core\Domain\Event\AuthenticationFailed;
-use Heidi\Core\Domain\Event\AuthenticationFailureReason;
-use Heidi\Core\Domain\Event\PasswordRehashed;
-use Heidi\Core\Domain\Event\UserAuthenticated;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Core\Domain\Session\AuthenticationSession;
-use Heidi\Core\Domain\Session\PendingLogin;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Tests\Fixture\FakeAttemptLimiter;
-use Heidi\Core\Tests\Fixture\FakePasswordHasher;
-use Heidi\Core\Tests\Fixture\Fixtures;
-use Heidi\Core\Tests\Fixture\RecordingEventDispatcher;
-use Heidi\Core\Tests\Fixture\Totps;
+use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Application\Credential\ActiveCredentials;
+use Beffroi\Core\Application\Credential\ActivePassword;
+use Beffroi\Core\Application\Authentication\AuthenticationFailedException;
+use Beffroi\Core\Application\Authentication\AuthenticationRefusal;
+use Beffroi\Core\Application\Authentication\DecoyHash;
+use Beffroi\Core\Application\Authentication\PasswordAuthenticator;
+use Beffroi\Core\Application\Authentication\PasswordVerification;
+use Beffroi\Core\Application\Authentication\SecondFactorRequirement;
+use Beffroi\Core\Application\Authentication\SessionOpener;
+use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
+use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
+use Beffroi\Core\Bridge\Password\NativePasswordHasher;
+use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Bridge\Password\Algorithm\Bcrypt;
+use Beffroi\Core\Domain\Credential\PasswordCredential;
+use Beffroi\Core\Domain\Credential\PasswordHash;
+use Beffroi\Core\Domain\Event\AuthenticationFailed;
+use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
+use Beffroi\Core\Domain\Event\PasswordRehashed;
+use Beffroi\Core\Domain\Event\PasswordUsed;
+use Beffroi\Core\Domain\Event\UserAuthenticated;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Session\AuthenticationSession;
+use Beffroi\Core\Domain\Session\PendingLogin;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\PasswordHasherInterface;
+use Beffroi\Core\Tests\Fixture\FakeAttemptLimiter;
+use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Core\Tests\Fixture\Totps;
 use const PASSWORD_BCRYPT;
 use function password_hash;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -59,6 +72,8 @@ final class PasswordAuthenticatorTest extends TestCase
 
     private PasswordAuthenticator $authenticator;
 
+    private InMemoryUpstreamProviders $upstreamProviders;
+
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
@@ -66,13 +81,44 @@ final class PasswordAuthenticatorTest extends TestCase
         $this->users = new InMemoryUserRepository();
         $this->users->save($this->alice);
         $this->credentials = new InMemoryCredentialRepository();
-        $this->credentials->save(new PasswordCredential(Uuid::v7(), $this->alice, new NativePasswordHasher()->hash('correct horse'), Fixtures::now()));
+        $hasher = new FakePasswordHasher();
+        $this->credentials->save(new PasswordCredential(Uuid::v7(), $this->alice, $hasher->hash('correct horse'), Fixtures::now()));
         $this->sessions = new InMemoryAuthenticationSessionRepository();
         $this->events = new RecordingEventDispatcher();
         $this->attempts = new FakeAttemptLimiter(5);
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
-        $hasher = new NativePasswordHasher();
-        $this->authenticator = new PasswordAuthenticator($this->users, $this->credentials, $hasher, new DecoyHash($hasher), new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')), $this->attempts, new SecondFactorRequirement($this->credentials), $this->clock, $this->events);
+        $this->upstreamProviders = new InMemoryUpstreamProviders();
+        $this->authenticator = $this->authenticatorOn($hasher);
+    }
+
+    private function authenticatorOn(
+        PasswordHasherInterface $hasher,
+        ?FakeAttemptLimiter $attempts = null,
+    ): PasswordAuthenticator {
+        return new PasswordAuthenticator(
+            new PasswordVerification(
+                $this->users,
+                $this->credentials,
+                new ActivePassword(new ActiveCredentials($this->credentials)),
+                $hasher,
+                new DecoyHash($hasher, new SymfonyUuidGenerator()),
+                $attempts ?? $this->attempts,
+                new AuthenticationRefusal($this->clock, $this->events),
+                $this->clock,
+                $this->events,
+                new FederatedDomains($this->upstreamProviders),
+            ),
+            new SessionOpener(
+                $this->sessions,
+                new SymfonyUuidGenerator(),
+                $this->clock,
+                $this->events,
+                new AuthenticationRefusal($this->clock, $this->events),
+                new DateInterval('PT8H'),
+            ),
+            new SecondFactorRequirement(new ActiveCredentials($this->credentials)),
+            $this->clock,
+        );
     }
 
     #[Test]
@@ -92,10 +138,12 @@ final class PasswordAuthenticatorTest extends TestCase
         static::assertSame($context, $session->createdFrom);
         static::assertEquals($this->clock->now(), $session->establishedAt);
         static::assertEquals($this->clock->now(), $session->authenticatedAt());
-        static::assertSame([
-            'pwd' => $this->clock->now()
-                ->getTimestamp(),
-        ], $session->proofs->toTimestamps());
+        static::assertSame(
+            [
+                'pwd' => $this->clock->now()->getTimestamp(),
+            ],
+            $session->proofs->toTimestamps(),
+        );
         static::assertEquals($this->clock->now()->modify('+8 hours'), $session->expiresAt);
     }
 
@@ -127,8 +175,25 @@ final class PasswordAuthenticatorTest extends TestCase
         $session = $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
 
         // Then
-        static::assertCount(1, $this->events->events);
+        static::assertCount(1, $this->events->of(UserAuthenticated::class));
         static::assertSame($session, $this->events->of(UserAuthenticated::class)[0]->session);
+    }
+
+    #[Test]
+    public function aRightPasswordAnnouncesThePasswordItAccepted(): void
+    {
+        // Given
+        $context = Fixtures::context($this->clock->now());
+
+        // When
+        $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', $context);
+
+        // Then
+        static::assertCount(2, $this->events->events);
+        $used = $this->events->of(PasswordUsed::class)[0];
+        static::assertSame($this->credentials->findByUser($this->alice, PasswordCredential::class)[0], $used->credential);
+        static::assertSame($context, $used->context);
+        static::assertEquals($this->clock->now(), $used->occurredAt);
     }
 
     #[Test]
@@ -241,10 +306,6 @@ final class PasswordAuthenticatorTest extends TestCase
         static::assertSame($bob, $failure->user);
     }
 
-    /**
-     * The account state is checked after the password: whoever does not know the password cannot tell a
-     * disabled account from a wrong password.
-     */
     #[Test]
     public function aDisabledUserWithAWrongPasswordFailsLikeAnyWrongPassword(): void
     {
@@ -274,6 +335,89 @@ final class PasswordAuthenticatorTest extends TestCase
         } catch (AuthenticationFailedException $exception) {
             // Then
             static::assertSame(AuthenticationFailureReason::DisabledUser, $exception->reason);
+        }
+    }
+
+    /**
+     * Decision 0029, spec/saml.md S-63
+     */
+    #[Test]
+    #[DataProvider('provideFederatedPersons')]
+    public function aPersonOfAFederatedDomainWithTheRightPasswordIsRefused(?string $email, string $username): void
+    {
+        // Given
+        $this->upstreamProviders->declare($this->tenant, new UpstreamProvider('https://idp.acme.example/saml', [new EmailDomain('acme.example')]));
+        if ($email !== null) {
+            $this->alice->changeEmail(new EmailAddress($email), true, Fixtures::now());
+        }
+        $this->alice->rename($username, Fixtures::now());
+
+        // When
+        $exception = $this->failToAuthenticate($username, 'correct horse');
+
+        // Then
+        static::assertSame(AuthenticationFailureReason::FederatedDomain, $exception->reason);
+    }
+
+    /**
+     * @return iterable<string, array{string|null, string}>
+     */
+    public static function provideFederatedPersons(): iterable
+    {
+        yield 'by their mailbox' => ['alice@ACME.example', 'alice'];
+        yield 'by their username' => [null, 'alice@acme.example'];
+        yield 'by a username whose domain the rule does not read' => [null, 'alice@acme.example.'];
+    }
+
+    /**
+     * Decision 0029
+     */
+    #[Test]
+    public function aPersonOfAFederatedDomainWithAWrongPasswordFailsLikeAnyWrongPassword(): void
+    {
+        // Given
+        $this->upstreamProviders->declare($this->tenant, new UpstreamProvider('https://idp.acme.example/saml', [new EmailDomain('acme.example')]));
+        $this->alice->changeEmail(new EmailAddress('alice@acme.example'), true, Fixtures::now());
+
+        // When
+        $exception = $this->failToAuthenticate('alice', 'wrong');
+
+        // Then
+        static::assertSame(AuthenticationFailureReason::InvalidCredential, $exception->reason);
+    }
+
+    /**
+     * Decision 0029
+     */
+    #[Test]
+    public function aPersonOfAnotherDomainSignsInWithTheirPassword(): void
+    {
+        // Given
+        $this->upstreamProviders->declare($this->tenant, new UpstreamProvider('https://idp.acme.example/saml', [new EmailDomain('acme.example')]));
+        $this->alice->changeEmail(new EmailAddress('alice@eu.acme.example'), true, Fixtures::now());
+
+        // When
+        $session = $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertInstanceOf(AuthenticationSession::class, $session);
+    }
+
+    #[Test]
+    public function aTenantThatAdmitsNoPasswordRefusesBeforeNamingAnybody(): void
+    {
+        // Given
+        $hardened = Fixtures::hardenedTenant();
+
+        // When
+        try {
+            $this->authenticator->authenticate($hardened, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
+            static::fail('Authentication should have failed.');
+        } catch (AuthenticationFailedException $exception) {
+            // Then
+            static::assertSame(AuthenticationFailureReason::BelowTheFloor, $exception->reason);
+            static::assertSame([], $this->attempts->attempts);
+            static::assertSame([], $this->events->of(PasswordUsed::class));
         }
     }
 
@@ -315,14 +459,21 @@ final class PasswordAuthenticatorTest extends TestCase
         // Given
         $carol = Fixtures::user($this->tenant, 'carol', 'carol-subject');
         $this->users->save($carol);
-        $this->credentials->save(new PasswordCredential(Uuid::v7(), $carol, new PasswordHash(PasswordAlgorithm::Bcrypt, password_hash('carol pass', PASSWORD_BCRYPT)), Fixtures::now()));
+        $this->credentials->save(
+            new PasswordCredential(
+                Uuid::v7(),
+                $carol,
+                new PasswordHash(new Bcrypt(), password_hash('carol pass', PASSWORD_BCRYPT)),
+                Fixtures::now(),
+            ),
+        );
 
         // When
-        $this->authenticator->authenticate($this->tenant, 'carol', 'carol pass', Fixtures::context());
+        $this->authenticatorOn(new NativePasswordHasher())->authenticate($this->tenant, 'carol', 'carol pass', Fixtures::context());
 
         // Then
         $credential = $this->credentials->findByUser($carol, PasswordCredential::class)[0];
-        static::assertSame(PasswordAlgorithm::Argon2id, $credential?->hash->algorithm);
+        static::assertSame(Argon2id::NAME, $credential?->hash->algorithm->name());
         static::assertEquals($this->clock->now(), $credential->hashChangedAt);
         static::assertTrue(new NativePasswordHasher()->verify($credential->hash, 'carol pass'));
     }
@@ -333,10 +484,17 @@ final class PasswordAuthenticatorTest extends TestCase
         // Given
         $carol = Fixtures::user($this->tenant, 'carol', 'carol-subject');
         $this->users->save($carol);
-        $this->credentials->save(new PasswordCredential(Uuid::v7(), $carol, new PasswordHash(PasswordAlgorithm::Bcrypt, password_hash('carol pass', PASSWORD_BCRYPT)), Fixtures::now()));
+        $this->credentials->save(
+            new PasswordCredential(
+                Uuid::v7(),
+                $carol,
+                new PasswordHash(new Bcrypt(), password_hash('carol pass', PASSWORD_BCRYPT)),
+                Fixtures::now(),
+            ),
+        );
 
         // When
-        $this->authenticator->authenticate($this->tenant, 'carol', 'carol pass', Fixtures::context());
+        $this->authenticatorOn(new NativePasswordHasher())->authenticate($this->tenant, 'carol', 'carol pass', Fixtures::context());
 
         // Then
         static::assertCount(1, $this->events->of(PasswordRehashed::class));
@@ -344,8 +502,7 @@ final class PasswordAuthenticatorTest extends TestCase
     }
 
     /**
-     * Decision 0006: five attempts a minute on a user, the sixth refused before anything is verified, the
-     * right password included.
+     * Decision 0006
      */
     #[Test]
     public function theSixthAttemptIsRefusedWhateverThePassword(): void
@@ -396,8 +553,7 @@ final class PasswordAuthenticatorTest extends TestCase
     }
 
     /**
-     * Decision 0006: a refusal before the hash, the user unknown, without a password or past the limit,
-     * still pays a hash, the decoy, so that its time does not tell a known user from an unknown one.
+     * Decision 0006
      */
     #[Test]
     #[DataProvider('provideRefusalsBeforeTheHash')]
@@ -406,7 +562,7 @@ final class PasswordAuthenticatorTest extends TestCase
         // Given
         $this->users->save(Fixtures::user($this->tenant, 'bob', 'bob-subject'));
         $hasher = new FakePasswordHasher();
-        $authenticator = new PasswordAuthenticator($this->users, $this->credentials, $hasher, new DecoyHash($hasher), new SessionOpener($this->sessions, $this->clock, $this->events, new DateInterval('PT8H')), new FakeAttemptLimiter($allowedAttempts), new SecondFactorRequirement($this->credentials), $this->clock, $this->events);
+        $authenticator = $this->authenticatorOn($hasher, new FakeAttemptLimiter($allowedAttempts));
 
         // When
         try {
@@ -430,9 +586,6 @@ final class PasswordAuthenticatorTest extends TestCase
         yield 'an attempt too many' => ['alice', 0];
     }
 
-    /**
-     * The attempt is counted before the password is verified, on the user that was named.
-     */
     #[Test]
     public function anAttemptIsCountedBeforeThePasswordIsVerified(): void
     {
@@ -443,10 +596,6 @@ final class PasswordAuthenticatorTest extends TestCase
         static::assertSame([$this->alice->id->toRfc4122()], $this->attempts->attempts);
     }
 
-    /**
-     * A limit per user cannot count a user who does not exist; the decoy hash makes the attempt cost the
-     * same all the same.
-     */
     #[Test]
     public function anUnknownUserIsNotCounted(): void
     {
@@ -471,9 +620,6 @@ final class PasswordAuthenticatorTest extends TestCase
         static::assertSame([$bob->id->toRfc4122()], $this->attempts->attempts);
     }
 
-    /**
-     * A correct password empties the count: whoever tried before did not have it.
-     */
     #[Test]
     public function aSuccessfulLoginEmptiesTheCountOfTheUser(): void
     {
@@ -495,9 +641,6 @@ final class PasswordAuthenticatorTest extends TestCase
         static::assertSame([], $this->attempts->attempts);
     }
 
-    /**
-     * A disabled user with the right password is not a login: the count stays.
-     */
     #[Test]
     public function aDisabledUserWithTheRightPasswordKeepsTheCount(): void
     {
@@ -512,8 +655,7 @@ final class PasswordAuthenticatorTest extends TestCase
     }
 
     /**
-     * Architecture §3.2: a password alone signs nobody in who holds an active second factor; the login is
-     * held until the code, and LoginCompletion opens the session on both.
+     * Architecture §3.2
      */
     #[Test]
     public function aRightPasswordOfAUserWhoHoldsASecondFactorHoldsTheLoginInsteadOfOpeningASession(): void
@@ -545,11 +687,8 @@ final class PasswordAuthenticatorTest extends TestCase
         static::assertSame([], $this->sessions->findActiveByUser($this->alice, $this->clock->now()));
     }
 
-    /**
-     * Nothing happened to the user yet: the second step announces its outcome, accepted or refused.
-     */
     #[Test]
-    public function aHeldLoginAnnouncesNothing(): void
+    public function aHeldLoginAnnouncesThePasswordAndNoOutcome(): void
     {
         // Given
         $this->credentials->save(Totps::credential($this->alice, new FakePasswordHasher()));
@@ -558,13 +697,10 @@ final class PasswordAuthenticatorTest extends TestCase
         $this->authenticator->authenticate($this->tenant, 'alice', 'correct horse', Fixtures::context($this->clock->now()));
 
         // Then
-        static::assertSame([], $this->events->events);
+        static::assertCount(1, $this->events->events);
+        static::assertCount(1, $this->events->of(PasswordUsed::class));
     }
 
-    /**
-     * The password was the right one, whoever tried before did not have it: the count is emptied whether
-     * the login is held or not, as on the firewall of the bundle.
-     */
     #[Test]
     public function aHeldLoginEmptiesTheCountOfTheUser(): void
     {
@@ -581,9 +717,6 @@ final class PasswordAuthenticatorTest extends TestCase
         static::assertSame([], $this->attempts->attempts);
     }
 
-    /**
-     * The password was used, and rehashed when needed, at the one step that has it in clear.
-     */
     #[Test]
     public function aHeldLoginDatesTheUseOfThePassword(): void
     {

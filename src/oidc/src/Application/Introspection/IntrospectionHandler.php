@@ -2,27 +2,29 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Application\Introspection;
+namespace Beffroi\Oidc\Application\Introspection;
 
-use Heidi\Core\Domain\Session\RequestContext;
-use Heidi\Core\Domain\Tenant\Tenant;
-use Heidi\Core\Port\JwsSignerInterface;
-use Heidi\Core\Port\SignatureAlgorithmsInterface;
-use Heidi\Oidc\Application\Client\ClientAuthenticator;
-use Heidi\Oidc\Application\Token\AccessTokenInspector;
-use Heidi\Oidc\Application\Token\TokenRequest;
-use Heidi\Oidc\Domain\Client\Client;
-use Heidi\Oidc\Domain\Introspection\IntrospectionResponse;
-use Heidi\Oidc\Domain\Token\JwtPayload;
-use Heidi\Oidc\Exception\InvalidClientException;
-use Heidi\Oidc\Exception\InvalidTokenException;
-use Heidi\Oidc\Exception\OAuth2Exception;
-use Heidi\Oidc\Port\EndpointLocatorInterface;
+use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\JwsSignerInterface;
+use Beffroi\Core\Port\SignatureAlgorithmsInterface;
+use Beffroi\Oidc\Application\Client\ClientAuthenticator;
+use Beffroi\Oidc\Application\Request\RequestParameters;
+use Beffroi\Oidc\Application\Token\AccessTokenInspector;
+use Beffroi\Oidc\Domain\Client\Certificate\ClientCertificate;
+use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Event\IntrospectionAnswered;
+use Beffroi\Oidc\Domain\Introspection\IntrospectionResponse;
+use Beffroi\Oidc\Domain\Token\InspectedAccessToken;
+use Beffroi\Oidc\Domain\Token\JwtPayload;
+use Beffroi\Oidc\Exception\InvalidClientException;
+use Beffroi\Oidc\Exception\InvalidTokenException;
+use Beffroi\Oidc\Exception\OAuth2Exception;
+use Beffroi\Oidc\Port\EndpointLocatorInterface;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
- * The introspection endpoint (RFC 7662 §2, architecture §4.12). The caller is a confidential client (§2.1);
- * a token is described to the client it was issued to and to nobody else (§2.2, §4); "token_type_hint" is
- * ignored. When asked, the answer is signed as RFC 9701 §4 and §5 describe.
+ * RFC 7662 §2, RFC 9701 §4, §5
  */
 final readonly class IntrospectionHandler
 {
@@ -32,48 +34,75 @@ final readonly class IntrospectionHandler
         private AccessTokenInspector $tokens,
         private JwsSignerInterface $signer,
         private SignatureAlgorithmsInterface $algorithms,
+        private EventDispatcherInterface $events,
     ) {
     }
 
     /**
-     * @param array<string, mixed> $parameters the form parameters of the request body
-     * @param bool $signed a signed response was asked for (RFC 9701 §4)
+     * @param array<string, mixed> $parameters
      *
-     * @throws OAuth2Exception invalid_client or invalid_request; never for a token that is not active
+     * @throws OAuth2Exception invalid_client or invalid_request, never for a token that is not active
      */
-    public function handle(Tenant $tenant, ?string $authorizationHeader, array $parameters, RequestContext $context, bool $signed): IntrospectionResponse
-    {
-        $caller = $this->clients->authenticate($tenant, $this->endpoints->locate($tenant)->introspection, $authorizationHeader, $parameters, $context);
-        if ($caller->isPublic()) {
+    public function handle(
+        Tenant $tenant,
+        ?string $authorizationHeader,
+        array $parameters,
+        RequestContext $context,
+        bool $signed,
+        ?ClientCertificate $certificate = null,
+    ): IntrospectionResponse {
+        $caller = $this->clients->authenticate(
+            $tenant,
+            $this->endpoints->locate($tenant)->introspection,
+            $authorizationHeader,
+            $parameters,
+            $context,
+            $certificate,
+        )->client;
+        if ($caller->registration->isPublic()) {
             throw new InvalidClientException('The introspection endpoint requires client authentication (RFC 7662 section 2.1); a public client has none.');
         }
-        $request = new TokenRequest($parameters);
+        $request = RequestParameters::of($parameters);
         $token = $request->required('token');
         $request->optional('token_type_hint');
-        $response = $this->describe($tenant, $caller, $token, $context);
+        $described = $this->tokenOfTheCaller($tenant, $caller, $token, $context);
+        $response = $described === null
+            ? IntrospectionResponse::inactive()
+            : IntrospectionResponse::active($described->token, $tenant->issuer);
+        $response = $signed ? $this->sign($tenant, $caller, $response, $context) : $response;
+        $person = $described?->user;
+        if ($person !== null) {
+            $this->events->dispatch(new IntrospectionAnswered(
+                $context->receivedAt,
+                $tenant,
+                $caller->registration->clientId,
+                $person->subject,
+                $context,
+            ));
+        }
 
-        return $signed ? $this->sign($tenant, $caller, $response, $context) : $response;
+        return $response;
     }
 
-    private function describe(Tenant $tenant, Client $caller, string $token, RequestContext $context): IntrospectionResponse
+    /**
+     * RFC 7662 §2.2, §4
+     */
+    private function tokenOfTheCaller(Tenant $tenant, Client $caller, string $token, RequestContext $context): ?InspectedAccessToken
     {
         try {
             $inspected = $this->tokens->inspect($tenant, $token, $context->receivedAt);
         } catch (InvalidTokenException) {
-            return IntrospectionResponse::inactive();
-        }
-        if (! $inspected->token->client->equals($caller)) {
-            return IntrospectionResponse::inactive();
+            return null;
         }
 
-        return IntrospectionResponse::active($inspected->token, $tenant->issuer);
+        return $inspected->token->client->equals($caller) ? $inspected : null;
     }
 
     private function sign(Tenant $tenant, Client $caller, IntrospectionResponse $response, RequestContext $context): IntrospectionResponse
     {
         $payload = JwtPayload::encode([
             'iss' => (string) $tenant->issuer,
-            'aud' => $caller->clientId,
+            'aud' => $caller->registration->clientId,
             'iat' => $context->receivedAt->getTimestamp(),
             'token_introspection' => $response->members,
         ]);

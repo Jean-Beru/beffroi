@@ -1,0 +1,306 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Tests\Symfony\Unit\Push;
+
+use App\Http\Timeout;
+use App\Ciba\WebPushApprovalChannel;
+use App\Locale\ServedLocales;
+use App\Locale\UserLocale;
+use App\Messenger\NotificationNotDeliveredException;
+use App\Push\WebPushSender;
+use Beffroi\Core\Application\Push\PushSubscriptionRevocation;
+use Beffroi\Core\Bridge\InMemory\InMemoryPushSubscriptionRepository;
+use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
+use Beffroi\Core\Bridge\Key\SealedKeyProvider;
+use Beffroi\Core\Domain\Identity\Profile;
+use Beffroi\Core\Domain\Identity\PushSubscription;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\Keys;
+use Beffroi\Oidc\Domain\Ciba\BindingMessage;
+use Beffroi\Oidc\Domain\Ciba\PendingApproval;
+use function array_shift;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
+use Symfony\Component\Clock\MockClock;
+use Symfony\Component\HttpClient\MockHttpClient;
+use Symfony\Component\HttpClient\Response\MockResponse;
+use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\HttpClient\ResponseInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
+
+/**
+ * RFC 8030, RFC 8291, RFC 8292, BCP 10027 §5.2
+ */
+final class WebPushApprovalChannelTest extends TestCase
+{
+    private const string ENDPOINT = 'https://push.example/f/AbCdEf';
+
+    private const string PUBLIC_KEY = 'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM';
+
+    private const string AUTH_SECRET = 'tBHItJI5svbpez7KI4CCXg';
+
+    private Tenant $tenant;
+
+    private User $alice;
+
+    private MockClock $clock;
+
+    private InMemoryPushSubscriptionRepository $subscriptions;
+
+    private InMemoryTenantKeyRepository $keys;
+
+    /**
+     * @var list<MockResponse>
+     */
+    private array $requests = [];
+
+    /**
+     * @var list<string>
+     */
+    private array $askedIn = [];
+
+    protected function setUp(): void
+    {
+        $this->tenant = Fixtures::tenant();
+        $this->alice = Fixtures::user($this->tenant);
+        $this->clock = new MockClock('2026-09-28T09:00:00+00:00');
+        $this->subscriptions = new InMemoryPushSubscriptionRepository();
+        $this->keys = new InMemoryTenantKeyRepository();
+        $this->activeKey();
+    }
+
+    #[Test]
+    public function aUserWithNoBrowserIsToldNothingAndNothingFails(): void
+    {
+        // Given
+        $channel = $this->channel(new MockResponse('', [
+            'http_code' => 500,
+        ]));
+
+        // When
+        $channel->tell($this->alice, $this->approval());
+
+        // Then
+        static::assertSame([], $this->requests);
+    }
+
+    /**
+     * BCP 10027 §5.2
+     */
+    #[Test]
+    public function aBrowserIsToldWhoIsAskingAndWhereToAnswer(): void
+    {
+        // Given
+        $this->subscribed();
+        $channel = $this->channel(new MockResponse('', [
+            'http_code' => 201,
+        ]));
+
+        // When
+        $channel->tell($this->alice, $this->approval());
+
+        // Then
+        static::assertCount(1, $this->requests);
+        static::assertSame(self::ENDPOINT, $this->requests[0]->getRequestUrl());
+        static::assertNotNull($this->subscriptions->findActiveByUser($this->alice)[0]->lastPushedAt);
+    }
+
+    /**
+     * Architecture §5.7, OIDC Core §5.1
+     */
+    #[Test]
+    public function theNotificationIsWrittenInTheLanguageTheUserReads(): void
+    {
+        // Given
+        $this->alice->updateProfile(new Profile(locale: 'fr-CA'), $this->clock->now());
+        $this->subscribed();
+        $channel = $this->channel(new MockResponse('', [
+            'http_code' => 201,
+        ]));
+
+        // When
+        $channel->tell($this->alice, $this->approval());
+
+        // Then
+        static::assertSame(['fr', 'fr'], $this->askedIn);
+    }
+
+    /**
+     * RFC 8030 §5.2
+     */
+    #[Test]
+    public function theMessageIsWorthDeliveringAsLongAsTheRequestIs(): void
+    {
+        // Given
+        $this->subscribed();
+        $channel = $this->channel(new MockResponse('', [
+            'http_code' => 201,
+        ]));
+
+        // When
+        $channel->tell($this->alice, $this->approval());
+
+        // Then
+        $headers = $this->requests[0]->getRequestOptions()['headers'] ?? null;
+        static::assertIsIterable($headers);
+        static::assertContains('TTL: 300', $headers);
+    }
+
+    /**
+     * RFC 8030 §7.3
+     */
+    #[Test]
+    public function aBrowserThePushServiceSaysIsGoneIsTakenOut(): void
+    {
+        // Given
+        $this->subscribed();
+        $channel = $this->channel(new MockResponse('', [
+            'http_code' => 410,
+        ]));
+
+        // When
+        $channel->tell($this->alice, $this->approval());
+
+        // Then
+        static::assertSame([], $this->subscriptions->findActiveByUser($this->alice));
+    }
+
+    /**
+     * Architecture §5.6
+     */
+    #[Test]
+    public function aPushServiceThatDidNotAnswerBringsTheLaneBack(): void
+    {
+        // Given
+        $this->subscribed();
+        $channel = $this->channel(new MockResponse('', [
+            'http_code' => 503,
+        ]));
+
+        // Then
+        $this->expectException(NotificationNotDeliveredException::class);
+        $this->expectExceptionMessageIsOrContains('No browser of this user was reached');
+
+        // When
+        $channel->tell($this->alice, $this->approval());
+    }
+
+    #[Test]
+    public function oneBrowserReachedIsEnough(): void
+    {
+        // Given
+        $this->subscribed();
+        $this->subscribed('https://push.example/f/Other');
+        $channel = $this->channel(
+            new MockResponse('', [
+                'http_code' => 503,
+            ]),
+            new MockResponse('', [
+                'http_code' => 201,
+            ]),
+        );
+
+        // When
+        $channel->tell($this->alice, $this->approval());
+
+        // Then
+        static::assertCount(2, $this->requests);
+    }
+
+    private function channel(MockResponse ...$responses): WebPushApprovalChannel
+    {
+        $http = new MockHttpClient(function (string $method, string $url, array $options) use (&$responses): ResponseInterface {
+            $response = array_shift($responses) ?? new MockResponse('', [
+                'http_code' => 201,
+            ]);
+            $this->requests[] = $response;
+
+            return $response;
+        });
+
+        return new WebPushApprovalChannel(
+            $this->subscriptions,
+            new PushSubscriptionRevocation($this->subscriptions, $this->clock),
+            new WebPushSender(
+                new SealedKeyProvider($this->keys, Keys::opened()),
+                $http,
+                $this->clock,
+                'mailto:operator@acme.example',
+                new Timeout(1.0),
+            ),
+            $this->translator(),
+            new UserLocale(new ServedLocales(['en', 'fr'], 'en')),
+            $this->clock,
+            new NullLogger(),
+        );
+    }
+
+    private function translator(): TranslatorInterface
+    {
+        $translator = self::createStub(TranslatorInterface::class);
+        $translator
+            ->method('trans')
+            ->willReturnCallback(
+                function (string $id, array $parameters = [], ?string $domain = null, ?string $locale = null): string {
+                    $this->askedIn[] = (string) $locale;
+                    return $id;
+                },
+            );
+
+        return $translator;
+    }
+
+    private function approval(): PendingApproval
+    {
+        return new PendingApproval(
+            $this->tenant,
+            $this->alice->id,
+            'Payment terminal at the counter',
+            new BindingMessage('Payment of 42 euros'),
+            $this->clock->now()->modify('+300 seconds'),
+            'https://id.acme.example/approvals',
+        );
+    }
+
+    private function subscribed(string $endpoint = self::ENDPOINT): PushSubscription
+    {
+        $subscription = new PushSubscription(
+            Uuid::v7(),
+            $this->alice,
+            $endpoint,
+            self::PUBLIC_KEY,
+            self::AUTH_SECRET,
+            Keys::applicationServerPair()->kid,
+            'Alice at the counter',
+            $this->clock->now(),
+        );
+        $this->subscriptions->save($subscription);
+
+        return $subscription;
+    }
+
+    private function activeKey(): TenantKey
+    {
+        $pair = Keys::applicationServerPair();
+        $key = new TenantKey(
+            $pair->kid,
+            $this->tenant,
+            Algorithms::vapid(),
+            $pair->publicJwk,
+            Keys::sealer()->seal($this->tenant, $pair->privateJwk),
+            $this->clock->now(),
+            $this->clock->now(),
+        );
+        $key->activate($this->clock->now());
+        $this->keys->save($key);
+
+        return $key;
+    }
+}

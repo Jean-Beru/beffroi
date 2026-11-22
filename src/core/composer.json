@@ -1,6 +1,6 @@
 {
-    "name": "heidi/core",
-    "description": "Identity core of the IdP: tenants, users, credentials, linked identities, groups, authentication sessions, signing keys. Pure PHP.",
+    "name": "beffroi/core",
+    "description": "Identity core of the IdP: tenants, users, credentials, linked identities, groups, authentication sessions, keys. Pure PHP.",
     "type": "library",
     "license": "MIT",
     "keywords": [
@@ -14,24 +14,27 @@
     ],
     "require": {
         "php": ">=8.4",
+        "ext-intl": "*",
         "paragonie/constant_time_encoding": "^3.1",
         "psr/clock": "^1.0",
         "psr/event-dispatcher": "^1.0",
         "psr/log": "^3.0",
+        "spomky-labs/aes-key-wrap": "^7.0",
         "spomky-labs/otphp": "^11.5",
+        "spomky-labs/pki-framework": "^1.2.1",
         "symfony/key-management": "8.2.*",
         "symfony/uid": "8.2.*",
-        "web-auth/webauthn-lib": "^5.3",
+        "web-auth/webauthn-lib": "^5.3.12",
         "web-token/jwt-library": "^4.2"
     },
     "autoload": {
         "psr-4": {
-            "Heidi\\Core\\": "src/"
+            "Beffroi\\Core\\": "src/"
         }
     },
     "extra": {
         "thanks": {
-            "name": "heidi/framework"
+            "name": "beffroi/framework"
         }
     }
 }

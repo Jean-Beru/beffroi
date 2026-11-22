@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Bundle\Tests\Unit\Webauthn;
+namespace App\Tests\Symfony\Unit\Webauthn;
 
 use function file_get_contents;
-use Heidi\Bundle\Webauthn\FileMetadataBlobStore;
-use Heidi\Core\Exception\InvalidArgumentException;
+use App\Webauthn\FileAuthenticatorListStore;
+use App\Webauthn\FileMetadataBlobStore;
+use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -15,7 +16,7 @@ use function sys_get_temp_dir;
 use function uniqid;
 
 /**
- * The FIDO metadata as files (architecture §3.4): one document per name, read in the order of the names.
+ * Architecture §3.4
  */
 final class FileMetadataBlobStoreTest extends TestCase
 {
@@ -25,14 +26,13 @@ final class FileMetadataBlobStoreTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->directory = sys_get_temp_dir() . '/heidi-bundle-tests/webauthn-' . uniqid();
+        $this->directory = sys_get_temp_dir() . '/beffroi-integration-tests/webauthn-' . uniqid();
         $this->store = new FileMetadataBlobStore($this->directory);
     }
 
     protected function tearDown(): void
     {
-        new Filesystem()
-            ->remove($this->directory);
+        new Filesystem()->remove($this->directory);
     }
 
     #[Test]
@@ -57,10 +57,13 @@ final class FileMetadataBlobStoreTest extends TestCase
         $documents = $this->store->readAll();
 
         // Then
-        static::assertSame([
-            'mds-a' => '{"no": 1}',
-            'statement-b' => '{"no": 2}',
-        ], $documents);
+        static::assertSame(
+            [
+                'mds-a' => '{"no": 1}',
+                'statement-b' => '{"no": 2}',
+            ],
+            $documents,
+        );
     }
 
     #[Test]
@@ -73,9 +76,12 @@ final class FileMetadataBlobStoreTest extends TestCase
         $this->store->write('mds-a', '{"no": 2}');
 
         // Then
-        static::assertSame([
-            'mds-a' => '{"no": 2}',
-        ], $this->store->readAll());
+        static::assertSame(
+            [
+                'mds-a' => '{"no": 2}',
+            ],
+            $this->store->readAll(),
+        );
     }
 
     #[Test]
@@ -83,6 +89,25 @@ final class FileMetadataBlobStoreTest extends TestCase
     {
         // When / Then
         static::assertSame([], $this->store->readAll());
+    }
+
+    #[Test]
+    public function aDocumentOfADirectoryInsideTheStorageIsNotRead(): void
+    {
+        // Given
+        $this->store->write('mds-a', '{"no": 1}');
+        new FileAuthenticatorListStore($this->directory . '/community')->write('{"list": 1}');
+
+        // When
+        $documents = $this->store->readAll();
+
+        // Then
+        static::assertSame(
+            [
+                'mds-a' => '{"no": 1}',
+            ],
+            $documents,
+        );
     }
 
     /**

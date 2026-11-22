@@ -2,50 +2,73 @@
 
 declare(strict_types=1);
 
-namespace Heidi\Oidc\Application\Claims;
+namespace Beffroi\Oidc\Application\Claims;
 
 use function array_filter;
 use function array_keys;
 use function array_map;
 use function array_merge;
 use function array_values;
-use Heidi\Core\Domain\Identity\Address;
-use Heidi\Core\Domain\Identity\User;
-use Heidi\Oidc\Domain\Scope\Scope;
-use Heidi\Oidc\Port\ClaimsProviderInterface;
+use Beffroi\Core\Domain\Identity\Address;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Port\ClaimsProviderInterface;
 use function in_array;
 
 /**
- * The standard claims of OIDC Core §5.1: the four scopes of §5.4, a claim asked for by name (§5.5) served
- * whether or not its scope was. An absent attribute yields no claim, its verification flag included; a
- * flag present is a JSON boolean (architecture §9).
+ * OIDC Core §5.1, §5.4, §5.5
+ *
+ * A claim asked for by name is served whatever the scopes: ClaimsAskedByName held it to the registered ones.
  */
 final readonly class StandardClaimsProvider implements ClaimsProviderInterface
 {
     /**
-     * OIDC Core §5.4, in the order of §5.1.
+     * OIDC Core §5.4
      *
      * @var array<string, list<string>>
      */
     private const array SCOPES = [
-        'profile' => ['name', 'family_name', 'given_name', 'middle_name', 'nickname', 'preferred_username', 'profile', 'picture', 'website', 'gender', 'birthdate', 'zoneinfo', 'locale', 'updated_at'],
+        'profile' => [
+            'name',
+            'family_name',
+            'given_name',
+            'middle_name',
+            'nickname',
+            'preferred_username',
+            'profile',
+            'picture',
+            'website',
+            'gender',
+            'birthdate',
+            'zoneinfo',
+            'locale',
+            'updated_at',
+        ],
         'email' => ['email', 'email_verified'],
         'address' => ['address'],
         'phone' => ['phone_number', 'phone_number_verified'],
     ];
 
-    public function claims(User $user, array $scopes, array $requested): array
+    public function claims(User $user, ?Scopes $scopes, array $requested): array
     {
-        $due = array_keys($requested);
-        foreach ($scopes as $scope) {
-            $due = [...$due, ...self::SCOPES[$scope->value] ?? []];
-        }
+        $due = [...array_keys($requested), ...($scopes === null ? [] : $this->claimsOf($scopes))];
 
         $claims = [];
         foreach (self::valuesOf($user) as $name => $value) {
             if (in_array($name, $due, true) && $value !== null) {
                 $claims[$name] = $value;
             }
+        }
+
+        return $claims;
+    }
+
+    public function claimsOf(Scopes $scopes): array
+    {
+        $claims = [];
+        foreach ($scopes->all as $scope) {
+            $claims = [...$claims, ...(self::SCOPES[$scope->value] ?? [])];
         }
 
         return $claims;
@@ -62,8 +85,6 @@ final readonly class StandardClaimsProvider implements ClaimsProviderInterface
     }
 
     /**
-     * In the order of OIDC Core §5.1, null when the attribute is absent.
-     *
      * @return array<string, mixed>
      */
     private static function valuesOf(User $user): array
@@ -94,7 +115,7 @@ final readonly class StandardClaimsProvider implements ClaimsProviderInterface
     }
 
     /**
-     * OIDC Core §5.1.1: no member, no claim.
+     * OIDC Core §5.1.1
      *
      * @return array<string, string>|null
      */
@@ -103,14 +124,17 @@ final readonly class StandardClaimsProvider implements ClaimsProviderInterface
         if ($address === null) {
             return null;
         }
-        $members = array_filter([
-            'formatted' => $address->formatted,
-            'street_address' => $address->streetAddress,
-            'locality' => $address->locality,
-            'region' => $address->region,
-            'postal_code' => $address->postalCode,
-            'country' => $address->country,
-        ], static fn (?string $member): bool => $member !== null);
+        $members = array_filter(
+            [
+                'formatted' => $address->formatted,
+                'street_address' => $address->streetAddress,
+                'locality' => $address->locality,
+                'region' => $address->region,
+                'postal_code' => $address->postalCode,
+                'country' => $address->country,
+            ],
+            static fn (?string $member): bool => $member !== null,
+        );
 
         return $members === [] ? null : $members;
     }
