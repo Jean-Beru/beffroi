@@ -141,5 +141,11 @@
             "phpstan/extension-installer": true,
             "symfony/runtime": false
         }
+    },
+    "extra": {
+        "bamarni-bin": {
+            "bin-links": false,
+            "forward-command": false
+        }
     }
 }
