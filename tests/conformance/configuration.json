@@ -609,7 +609,7 @@
         "fapi2-security-profile-final-par-ensure-reused-request-uri-prior-to-auth-completion-succeeds": {
             "browser": [
                 {
-                    "comment": "FAPI 2.0 Security Profile §5.3.1: the reference is spent when the request is granted, not when it is read. The first visit must go no further than the page the provider shows, so this block only looks at it; the second visit, on the same reference, signs in and completes.",
+                    "comment": "FAPI 2.0 Security Profile §5.3.2.2, note 3: the reference is spent when the request is granted, not when it is read. The first visit must go no further than the page the provider shows, so this block only looks at it; the second visit, on the same reference, signs in and completes.",
                     "match": "{BEFFROI_ISSUER}/authorize*",
                     "tasks": [
                         {
