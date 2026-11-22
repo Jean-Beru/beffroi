@@ -122,8 +122,12 @@ final class MailSenderConfirmationTest extends TestCase
         $keys->save(MailSigningKeys::smime($user->tenant));
 
         // When
-        $sent = $this->sender(MailProtections::over($keys, new MockClock(self::NOW)))
-            ->sendTheConfirmation($user, self::ADDRESS, 'Your confirmation code', 'Your code is 123456.');
+        $sent = $this->sender(MailProtections::over($keys, new MockClock(self::NOW)))->sendTheConfirmation(
+            $user,
+            self::ADDRESS,
+            'Your confirmation code',
+            'Your code is 123456.',
+        );
 
         // Then
         static::assertTrue($sent);
@@ -137,6 +141,11 @@ final class MailSenderConfirmationTest extends TestCase
     {
         $transport = $this->transport;
 
-        return new MailSender(static fn (): TransportInterface => $transport, 'Acme <no-reply@acme.example>', $protection ?? MailProtections::plain(), new NullLogger());
+        return new MailSender(
+            static fn (): TransportInterface => $transport,
+            'Acme <no-reply@acme.example>',
+            $protection ?? MailProtections::plain(),
+            new NullLogger(),
+        );
     }
 }

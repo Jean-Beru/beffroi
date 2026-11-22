@@ -189,7 +189,14 @@ final class MailProtectionTest extends TestCase
         // Then
         static::assertStringContainsString('protocol="application/pkcs7-signature"', $protected);
         static::assertStringNotContainsString('application/pkcs7-mime', $protected);
-        static::assertSame('sender', self::signerOf(MailProtections::over($this->keys, new MockClock(self::NOW), $this->logger)->ofAConfirmation($person, new EmailAddress(MailSigningKeys::SENDER), self::mail())));
+        static::assertSame(
+            'sender',
+            self::signerOf(MailProtections::over($this->keys, new MockClock(self::NOW), $this->logger)->ofAConfirmation(
+                $person,
+                new EmailAddress(MailSigningKeys::SENDER),
+                self::mail(),
+            )),
+        );
     }
 
     /**
@@ -202,8 +209,11 @@ final class MailProtectionTest extends TestCase
         $this->keys->save(MailSigningKeys::smime($this->tenant));
 
         // When
-        $protected = MailProtections::over($this->keys, new MockClock(self::NOW), $this->logger)
-            ->ofAConfirmation($this->person(), new EmailAddress('someone-else@acme.example'), self::mail());
+        $protected = MailProtections::over($this->keys, new MockClock(self::NOW), $this->logger)->ofAConfirmation(
+            $this->person(),
+            new EmailAddress('someone-else@acme.example'),
+            self::mail(),
+        );
 
         // Then
         static::assertNull($protected);
