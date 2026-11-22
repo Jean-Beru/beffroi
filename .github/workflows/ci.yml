@@ -280,7 +280,7 @@ jobs:
     # "Tests" for the same proof. The file is
     # written the way "castor provision --kms file" writes it: 32 bytes, mode 0600, in a directory 0700
     # of its own. Two backends in CI, the two fastest, this one and the sodium of "Tests": the others
-    # (Vault Transit, AWS KMS on LocalStack) are the business of symfony/key-management and of its
+    # (Vault Transit, AWS KMS on Floci) are the business of symfony/key-management and of its
     # bridges, and what judges them is run by hand against the development stack (VaultTransitCustodyTest,
     # AwsKmsCustodyTest, skipped without their DSN; "castor dump-search", whose backend list carries the
     # one that cannot be played yet with its issue).

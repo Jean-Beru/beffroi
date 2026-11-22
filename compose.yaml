@@ -4,7 +4,7 @@
 #                                                 plus https://mtls.op.localhost, which asks for a client certificate
 #   docker compose --profile conformance up -d    plus the OpenID conformance suite on https://localhost:8443
 #   docker compose --profile vault up -d          plus HashiCorp Vault (dev mode), whose Transit engine seals the signing keys
-#   docker compose --profile aws up -d            plus LocalStack (KMS only), an AWS KMS on the desk that seals them the same way
+#   docker compose --profile aws up -d            plus Floci (AWS emulator), an AWS KMS on the desk that seals them the same way
 #   docker compose --profile saml-sp up -d        plus the SimpleSAMLphp service provider of the SAML judge on https://saml-sp.localhost (castor saml-sp)
 #   docker compose --profile saml-idp up -d       plus the SimpleSAMLphp identity provider of the SAML judge on https://saml-idp.localhost (castor saml-idp)
 #
@@ -238,35 +238,38 @@ services:
     volumes:
       - ./docker/vault:/init:ro
 
-  # AWS KMS on the desk (architecture §3.3, issue #58): LocalStack with the KMS service alone, the same bridge
-  # and the same envelope as against AWS, only the endpoint differs (host "localstack", scheme http). The
-  # version is the last one of the community edition, which LocalStack ended on 2026-03-23: every image
-  # since (2026.x) refuses to start without an account and an auth token, and its free tier is for
-  # non-commercial use. No persistence in this edition: a restart loses the key, and the envelopes sealed
-  # before it cannot be opened again, which "castor provision" notices. LocalStack runs
-  # docker/localstack/init.sh once it is ready, at every start, idempotent: the key of the tenant
-  # (SYMMETRIC_DEFAULT, ENCRYPT_DECRYPT) under the alias beffroi-<slug>, which the DSN names; healthy once the
-  # alias resolves. The credentials are the "test" pair LocalStack accepts, with no IAM in this edition:
-  # what the key policy of a real account refuses is written in the CISO page, not proved here.
-  localstack:
-    image: localstack/localstack:${LOCALSTACK_VERSION:-4.14.0}
+  # AWS KMS on the desk (architecture §3.3, issue #58): Floci (https://floci.io, MIT, no account), an AWS
+  # emulator of which the stack uses the KMS alone, the same bridge and the same envelope as against AWS, only
+  # the endpoint differs (host "floci", scheme http). The "-compat" tag carries the AWS CLI that the init hook
+  # and the healthcheck below call, which the standard image does not. Storage is left at the default of the
+  # image (memory, FLOCI_STORAGE_MODE): a restart loses the key, and the envelopes sealed before it
+  # cannot be opened again, which "castor provision" notices. Floci runs docker/floci/init.sh once its API
+  # answers, at every start, idempotent: the key of the tenant (SYMMETRIC_DEFAULT, ENCRYPT_DECRYPT) under the
+  # alias beffroi-<slug>, which the DSN names; healthy once the alias resolves. A hook that fails stops Floci,
+  # so the container is never up without its key. Any credentials are accepted, the "test" pair here, and no
+  # key policy is evaluated with IAM enforcement off, its default: what the key policy of a real account
+  # refuses is written in the CISO page, not proved here.
+  floci:
+    image: floci/floci:${FLOCI_VERSION:-2.5.0}-compat
     profiles: [aws]
     environment:
-      SERVICES: kms
       BEFFROI_TENANT_SLUG: ${BEFFROI_TENANT_SLUG:-default}
-      # The region of the DSN "castor provision --kms aws" writes; the image sets its own default, which
-      # the script and the healthcheck do not read.
+      # The region of the DSN "castor provision --kms aws" writes, which the init hook and the healthcheck
+      # name, and the one Floci answers in when a request names none (us-east-1 unless set).
       KMS_REGION: ${KMS_REGION:-eu-west-3}
+      FLOCI_DEFAULT_REGION: ${KMS_REGION:-eu-west-3}
     healthcheck:
-      test: ["CMD-SHELL", "awslocal kms describe-key --region ${KMS_REGION:-eu-west-3} --key-id alias/beffroi-${BEFFROI_TENANT_SLUG:-default} >/dev/null"]
+      test: ["CMD-SHELL", "aws --endpoint-url http://localhost:4566 kms describe-key --region ${KMS_REGION:-eu-west-3} --key-id alias/beffroi-${BEFFROI_TENANT_SLUG:-default} >/dev/null"]
       interval: 3s
       timeout: 10s
       retries: 30
       start_period: 15s
     ports:
-      - "${LOCALSTACK_PORT:-4566}:4566"
+      # The port published on the host; FLOCI_PORT is Floci's own variable for the port it listens on inside
+      # the container, left at its default 4566, which the DSN of the OP names.
+      - "${FLOCI_HOST_PORT:-4566}:4566"
     volumes:
-      - ./docker/localstack:/etc/localstack/init/ready.d:ro
+      - ./docker/floci:/etc/floci/init/ready.d:ro
 
   # The SAML judge (issue #732, sub-spike 9c): SimpleSAMLphp 2.5.3.1, the service provider of 9b, on
   # https://saml-sp.localhost through the Caddy of op (docker/saml-sp/saml-sp.Caddyfile). The image is the one the

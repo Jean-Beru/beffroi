@@ -1,19 +1,20 @@
 #!/bin/sh
-# Prepares a LocalStack KMS for the OP (issue #58): the master key of the tenant under the alias the DSN
-# names, alias/beffroi-<slug>. LocalStack runs it once ready (/etc/localstack/init/ready.d), at every start,
-# the community edition keeping nothing across a restart. Idempotent: a key whose alias resolves is left
-# alone, a key is never deleted here.
+# Prepares the KMS of Floci for the OP (issue #58): the master key of the tenant under the alias the DSN
+# names, alias/beffroi-<slug>. Floci runs it once its API is up (/etc/floci/init/ready.d), at every start,
+# and keeps nothing across a restart in the storage of the stack (memory). Idempotent: a key whose alias
+# resolves is left alone, a key is never deleted here.
 #
 # What a real account does with the key policy (Encrypt refused, GenerateDataKey and Decrypt under the alias
-# only, no export, no deletion without a waiting period) has no equivalent in LocalStack, which enforces no
-# IAM in this edition: it is documented, not replayed.
+# only, no export, no deletion without a waiting period) has no equivalent here: with IAM enforcement off,
+# its default, Floci evaluates no key policy, and it never evaluates a grant on a cryptographic call. It is
+# documented, not replayed.
 set -eu
 
 : "${BEFFROI_TENANT_SLUG:=default}"
 : "${KMS_ENDPOINT_URL:=http://localhost:4566}"
 : "${KMS_REGION:=eu-west-3}"
-# The pair LocalStack accepts; a real account takes them from the DSN or from the provider chain of async-aws.
-# The region is the one of the DSN, whatever the image sets for itself: a key lives in one region.
+# Floci accepts any pair; a real account takes them from the DSN or from the provider chain of async-aws.
+# The region is the one of the DSN, whatever the image sets for itself (us-east-1): a key lives in one region.
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-test}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-test}"
 export AWS_DEFAULT_REGION="${KMS_REGION}"
@@ -24,8 +25,17 @@ kms() {
     aws --endpoint-url "${KMS_ENDPOINT_URL}" kms "$@"
 }
 
+# The ready phase runs after the HTTP server answers, so this returns at once; the few tries are for a run
+# by hand against a container that is still starting. A hook of Floci is given 30 s and a hook that fails
+# stops the container, so the loop is bounded rather than infinite.
 echo "Waiting for KMS at ${KMS_ENDPOINT_URL} ..."
+attempt=0
 until kms list-aliases >/dev/null 2>&1; do
+    attempt=$((attempt + 1))
+    if [ "${attempt}" -ge 15 ]; then
+        echo "KMS unreachable at ${KMS_ENDPOINT_URL}" >&2
+        exit 1
+    fi
     sleep 1
 done
 

@@ -61,7 +61,7 @@ composer install                  # monorepo (packages, tests)
 ```bash
 castor start                      # https://op.localhost (FrankenPHP worker), PostgreSQL (published on the loopback address, where the suite of the application reads it), whose tables are the queues of the four lanes as well, and https://mtls.op.localhost behind a listener that asks for a client certificate; on a machine with mkcert, every name of STACK_HOSTS is served under one certificate mkcert issues there (var/stack-certificate, issued again 30 days before it expires or when the names change; the key of the mkcert root is mounted in no container), and without it Caddy keeps its internal CA; then the row of the tenant is written from apps/beffroi/.env* (beffroi:tenant:synchronize), which every page refuses to serve while they differ
 castor start --conformance        # plus the OpenID conformance suite on https://localhost:8443, profiler off
-castor start --kms vault|aws      # plus HashiCorp Vault (dev mode) or LocalStack 4.14.0, KMS only; both initialised at every start
+castor start --kms vault|aws      # plus HashiCorp Vault (dev mode) or Floci (an AWS emulator, its KMS alone); both initialised at every start
 castor provision [--kms sodium|file|vault|aws]  # apps/beffroi/.env.local, the migrations, the tenant, the signing key and the encryption key, the user "alice", what the tenant holds in data keys, and the self-signed client certificate of var/mtls/
 castor stop / castor logs / castor console <cmd>   # a migration command restarts op and worker, which read a column with the type they booted with
 castor tailwind [--watch]         # the stylesheet of the pages (Tailwind + DaisyUI), inside the op container

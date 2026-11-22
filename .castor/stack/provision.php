@@ -193,7 +193,7 @@ const VAULT_OP_POLICY = 'beffroi-op';
 )]
 function provision(
     #[AsOption(
-        description: 'The KMS to seal the keys of the tenant with when apps/beffroi/.env.local names none yet: sodium (default, a key generated in place), file (the same key in a file of the op container, mode 0600), vault (a token minted under the policy of the OP on the Vault of "castor start --kms vault") or aws (the LocalStack of "castor start --kms aws"); the backend already there is kept, switching is a change of KMS',
+        description: 'The KMS to seal the keys of the tenant with when apps/beffroi/.env.local names none yet: sodium (default, a key generated in place), file (the same key in a file of the op container, mode 0600), vault (a token minted under the policy of the OP on the Vault of "castor start --kms vault") or aws (the Floci of "castor start --kms aws"); the backend already there is kept, switching is a change of KMS',
     )]
     ?string $kms = null,
 ): void {
@@ -217,7 +217,7 @@ function provision(
     if ($fresh) {
         op_console(['beffroi:keys:generate']);
     } else {
-        // Vault in dev mode and LocalStack forget their master key when they restart, and what it sealed is lost.
+        // Vault in dev mode and Floci in memory forget their master key when they restart, and what it sealed is lost.
         $check = op_console(['beffroi:keys:list', '--check'], context()->withAllowFailure());
         if (! $check->isSuccessful()) {
             io()->error(sprintf(
@@ -377,9 +377,9 @@ function provision_env_local(?string $kms): array
             // The same, a sodium key under the name of the Transit key, which its container creates and a task cannot.
             'BEFFROI_KMS_DSN_SECOND' => static fn (): string => 'sodium://?keys[beffroi-' . DEV_TENANT_SLUG . ']=' . $generate(32),
         ],
-        // The alias of the tenant is the one docker/localstack/init.sh creates.
+        // The alias of the tenant is the one docker/floci/init.sh creates.
         'aws' => [
-            'BEFFROI_KMS_DSN' => static fn (): string => 'aws-kms://test:test@localstack:4566?region=eu-west-3&scheme=http',
+            'BEFFROI_KMS_DSN' => static fn (): string => 'aws-kms://test:test@floci:4566?region=eu-west-3&scheme=http',
             'BEFFROI_KMS_KEY_ID' => static fn (): string => 'alias/beffroi-{tenant}',
         ],
     };

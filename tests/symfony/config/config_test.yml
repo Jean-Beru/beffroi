@@ -155,7 +155,7 @@ doctrine:
 # frame by the logout page (Front-Channel Logout 1.0 §3), one of them reading the session on its URI. The KMS is sodium unless the environment
 # names another one: the CI runs Functional/Key, Functional/Security and the dump of the database again
 # against a key file (issue #58), the DSN and the key id changing; the custody tests of a Vault, with a
-# token under the policy of the OP (issue #57), and of a LocalStack KMS (issue #58) are run by hand
+# token under the policy of the OP (issue #57), and of the KMS of Floci (issue #58) are run by hand
 # against the development stack, and skipped without their DSN. The sodium key is a fixture of this kernel
 # and seals nothing outside of it.
 parameters:
@@ -892,7 +892,7 @@ services:
     # backend-agnostic, the application requires the bridges it deploys with), and KeyManagementBundle
     # registers a factory only for a bridge the root package requires outside of "require-dev"
     # (ContainerBuilder::willBeAvailable()): this kernel registers them itself, for the runs where
-    # BEFFROI_TEST_KMS_DSN names a Vault or an AWS KMS (LocalStack on the development stack).
+    # BEFFROI_TEST_KMS_DSN names a Vault or an AWS KMS (Floci on the development stack).
     Symfony\Component\KeyManagement\Bridge\HashiCorpVault\TransitKmsFactory:
         tags: ['key_management.factory']
     Symfony\Component\KeyManagement\Bridge\AwsKms\AwsKmsFactory:
