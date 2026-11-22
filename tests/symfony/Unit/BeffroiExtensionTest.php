@@ -10,6 +10,9 @@ use App\DependencyInjection\BeffroiExtension;
 use App\Configuration\SamlSection;
 use App\Configuration\SelfClientSection;
 use App\Configuration\WebPushSection;
+use App\Configuration\MailSection;
+use App\Mail\MailSender;
+use App\Configuration\SmsSection;
 use App\Key\DormantKeyAlgorithms;
 use App\Key\FileTenantKeyRepository;
 use App\Key\StagingDelay;
@@ -494,6 +497,84 @@ final class BeffroiExtensionTest extends TestCase
                 'subject' => 'mailto:operator@op.test',
             ],
             'mailto:operator@op.test',
+        ];
+    }
+
+    /**
+     * Decision 0048
+     */
+    #[Test]
+    #[DataProvider('provideMailDsns')]
+    public function theDsnOfMailReachesItsRole(mixed $mail, ?string $dsn): void
+    {
+        // When
+        $container = self::load([
+            'mail' => $mail,
+        ]);
+
+        // Then
+        static::assertSame($dsn, $container->getDefinition(MailSection::ROLE)->getArgument(0));
+    }
+
+    /**
+     * @return iterable<string, array{mixed, ?string}>
+     */
+    public static function provideMailDsns(): iterable
+    {
+        yield 'none' => [[], null];
+        yield 'a DSN' => [
+            [
+                'dsn' => 'smtp://mail.op.test:587',
+            ],
+            'smtp://mail.op.test:587',
+        ];
+    }
+
+    /**
+     * Decision 0048
+     */
+    #[Test]
+    public function theSenderOfMailReachesTheSenderOfTheMails(): void
+    {
+        // When
+        $container = self::load([
+            'mail' => [
+                'dsn' => 'smtp://mail.op.test:587',
+                'sender' => 'Acme <no-reply@acme.example>',
+            ],
+        ]);
+
+        // Then
+        static::assertSame('Acme <no-reply@acme.example>', $container->getDefinition(MailSender::class)->getArgument('$sender'));
+    }
+
+    /**
+     * Decision 0048
+     */
+    #[Test]
+    #[DataProvider('provideSmsSettings')]
+    public function theDsnOfSmsReachesItsRole(mixed $sms, ?string $dsn): void
+    {
+        // When
+        $container = self::load([
+            'sms' => $sms,
+        ]);
+
+        // Then
+        static::assertSame($dsn, $container->getDefinition(SmsSection::ROLE)->getArgument(0));
+    }
+
+    /**
+     * @return iterable<string, array{mixed, ?string}>
+     */
+    public static function provideSmsSettings(): iterable
+    {
+        yield 'none' => [[], null];
+        yield 'a DSN' => [
+            [
+                'dsn' => 'null://null',
+            ],
+            'null://null',
         ];
     }
 

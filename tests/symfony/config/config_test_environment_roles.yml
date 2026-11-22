@@ -1,8 +1,9 @@
 # A deployment that switches the roles of its tenant by environment (decision 0030, issue #915): the SAML identity
 # provider and the SAML service provider by a flag each, the entity ID of the service provider by a variable that is
 # none when empty, and web push by its subject, none when empty too, "default::" making an empty variable no value at
-# all. A test names the values before it boots this kernel (RolesFromTheEnvironmentTest), and left alone each variable
-# carries what the tenant of config_test.yml plays: an identity provider, no service provider, web push.
+# all; mail and SMS go by their DSN as config_test.yml names them already (decision 0048). A test names the values
+# before it boots this kernel (RolesFromTheEnvironmentTest), and left alone each variable carries what the tenant of
+# config_test.yml plays: an identity provider, no service provider, web push, mail and SMS.
 parameters:
     env(BEFFROI_TEST_SAML_IDENTITY_PROVIDER): 'true'
     env(BEFFROI_TEST_SAML_SERVICE_PROVIDER): 'false'
@@ -21,4 +22,8 @@ services:
     # Reachable from the tests: the algorithms of the keys the tenant hands out, which web push brings while it is on.
     test.beffroi.environment_roles.application_server_algorithms:
         alias: Beffroi\Core\Port\ApplicationServerAlgorithmsInterface
+        public: true
+    # The channels a pending approval goes through, which mail and SMS join while they are on.
+    test.beffroi.environment_roles.pending_approval_channels:
+        alias: beffroi.pending_approval_channels
         public: true

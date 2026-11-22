@@ -134,6 +134,52 @@ final class WebPushBroadcastTest extends TestCase
         static::assertCount(2, $this->browsers->requests);
     }
 
+    /**
+     * Decision 0048
+     */
+    #[Test]
+    public function aPersonWithNoBrowserIsNotReached(): void
+    {
+        // When
+        $reached = $this->browsers->broadcast()->toEveryBrowserOf($this->browsers->alice, $this->message());
+
+        // Then
+        static::assertFalse($reached);
+    }
+
+    /**
+     * Decision 0048
+     */
+    #[Test]
+    public function aPersonWhoseBrowserTookTheMessageIsReached(): void
+    {
+        // Given
+        $this->browsers->subscribed();
+
+        // When
+        $reached = $this->browsers->broadcast()->toEveryBrowserOf($this->browsers->alice, $this->message());
+
+        // Then
+        static::assertTrue($reached);
+    }
+
+    /**
+     * RFC 8030 §7.3
+     */
+    #[Test]
+    public function aPersonWhoseOnlyBrowserIsGoneIsNotReached(): void
+    {
+        // Given
+        $this->browsers->subscribed();
+        $broadcast = $this->browsers->answering([410])->broadcast();
+
+        // When
+        $reached = $broadcast->toEveryBrowserOf($this->browsers->alice, $this->message());
+
+        // Then
+        static::assertFalse($reached);
+    }
+
     private function message(): PushMessage
     {
         return new PushMessage('Acme', 'Something happened.', 'https://id.acme.example/account', $this->browsers->clock->now()->modify('+300 seconds'));

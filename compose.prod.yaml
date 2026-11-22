@@ -19,7 +19,8 @@
 #                             'umask 077 && mkdir -p var/kms && chmod 700 var/kms && head -c 32 /dev/urandom > var/kms/beffroi-default.key'
 #
 # Every other variable the application reads (the lifetimes, the registration mode, the look of the tenant, the
-# SAML peers, SYMFONY_TRUSTED_PROXIES behind a proxy) is added under "environment" below, on both processes:
+# SAML peers, the transports of mail and SMS, SYMFONY_TRUSTED_PROXIES behind a proxy) is added under "environment"
+# below, on both processes:
 # https://doc.beffroi.tech/application/configuration/
 #
 # The processes run as www-data, uid 33 (issue #932): the volumes below are theirs from their first mount, and

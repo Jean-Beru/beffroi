@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Symfony\Unit\Push;
 
+use App\Ciba\PendingApprovalWording;
 use App\Ciba\WebPushApprovalChannel;
 use App\Locale\ServedLocales;
 use App\Locale\UserLocale;
@@ -82,11 +83,24 @@ final class WebPushApprovalChannelTest extends TestCase
         static::assertContains('TTL: 300', $this->browsers->headersOf(0));
     }
 
+    /**
+     * Decision 0048
+     */
+    #[Test]
+    public function aPersonNoBrowserCarriesIsNotReached(): void
+    {
+        // When
+        $reached = $this->channel()->tell($this->browsers->alice, $this->approval());
+
+        // Then
+        static::assertFalse($reached);
+    }
+
     private function channel(): WebPushApprovalChannel
     {
         return new WebPushApprovalChannel(
             $this->browsers->broadcast(),
-            $this->translator(),
+            new PendingApprovalWording($this->translator()),
             new UserLocale(new ServedLocales(['en', 'fr'], 'en')),
         );
     }
