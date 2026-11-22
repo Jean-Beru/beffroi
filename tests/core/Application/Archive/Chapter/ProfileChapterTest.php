@@ -55,6 +55,7 @@ final class ProfileChapterTest extends TestCase
                 'updated_at',
                 'disabled_at',
                 'source',
+                'mail_encryption',
             ],
             array_keys($lines[0]),
         );

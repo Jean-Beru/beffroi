@@ -47,6 +47,8 @@ use Beffroi\Core\Domain\Event\PersonTookTheirArchive;
 use Beffroi\Core\Domain\Event\PasswordRehashed;
 use Beffroi\Core\Domain\Event\PasswordUsed;
 use Beffroi\Core\Domain\Event\TenantContactChanged;
+use Beffroi\Core\Domain\Event\MailSigningKeyRemoved;
+use Beffroi\Core\Domain\Event\MailSigningKeySet;
 use Beffroi\Core\Domain\Event\TenantDataKeysDestroyed;
 use Beffroi\Core\Domain\Event\TenantDataKeysRewrapped;
 use Beffroi\Core\Domain\Event\TenantKeyRetired;
@@ -65,6 +67,7 @@ use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
 use Beffroi\Core\Tests\Fixture\Totps;
 use function is_a;
+use function str_repeat;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -210,6 +213,22 @@ final class EventsLeaveTheProcessTest extends TestCase
         )];
         yield 'the data keys of a tenant destroyed' => [new TenantDataKeysDestroyed($tenant, 11, 10, $now, $context)];
         yield 'the contact of a tenant an administrator changed' => [new TenantContactChanged($tenant, $now, $context, new Subject('administrator-subject'))];
+        yield 'a mail signing key an administrator set' => [new MailSigningKeySet(
+            $tenant,
+            'smime',
+            str_repeat('A', 64),
+            $now,
+            $context,
+            new Subject('administrator-subject'),
+        )];
+        yield 'a mail signing key an administrator removed' => [new MailSigningKeyRemoved(
+            $tenant,
+            'pgp',
+            str_repeat('B', 40),
+            $now,
+            $context,
+            new Subject('administrator-subject'),
+        )];
     }
 
     #[Test]
