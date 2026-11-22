@@ -7,6 +7,9 @@ namespace App\Tests\Symfony\Functional\Configuration;
 use App\Ciba\MailApprovalChannel;
 use App\Ciba\SmsApprovalChannel;
 use App\Configuration\SwitchedServices;
+use App\Credential\CredentialChangeChannels;
+use App\Credential\MailCredentialChangeChannel;
+use App\Credential\SmsCredentialChangeChannel;
 use App\Saml\SamlSigning;
 use App\Tests\Symfony\Functional\Command\ConsoleTestCase;
 use Beffroi\Core\Port\ApplicationServerAlgorithmsInterface;
@@ -23,7 +26,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Decision 0030, Decision 0048, spec/saml.md S-40, S-41, architecture §5.6
+ * Decision 0030, Decision 0048, Decision 0049, spec/saml.md S-40, S-41, architecture §5.6
  */
 final class RolesFromTheEnvironmentTest extends ConsoleTestCase
 {
@@ -271,6 +274,57 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
     }
 
     /**
+     * Decision 0048, Decision 0049
+     */
+    #[Test]
+    #[DataProvider('provideCredentialChangeChannelsOfADsnTheEnvironmentNames')]
+    public function aChannelTellsOfACredentialChangeWhileTheEnvironmentNamesItsDsn(string $channel): void
+    {
+        // When
+        $channels = self::credentialChangeChannels();
+
+        // Then
+        static::assertContains($channel, $channels);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideCredentialChangeChannelsOfADsnTheEnvironmentNames(): iterable
+    {
+        yield 'mail' => [MailCredentialChangeChannel::NAME];
+        yield 'SMS' => [SmsCredentialChangeChannel::NAME];
+    }
+
+    /**
+     * Decision 0048
+     */
+    #[Test]
+    #[DataProvider('provideCredentialChangeChannelsOfADsn')]
+    public function aChannelOfACredentialChangeIsAbsentWhileTheEnvironmentNamesNoDsn(string $variable, string $channel): void
+    {
+        // Given
+        $this->deploy([
+            $variable => '',
+        ]);
+
+        // When
+        $channels = self::credentialChangeChannels();
+
+        // Then
+        static::assertNotContains($channel, $channels);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideCredentialChangeChannelsOfADsn(): iterable
+    {
+        yield 'mail' => ['BEFFROI_TEST_MAIL_DSN', MailCredentialChangeChannel::NAME];
+        yield 'SMS' => ['BEFFROI_TEST_SMS_DSN', SmsCredentialChangeChannel::NAME];
+    }
+
+    /**
      * @param array<string, string> $variables
      */
     private function deploy(array $variables): void
@@ -312,6 +366,14 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
         }
 
         return $channels;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function credentialChangeChannels(): array
+    {
+        return self::service('test.beffroi.environment_roles.credential_change_channels', CredentialChangeChannels::class)->names();
     }
 
     private function servedDescriptor(): EntityDescriptor

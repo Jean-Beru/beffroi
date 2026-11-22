@@ -108,6 +108,7 @@ final class SealedBodySerializerTest extends TestCase
         )];
         yield 'a change told to a person' => [new TellUserOfCredentialChange(
             new CredentialChange(Fixtures::user(), CredentialEnrolled::NAME, Fixtures::now(), 'passkey'),
+            'mail',
         )];
         yield 'a query' => [new AskWhatIsKnown('the sessions of alice')];
         yield 'a write the protocol waits for' => [new WriteBeforeAnswering('the consent')];
