@@ -83,6 +83,19 @@ final class WebPushApprovalChannelTest extends TestCase
         static::assertContains('TTL: 300', $this->browsers->headersOf(0));
     }
 
+    /**
+     * Decision 0048
+     */
+    #[Test]
+    public function aPersonNoBrowserCarriesIsNotReached(): void
+    {
+        // When
+        $reached = $this->channel()->tell($this->browsers->alice, $this->approval());
+
+        // Then
+        static::assertFalse($reached);
+    }
+
     private function channel(): WebPushApprovalChannel
     {
         return new WebPushApprovalChannel(
