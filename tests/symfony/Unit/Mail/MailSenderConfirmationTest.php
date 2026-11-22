@@ -5,14 +5,22 @@ declare(strict_types=1);
 namespace App\Tests\Symfony\Unit\Mail;
 
 use function array_map;
+use App\Mail\MailProtection;
 use App\Mail\MailSender;
+use App\Mail\Smime;
+use App\Tests\Symfony\Fixture\MailFixtures;
+use App\Tests\Symfony\Fixture\MailProtections;
+use App\Tests\Symfony\Fixture\MailSigningKeys;
 use App\Tests\Symfony\Fixture\RecordingMailTransport;
+use Beffroi\Core\Bridge\InMemory\InMemoryMailSigningKeyRepository;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Mailer\Transport\TransportInterface;
 use Symfony\Component\Mime\Address;
 
@@ -22,6 +30,8 @@ use Symfony\Component\Mime\Address;
 final class MailSenderConfirmationTest extends TestCase
 {
     private const string ADDRESS = 'alice@acme.example';
+
+    private const string NOW = '2026-11-22T10:00:00+00:00';
 
     private RecordingMailTransport $transport;
 
@@ -97,10 +107,36 @@ final class MailSenderConfirmationTest extends TestCase
         static::assertSame('auto-generated', $this->transport->sent[0]->getHeaders()->getHeaderBody('Auto-Submitted'));
     }
 
-    private function sender(): MailSender
+    /**
+     * Decision 0051
+     */
+    #[Test]
+    public function theConfirmationToAPersonWhoAskedForEncryptedMailLeavesSignedAndNotEncrypted(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $user->changeEmail(new EmailAddress(self::ADDRESS), true, Fixtures::now());
+        $user->encryptMailTo(new Smime()->read(MailFixtures::read('person-certificate.pem')), new DateTimeImmutable(self::NOW));
+        $user->changeEmail(new EmailAddress(self::ADDRESS), false, Fixtures::now());
+        $keys = new InMemoryMailSigningKeyRepository();
+        $keys->save(MailSigningKeys::smime($user->tenant));
+
+        // When
+        $sent = $this->sender(MailProtections::over($keys, new MockClock(self::NOW)))
+            ->sendTheConfirmation($user, self::ADDRESS, 'Your confirmation code', 'Your code is 123456.');
+
+        // Then
+        static::assertTrue($sent);
+        $written = $this->transport->protected[0]->toString();
+        static::assertStringContainsString('protocol="application/pkcs7-signature"', $written);
+        static::assertStringNotContainsString('application/pkcs7-mime', $written);
+        static::assertStringContainsString('Your code is 123456.', $written);
+    }
+
+    private function sender(?MailProtection $protection = null): MailSender
     {
         $transport = $this->transport;
 
-        return new MailSender(static fn (): TransportInterface => $transport, 'Acme <no-reply@acme.example>', new NullLogger());
+        return new MailSender(static fn (): TransportInterface => $transport, 'Acme <no-reply@acme.example>', $protection ?? MailProtections::plain(), new NullLogger());
     }
 }
