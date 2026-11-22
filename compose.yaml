@@ -253,7 +253,7 @@ services:
   # but evaluates neither on a cryptographic call, so what the key policy of a real account refuses is
   # written in the CISO page, not proved here.
   floci:
-    image: floci/floci:${FLOCI_VERSION:-2.1.0}-compat
+    image: floci/floci:${FLOCI_VERSION:-2.5.0}-compat
     profiles: [aws]
     environment:
       BEFFROI_TENANT_SLUG: ${BEFFROI_TENANT_SLUG:-default}
