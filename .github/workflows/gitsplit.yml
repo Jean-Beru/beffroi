@@ -8,13 +8,18 @@ name: gitsplit
 # the run keeps that config in step with the branch being pushed, instead of
 # whatever the default branch happens to declare at that moment.
 #
-# The container is not given the repository credentials: it pushes with
-# GITSPLIT_TOKEN, which must reach the eight target repositories, and the step
-# after it reads that same secret. One credential does everything that is done
-# to a mirror and nothing that is done here, so it carries write access to
-# their code and, for their default branch, to their administration. It never
-# reads origin either, which is why .gitsplit.yml declares no cache url; the
-# cache volume below is mounted and left unused, as in jwt-framework.
+# The container is not given the repository credentials: it pushes with a
+# token of the GitHub App of the organisation that is installed on the
+# mirrors, and the step after it uses that same token. The token is created at
+# each run, lives an hour, and reaches the repositories .gitsplit.yml names as
+# targets and nothing else, with write access to their code and, for their
+# default branch, to their administration: everything that is done to a
+# mirror and nothing that is done here. A mirror named there and left out of
+# the installation fails the step that creates the token, which names it. The
+# App's client ID is the variable SPLIT_APP_CLIENT_ID and its private key the
+# secret SPLIT_APP_PRIVATE_KEY. The container never reads origin either, which
+# is why .gitsplit.yml declares no cache url; the cache volume below is
+# mounted and left unused, as in jwt-framework.
 #
 # A closed milestone is where a release starts this: "release-on-milestone-
 # closed.yml" tags the version, creates the next maintenance branch, switches
@@ -119,17 +124,36 @@ jobs:
       - name: "Load it"
         run: docker load -i /tmp/gitsplit-image.tar
 
+      # The mirrors are the targets of .gitsplit.yml, named once there.
+      - name: "The mirrors"
+        id: mirrors
+        run: |
+          set -o pipefail
+          names=$(grep -oP '(?<=github\.com/${{ github.repository_owner }}/)[^"]+(?=\.git)' .gitsplit.yml | paste -sd, -)
+          echo "repositories=${names}" >> "${GITHUB_OUTPUT}"
+
+      - name: "The token of the split"
+        id: token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.SPLIT_APP_CLIENT_ID }}
+          private-key: ${{ secrets.SPLIT_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ steps.mirrors.outputs.repositories }}
+          permission-contents: write
+          permission-administration: write
+
       - name: "Split repositories"
         run: docker run --rm -t -e GH_TOKEN -v /cache/gitsplit:/cache/gitsplit -v ${{ github.workspace }}:/srv "${GITSPLIT_LOADED}" gitsplit
         env:
-          GH_TOKEN: ${{ secrets.GITSPLIT_TOKEN }}
+          GH_TOKEN: ${{ steps.token.outputs.token }}
 
-      # The credential of the split, and not the one of this repository: changing a default branch
+      # The token of the split, and not the one of this repository: changing a default branch
       # needs "administration" and deleting a branch needs "contents", neither of which the
       # GITHUB_TOKEN of Actions can be granted on another repository, and ORGANIZATION_ADMIN_TOKEN,
       # which can do everything here, reaches no mirror and is not given one. There is nothing to
-      # check before running: this step is reached only when the split above has pushed, which is what
-      # a secret that is missing or too narrow stops.
+      # check before running: this step is reached only when the split above has pushed with the same
+      # token.
       #
       # The targets and the patterns are read from .gitsplit.yml, so a prefix added there is a mirror
       # this step aligns without being told twice. The newest branch is taken from what the mirror
@@ -138,7 +162,7 @@ jobs:
       # because a default branch cannot be deleted.
       - name: "Align the mirrors on this repository"
         env:
-          GH_TOKEN: ${{ secrets.GITSPLIT_TOKEN }}
+          GH_TOKEN: ${{ steps.token.outputs.token }}
         run: |
           mapfile -t PATTERNS < <(sed -n '/^origins:/,$ s/^  - //p' .gitsplit.yml)
           mapfile -t MIRRORS < <(grep -oP '(?<=github\.com/)[^"]+(?=\.git)' .gitsplit.yml)
