@@ -63,6 +63,8 @@ use Symfony\Component\DomCrawler\Form;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionFactoryInterface;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Component\Messenger\Envelope;
+use Symfony\Component\Messenger\Transport\TransportInterface;
 use Symfony\Component\Uid\Uuid;
 
 abstract class BrowserTestCase extends DatabaseTestCase
@@ -517,6 +519,20 @@ abstract class BrowserTestCase extends DatabaseTestCase
         }
 
         return $events;
+    }
+
+    /**
+     * @return list<Envelope> what waits on the notifications lane, oldest first
+     */
+    protected static function queued(): array
+    {
+        $envelopes = [];
+        foreach (self::service('test.beffroi.notification_queue', TransportInterface::class)->get() as $envelope) {
+            static::assertInstanceOf(Envelope::class, $envelope);
+            $envelopes[] = $envelope;
+        }
+
+        return $envelopes;
     }
 
     protected static function forgetEvents(): void

@@ -27,6 +27,7 @@ use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Exception\PasskeyAttestationRefusedException;
 use Beffroi\Core\Exception\PasskeyCeremonyFailedException;
 use Beffroi\Core\Tests\Fixture\FakePasskeyRegistrar;
+use Beffroi\Core\Tests\Fixture\RecordingCredentialChangeNotifier;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\Test;
@@ -47,6 +48,8 @@ final class PasskeyEnrolmentTest extends TestCase
 
     private RecordingEventDispatcher $events;
 
+    private RecordingCredentialChangeNotifier $notifier;
+
     private MockClock $clock;
 
     private PasskeyEnrolment $enrolment;
@@ -59,6 +62,7 @@ final class PasskeyEnrolmentTest extends TestCase
         $this->credentials = new InMemoryCredentialRepository();
         $this->registrar = new FakePasskeyRegistrar();
         $this->events = new RecordingEventDispatcher();
+        $this->notifier = new RecordingCredentialChangeNotifier();
         $this->clock = new MockClock('2026-09-19T12:00:00+00:00');
         $this->upstreamProviders = new InMemoryUpstreamProviders();
         $this->enrolment = new PasskeyEnrolment(
@@ -69,6 +73,7 @@ final class PasskeyEnrolmentTest extends TestCase
             $this->registrar,
             $this->clock,
             $this->events,
+            $this->notifier,
         );
     }
 
@@ -128,6 +133,25 @@ final class PasskeyEnrolmentTest extends TestCase
         static::assertSame($passkey, $events[0]->credential);
         static::assertSame($context, $events[0]->context);
         static::assertSame($this->alice->tenant, $events[0]->tenant);
+    }
+
+    /**
+     * NIST SP 800-63B-4 §4.1.2.1
+     */
+    #[Test]
+    public function thePersonIsToldAPasskeyWasAddedToTheirAccount(): void
+    {
+        // Given
+        $options = $this->enrolment->begin($this->alice);
+        $this->registrar->returns(FakePasskeyRegistrar::record($options, 'new-credential'));
+
+        // When
+        $this->enrolment->complete($this->alice, 'Pixel', $options, '{"id":"new-credential"}', Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame([[CredentialEnrolled::NAME, 'passkey']], $this->notifier->acts());
+        static::assertEquals($this->clock->now(), $this->notifier->told[0]->occurredAt);
+        static::assertTrue($this->alice->id->equals($this->notifier->told[0]->userId));
     }
 
     /**
@@ -225,6 +249,26 @@ final class PasskeyEnrolmentTest extends TestCase
         // Then
         static::assertSame([], $this->credentials->findByUser($this->alice));
         static::assertSame([], $this->events->events);
+    }
+
+    /**
+     * NIST SP 800-63B-4 §4.1.2.1
+     */
+    #[Test]
+    public function aRefusedCeremonyTellsThePersonNothing(): void
+    {
+        // Given
+        $options = $this->enrolment->begin($this->alice);
+        $this->registrar->refuses('The origin does not match.');
+
+        // When
+        try {
+            $this->enrolment->complete($this->alice, 'Pixel', $options, '{}', Fixtures::context());
+        } catch (CredentialEnrolmentFailedException) {
+        }
+
+        // Then
+        static::assertSame([], $this->notifier->told);
     }
 
     /**

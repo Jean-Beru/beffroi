@@ -13,6 +13,9 @@ use function base64_decode;
 use function base64_encode;
 use App\Message\AdvanceKeyLifecycle;
 use App\Message\SendLogoutToken;
+use App\Message\TellUserOfCredentialChange;
+use Beffroi\Core\Domain\Credential\CredentialChange;
+use Beffroi\Core\Domain\Event\CredentialEnrolled;
 use App\Messenger\SealedBodySerializer;
 use App\Messenger\TenantStamp;
 use App\Tests\Symfony\Fixture\AmbientTenant;
@@ -94,6 +97,9 @@ final class SealedBodySerializerTest extends TestCase
             Uuid::v7(),
             Fixtures::user()->subject,
             Fixtures::context(),
+        )];
+        yield 'a change told to a person' => [new TellUserOfCredentialChange(
+            new CredentialChange(Fixtures::user(), CredentialEnrolled::NAME, Fixtures::now(), 'passkey'),
         )];
         yield 'a query' => [new AskWhatIsKnown('the sessions of alice')];
         yield 'a write the protocol waits for' => [new WriteBeforeAnswering('the consent')];

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Symfony\Functional\Controller;
 
+use App\Message\TellUserOfCredentialChange;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
 use Beffroi\Core\Domain\Event\CredentialRenamed;
@@ -368,6 +369,39 @@ final class AccountPasskeysTest extends PasskeyTestCase
         static::assertCount(0, $row->filter('button'), 'No revoking twice.');
     }
 
+    /**
+     * NIST SP 800-63B-4 §4.1.2.1
+     */
+    #[Test]
+    public function thePersonIsToldOnTheLaneThatAPasskeyWasAdded(): void
+    {
+        // When
+        $this->enrol(self::user('alice'), self::device());
+
+        // Then
+        static::assertSame([[CredentialEnrolled::NAME, 'passkey']], self::toldOnTheLane());
+    }
+
+    /**
+     * NIST SP 800-63B-4 §4.5
+     */
+    #[Test]
+    public function thePersonIsToldOnTheLaneThatAPasskeyWasRevoked(): void
+    {
+        // Given
+        $passkey = $this->enrol(self::user('alice'), self::device());
+        $form = $this->passkeysPage()
+            ->filter('tr[data-passkey="' . $passkey->id . '"]')
+            ->selectButton('Revoke')
+            ->form();
+
+        // When
+        $this->browser->submit($form);
+
+        // Then
+        static::assertSame([[CredentialRevoked::NAME, 'passkey']], self::toldOnTheLane());
+    }
+
     #[Test]
     public function aRevokedPasskeyNoLongerSignsIn(): void
     {
@@ -588,6 +622,22 @@ final class AccountPasskeysTest extends PasskeyTestCase
         $script = $this->browser->getInternalResponse()->getContent();
         static::assertStringContainsString('navigator.credentials.get(', $script);
         static::assertStringContainsString('navigator.credentials.create(', $script);
+    }
+
+    /**
+     * @return list<array{string, ?string}> the act and the kind of each change told, oldest first
+     */
+    private static function toldOnTheLane(): array
+    {
+        $told = [];
+        foreach (self::queued() as $envelope) {
+            $message = $envelope->getMessage();
+            if ($message instanceof TellUserOfCredentialChange) {
+                $told[] = [$message->change->act, $message->change->kind];
+            }
+        }
+
+        return $told;
     }
 
     /**

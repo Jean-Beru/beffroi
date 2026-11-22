@@ -28,6 +28,7 @@ use Beffroi\Oidc\Application\Administration\AdministeredClientRemoval;
 use Beffroi\Oidc\Application\Administration\AdministeredConsents;
 use Beffroi\Oidc\Application\Administration\AdministeredDisabling;
 use Beffroi\Oidc\Application\Administration\AdministeredGroupCreation;
+use Beffroi\Oidc\Application\Administration\AdministeredTenantContact;
 use Beffroi\Oidc\Application\Administration\AdministeredGroups;
 use Beffroi\Oidc\Application\Administration\AdministeredMemberships;
 use Beffroi\Oidc\Application\Administration\AdministeredEnabling;
@@ -43,6 +44,10 @@ use Beffroi\Core\Port\RandomnessInterface;
 use Beffroi\Core\Bridge\Random\PlatformRandomness;
 use App\Account\ApplicationHoldings;
 use App\Ciba\QueuedPendingApprovalNotifier;
+use App\Credential\CredentialChangeNotices;
+use App\Credential\QueuedCredentialChangeNotifier;
+use App\Credential\WebPushCredentialChangeChannel;
+use Beffroi\Core\Port\CredentialChangeNotifierInterface;
 use App\Cache\SeenOnce;
 use App\Client\ClientAssertionReplayGuard;
 use App\Client\SoftwareStatementReplayGuard;
@@ -84,6 +89,7 @@ use App\Doctrine\Repository\DoctrinePasswordTicketRepository;
 use App\Doctrine\Repository\DoctrineTotpTicketRepository;
 use Beffroi\Core\Port\TenantRepositoryInterface;
 use Beffroi\Core\Port\CanForgetCredentialsInterface;
+use Beffroi\Core\Application\Tenant\TenantContactAdoption;
 use Beffroi\Core\Application\Tenant\TenantHardening;
 use Beffroi\Core\Application\Credential\EnrolmentRefusal;
 use App\Http\OfferedLogins;
@@ -207,6 +213,7 @@ use App\Load\LoadRefusalListener;
 use App\Load\OriginLoadListener;
 use App\Load\RateLimitedClientLoad;
 use App\MessageHandler\TellUserOfPendingApprovalHandler;
+use App\MessageHandler\TellUserOfCredentialChangeHandler;
 use App\MessageHandler\QueueLogoutTokenHandler;
 use App\Messenger\EventBusDispatcher;
 use App\Messenger\KeysOpenedAtWorkerStart;
@@ -239,6 +246,7 @@ use App\Security\TotpLogin;
 use App\Security\TotpLoginAuthenticator;
 use App\Security\UserChecker;
 use App\Tenant\TenantFactory;
+use App\Locale\Moments;
 use App\Locale\UserTimeZone;
 use App\Doctrine\Repository\DoctrineJournal;
 use App\Identity\LocaleClaimFactory;
@@ -826,6 +834,7 @@ use App\Configuration\SamlSection;
 use App\Configuration\SwitchedServices;
 use App\Configuration\WebPushSection;
 use App\Security\UpstreamLogin;
+use App\Push\WebPushBroadcast;
 use App\Push\WebPushSender;
 use App\Http\NotificationsPage;
 use App\Http\ProviderScript;
@@ -879,7 +888,10 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PushSubscriptionRevocation::class);
     $services->set(NotificationsPage::class);
     $services->set(WebPushSender::class);
+    $services->set(WebPushBroadcast::class);
     $services->set(WebPushApprovalChannel::class);
+    $services->set(CredentialChangeNotices::class)->arg('$router', service(ProviderRoutes::URL_GENERATOR));
+    $services->set(WebPushCredentialChangeChannel::class);
     $services->set(AccountAccess::class);
     $services->set(ProviderScript::class);
     // The home of the account shows these sections in the order they are wired.
@@ -989,6 +1001,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(ClaimHistoryRetention::class);
     $services->set(LanguageRecording::class);
     $services->set(UserTimeZone::class);
+    $services->set(Moments::class);
     $services->set(MomentExtension::class);
     $services->set(ClientNameExtension::class);
     $services->set(PlaceExtension::class);
@@ -1089,6 +1102,16 @@ return static function (ContainerConfigurator $container): void {
             tagged_iterator(WebPushSection::CHANNEL_TAG),
             service(WebPushSection::ROLE),
             iterator([service(WebPushApprovalChannel::class)]),
+        ]),
+    ]);
+    // WebPushSection::CREDENTIAL_CHANGE_CHANNEL_TAG is for a deployment's own channels; the provider tags none.
+    $services->set(QueuedCredentialChangeNotifier::class);
+    $services->alias(CredentialChangeNotifierInterface::class, QueuedCredentialChangeNotifier::class);
+    $services->get(TellUserOfCredentialChangeHandler::class)->args([
+        '$channels' => inline_service(SwitchedServices::class)->args([
+            tagged_iterator(WebPushSection::CREDENTIAL_CHANGE_CHANNEL_TAG),
+            service(WebPushSection::ROLE),
+            iterator([service(WebPushCredentialChangeChannel::class)]),
         ]),
     ]);
     $services->set(LogoutTokenSender::class);
@@ -1470,6 +1493,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(CredentialRevocation::class);
     $services->set(EnrolmentRefusal::class);
     $services->set(TenantHardening::class);
+    $services->set(TenantContactAdoption::class);
     $services->set(PasswordChange::class);
     $services->set(BreachedPasswordRefusal::class);
     $services->set(BreachedPasswordLookup::class);
@@ -1680,6 +1704,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(AdministeredClientRemoval::class);
     $services->set(AdministeredGroups::class);
     $services->set(AdministeredGroupCreation::class);
+    $services->set(AdministeredTenantContact::class);
     $services->set(AdministeredMemberships::class);
     $services->set(AdministeredEnabling::class);
     $services->set(AdministeredEnrolmentTicket::class);

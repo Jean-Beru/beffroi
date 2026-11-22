@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Symfony\Unit\Twig;
 
+use App\Locale\Moments;
 use App\Locale\UserTimeZone;
 use App\Twig\MomentExtension;
 use Beffroi\Core\Domain\Identity\Profile;
@@ -85,7 +86,7 @@ final class MomentTest extends TestCase
 
     private static function moment(string $locale): MomentExtension
     {
-        return new MomentExtension(new UserTimeZone(), new LocaleSwitcher($locale, []));
+        return new MomentExtension(new Moments(new UserTimeZone()), new LocaleSwitcher($locale, []));
     }
 
     private static function userIn(string $zoneinfo): User

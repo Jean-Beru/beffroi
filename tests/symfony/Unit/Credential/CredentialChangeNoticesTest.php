@@ -1,0 +1,169 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Tests\Symfony\Unit\Credential;
+
+use App\Controller\AccountController;
+use App\Credential\CredentialChangeNotices;
+use App\Locale\Moments;
+use App\Locale\ServedLocales;
+use App\Locale\UserLocale;
+use App\Locale\UserTimeZone;
+use Beffroi\Core\Domain\Credential\CredentialChange;
+use Beffroi\Core\Domain\Event\BackupCodesRenewed;
+use Beffroi\Core\Domain\Event\CredentialEnrolled;
+use Beffroi\Core\Domain\Event\CredentialRevoked;
+use Beffroi\Core\Domain\Event\EnrolmentTicketIssued;
+use Beffroi\Core\Domain\Event\PasswordChanged;
+use Beffroi\Core\Domain\Identity\Profile;
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Tenant\TenantContact;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use DateTimeImmutable;
+use function dirname;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+use function sprintf;
+use Symfony\Component\Routing\Generator\UrlGenerator;
+use Symfony\Component\Routing\RequestContext;
+use Symfony\Component\Routing\Route;
+use Symfony\Component\Routing\RouteCollection;
+use Symfony\Component\Translation\Loader\XliffFileLoader;
+use Symfony\Component\Translation\Translator;
+
+/**
+ * NIST SP 800-63B-4 §4.6
+ */
+final class CredentialChangeNoticesTest extends TestCase
+{
+    private const string CATALOGUE = '%s/apps/beffroi/translations/beffroi+intl-icu.%s.xlf';
+
+    private User $alice;
+
+    private Translator $translator;
+
+    protected function setUp(): void
+    {
+        $this->alice = Fixtures::user();
+        $this->translator = new Translator('en');
+        $this->translator->addLoader('xlf', new XliffFileLoader());
+        foreach (['en', 'fr'] as $locale) {
+            $this->translator->addResource('xlf', sprintf(self::CATALOGUE, dirname(__DIR__, 4), $locale), $locale, 'beffroi+intl-icu');
+        }
+    }
+
+    #[Test]
+    public function theNoticeIsWrittenByTheProvider(): void
+    {
+        // When
+        $notice = $this->notices()->of($this->alice, $this->enrolled());
+
+        // Then
+        static::assertSame('Acme', $notice->title);
+    }
+
+    #[Test]
+    #[DataProvider('provideActsTold')]
+    public function theNoticeSaysWhatChangedAndWhen(string $act, ?string $kind, string $said): void
+    {
+        // Given
+        $change = new CredentialChange($this->alice, $act, self::moment(), $kind);
+
+        // When
+        $notice = $this->notices()->of($this->alice, $change);
+
+        // Then
+        static::assertSame(sprintf('%s on %s. If it was not you, open your account.', $said, $this->written('en')), $notice->body);
+    }
+
+    /**
+     * @return iterable<string, array{string, ?string, string}>
+     */
+    public static function provideActsTold(): iterable
+    {
+        yield 'a passkey added' => [CredentialEnrolled::NAME, 'passkey', 'A passkey was added to your account'];
+        yield 'an authenticator app added' => [CredentialEnrolled::NAME, 'totp', 'An authenticator app was added to your account'];
+        yield 'a first password added' => [CredentialEnrolled::NAME, 'password', 'A password was added to your account'];
+        yield 'a passkey removed' => [CredentialRevoked::NAME, 'passkey', 'A passkey was removed from your account'];
+        yield 'an authenticator app removed' => [CredentialRevoked::NAME, 'totp', 'An authenticator app was removed from your account'];
+        yield 'a password changed' => [PasswordChanged::NAME, 'password', 'The password of your account was changed'];
+        yield 'a link to add a passkey issued' => [EnrolmentTicketIssued::NAME, null, 'A link to add a passkey to your account was issued'];
+        yield 'backup codes renewed' => [BackupCodesRenewed::NAME, 'totp', 'The backup codes of your account were renewed'];
+        yield 'a kind the words do not name' => [CredentialEnrolled::NAME, 'smartcard', 'A way of signing in was added to your account'];
+    }
+
+    #[Test]
+    public function theNoticeGivesTheContactOfTheTenant(): void
+    {
+        // Given
+        $this->alice->tenant->adoptContact(new TenantContact('security@acme.example'));
+
+        // When
+        $notice = $this->notices()->of($this->alice, $this->enrolled());
+
+        // Then
+        static::assertSame(
+            sprintf('A passkey was added to your account on %s. If it was not you, open your account and contact security@acme.example.', $this->written('en')),
+            $notice->body,
+        );
+    }
+
+    /**
+     * Architecture §5.7, OIDC Core §5.1
+     */
+    #[Test]
+    public function theNoticeIsWrittenInTheLanguageOfThePerson(): void
+    {
+        // Given
+        $this->alice->updateProfile(new Profile(locale: 'fr-CA'), Fixtures::now());
+
+        // When
+        $notice = $this->notices()->of($this->alice, $this->enrolled());
+
+        // Then
+        static::assertSame(
+            sprintf('Une passkey a été ajoutée à votre compte le %s. Si ce n\'était pas vous, ouvrez votre compte.', $this->written('fr')),
+            $notice->body,
+        );
+    }
+
+    #[Test]
+    public function theNoticeOpensTheAccountUnderTheOriginOfTheIssuer(): void
+    {
+        // When
+        $notice = $this->notices()->of($this->alice, $this->enrolled());
+
+        // Then
+        static::assertSame('https://id.acme.example/account', $notice->accountPage);
+    }
+
+    private function notices(): CredentialChangeNotices
+    {
+        $routes = new RouteCollection();
+        $routes->add(AccountController::ROUTE, new Route('/account'));
+
+        return new CredentialChangeNotices(
+            $this->translator,
+            new UserLocale(new ServedLocales(['en', 'fr'], 'en')),
+            new Moments(new UserTimeZone()),
+            new UrlGenerator($routes, new RequestContext()),
+        );
+    }
+
+    private function enrolled(): CredentialChange
+    {
+        return new CredentialChange($this->alice, CredentialEnrolled::NAME, self::moment(), 'passkey');
+    }
+
+    private function written(string $locale): string
+    {
+        return new Moments(new UserTimeZone())->write(self::moment(), $this->alice, $locale);
+    }
+
+    private static function moment(): DateTimeImmutable
+    {
+        return new DateTimeImmutable('2026-11-22T14:05:00+00:00');
+    }
+}

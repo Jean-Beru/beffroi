@@ -41,6 +41,7 @@ use Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\FixedClaims;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingCredentialChangeNotifier;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use function count;
 use DateTimeImmutable;
@@ -72,6 +73,8 @@ final class PasswordTicketRedemptionTest extends TestCase
 
     private RecordingEventDispatcher $events;
 
+    private RecordingCredentialChangeNotifier $notifier;
+
     private MockClock $clock;
 
     private PasswordTicketRedemption $redemption;
@@ -89,6 +92,7 @@ final class PasswordTicketRedemptionTest extends TestCase
         $this->sessions = new InMemoryAuthenticationSessionRepository();
         $this->tickets = new InMemoryPasswordTicketRepository();
         $this->events = new RecordingEventDispatcher();
+        $this->notifier = new RecordingCredentialChangeNotifier();
         $this->clock = new MockClock('2026-11-17T12:00:00+00:00');
         $active = new ActivePassword(new ActiveCredentials($this->credentials));
         $this->redemption = new PasswordTicketRedemption(
@@ -110,6 +114,7 @@ final class PasswordTicketRedemptionTest extends TestCase
             new OtherSessionsTermination($this->sessions, new SessionTerminator($this->sessions, $this->clock, $this->events)),
             $this->clock,
             $this->events,
+            $this->notifier,
         );
         $this->issued = $this->ticketOf($this->alice);
     }
@@ -161,6 +166,22 @@ final class PasswordTicketRedemptionTest extends TestCase
         static::assertSame([1, 0], [count($this->events->of(PasswordChanged::class)), count($this->events->of(CredentialEnrolled::class))]);
     }
 
+    /**
+     * Decision 0049
+     */
+    #[Test]
+    public function thePersonIsToldTheirPasswordWasReplaced(): void
+    {
+        // Given
+        $this->passwordInUse();
+
+        // When
+        $this->redemption->spend($this->issued->ticket, Fixtures::plainPassword(self::POSED), Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame([[PasswordChanged::NAME, 'password']], $this->notifier->acts());
+    }
+
     #[Test]
     public function aPersonWithoutAPasswordPosesTheirFirst(): void
     {
@@ -180,6 +201,19 @@ final class PasswordTicketRedemptionTest extends TestCase
 
         // Then
         static::assertSame([0, 1], [count($this->events->of(PasswordChanged::class)), count($this->events->of(CredentialEnrolled::class))]);
+    }
+
+    /**
+     * NIST SP 800-63B-4 §4.1.2.1
+     */
+    #[Test]
+    public function thePersonIsToldAFirstPasswordWasAdded(): void
+    {
+        // When
+        $this->redemption->spend($this->issued->ticket, Fixtures::plainPassword(self::POSED), Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame([[CredentialEnrolled::NAME, 'password']], $this->notifier->acts());
     }
 
     #[Test]
@@ -246,6 +280,22 @@ final class PasswordTicketRedemptionTest extends TestCase
 
         // Then
         static::assertSame([false, false], [$this->issued->ticket->isSpent(), $session->hasEnded()]);
+    }
+
+    #[Test]
+    public function aPasswordRefusedTellsThePersonNothing(): void
+    {
+        // Given
+        $this->passwordInUse();
+
+        // When
+        try {
+            $this->redemption->spend($this->issued->ticket, Fixtures::plainPassword(self::IN_USE), Fixtures::context($this->clock->now()));
+        } catch (PasswordChangeRefusedException) {
+        }
+
+        // Then
+        static::assertSame([], $this->notifier->told);
     }
 
     #[Test]

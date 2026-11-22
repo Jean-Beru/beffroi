@@ -36,6 +36,7 @@ use Beffroi\Core\Exception\CredentialEnrolmentFailedException;
 use Beffroi\Core\Exception\TicketRefusedException;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingCredentialChangeNotifier;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Core\Tests\Fixture\Totps;
 use function count;
@@ -80,6 +81,7 @@ final class TotpTicketRedemptionTest extends TestCase
         $this->tickets = new InMemoryTotpTicketRepository();
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-11-17T12:00:15+00:00');
+        $notifier = new RecordingCredentialChangeNotifier();
         $this->redemption = new TotpTicketRedemption(
             $this->tickets,
             new TicketRedeeming($this->hasher, new DecoyHash($this->hasher, new SymfonyUuidGenerator()), $this->clock),
@@ -93,9 +95,10 @@ final class TotpTicketRedemptionTest extends TestCase
                 Totps::algorithm(),
                 new TotpCodeMatcher(Totps::algorithm()),
                 Totps::sealer(),
-                new CredentialRevocation($this->credentials, $this->clock, $this->events),
+                new CredentialRevocation($this->credentials, $this->clock, $this->events, $notifier),
                 $this->clock,
                 $this->events,
+                $notifier,
             ),
             new OtherSessionsTermination($this->sessions, new SessionTerminator($this->sessions, $this->clock, $this->events)),
         );

@@ -10,6 +10,7 @@ use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Event\CredentialRevoked;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingCredentialChangeNotifier;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -24,6 +25,8 @@ final class CredentialRevocationTest extends TestCase
 
     private RecordingEventDispatcher $events;
 
+    private RecordingCredentialChangeNotifier $notifier;
+
     private MockClock $clock;
 
     private CredentialRevocation $revocation;
@@ -32,8 +35,9 @@ final class CredentialRevocationTest extends TestCase
     {
         $this->credentials = new InMemoryCredentialRepository();
         $this->events = new RecordingEventDispatcher();
+        $this->notifier = new RecordingCredentialChangeNotifier();
         $this->clock = new MockClock('2026-09-19T12:00:00+00:00');
-        $this->revocation = new CredentialRevocation($this->credentials, $this->clock, $this->events);
+        $this->revocation = new CredentialRevocation($this->credentials, $this->clock, $this->events, $this->notifier);
     }
 
     #[Test]
@@ -55,6 +59,43 @@ final class CredentialRevocationTest extends TestCase
         static::assertCount(1, $events);
         static::assertSame($passkey, $events[0]->credential);
         static::assertSame($context, $events[0]->context);
+    }
+
+    /**
+     * NIST SP 800-63B-4 §4.5
+     */
+    #[Test]
+    public function thePersonIsToldAPasskeyWasRemovedFromTheirAccount(): void
+    {
+        // Given
+        $alice = Fixtures::user();
+        $passkey = Fixtures::passkey($alice);
+        $this->credentials->save($passkey);
+
+        // When
+        $this->revocation->revoke($passkey, Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame([[CredentialRevoked::NAME, 'passkey']], $this->notifier->acts());
+        static::assertEquals($this->clock->now(), $this->notifier->told[0]->occurredAt);
+        static::assertTrue($alice->id->equals($this->notifier->told[0]->userId));
+    }
+
+    /**
+     * NIST SP 800-63B-4 §4.5
+     */
+    #[Test]
+    public function thePersonIsToldOfARevocationAnAdministratorMade(): void
+    {
+        // Given
+        $passkey = Fixtures::passkey();
+        $this->credentials->save($passkey);
+
+        // When
+        $this->revocation->revokeByAnAdministrator($passkey, new Subject('administrator-subject'), Fixtures::context());
+
+        // Then
+        static::assertSame([[CredentialRevoked::NAME, 'passkey']], $this->notifier->acts());
     }
 
     /**
@@ -104,5 +145,20 @@ final class CredentialRevocationTest extends TestCase
         // Then
         static::assertSame($first, $passkey->revokedAt);
         static::assertSame([], $this->events->events);
+    }
+
+    #[Test]
+    public function aSecondRevocationTellsThePersonNothing(): void
+    {
+        // Given
+        $passkey = Fixtures::passkey();
+        $passkey->revoke(Fixtures::now());
+        $this->credentials->save($passkey);
+
+        // When
+        $this->revocation->revoke($passkey, Fixtures::context());
+
+        // Then
+        static::assertSame([], $this->notifier->told);
     }
 }

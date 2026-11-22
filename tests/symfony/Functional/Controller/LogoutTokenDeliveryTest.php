@@ -21,9 +21,7 @@ use Beffroi\Oidc\Domain\Event\LogoutTokenGivenUp;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Messenger\Transport\TransportInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -273,20 +271,6 @@ final class LogoutTokenDeliveryTest extends ConsoleTestCase
             static::assertInstanceOf(SendLogoutToken::class, $message);
             self::handler()($message);
         }
-    }
-
-    /**
-     * @return list<Envelope>
-     */
-    private static function queued(): array
-    {
-        $envelopes = [];
-        foreach (self::service('test.beffroi.notification_queue', TransportInterface::class)->get() as $envelope) {
-            static::assertInstanceOf(Envelope::class, $envelope);
-            $envelopes[] = $envelope;
-        }
-
-        return $envelopes;
     }
 
     private function signedInWith(string $clientId): AuthenticationSession

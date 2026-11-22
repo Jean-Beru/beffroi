@@ -24,6 +24,7 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Exception\LogicException;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingCredentialChangeNotifier;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Core\Tests\Fixture\Totps;
 use PHPUnit\Framework\Attributes\Test;
@@ -43,6 +44,8 @@ final class BackupCodesRenewalTest extends TestCase
 
     private RecordingEventDispatcher $events;
 
+    private RecordingCredentialChangeNotifier $notifier;
+
     private BackupCodesRenewal $renewal;
 
     private InMemoryUpstreamProviders $upstreamProviders;
@@ -53,6 +56,7 @@ final class BackupCodesRenewalTest extends TestCase
         $this->credentials = new InMemoryCredentialRepository();
         $this->hasher = new FakePasswordHasher();
         $this->events = new RecordingEventDispatcher();
+        $this->notifier = new RecordingCredentialChangeNotifier();
         $this->upstreamProviders = new InMemoryUpstreamProviders();
         $this->renewal = new BackupCodesRenewal(
             $this->credentials,
@@ -60,6 +64,7 @@ final class BackupCodesRenewalTest extends TestCase
             new MockClock('2026-09-15T13:00:00+00:00'),
             $this->events,
             new EnrolmentRefusal(new FederatedDomains($this->upstreamProviders)),
+            $this->notifier,
         );
     }
 
@@ -125,6 +130,22 @@ final class BackupCodesRenewalTest extends TestCase
         static::assertSame($totp, $announced[0]->credential);
     }
 
+    /**
+     * Decision 0049
+     */
+    #[Test]
+    public function thePersonIsToldTheirBackupCodesWereRenewed(): void
+    {
+        // Given
+        $totp = $this->totp();
+
+        // When
+        $this->renewal->renew($totp, Fixtures::context());
+
+        // Then
+        static::assertSame([[BackupCodesRenewed::NAME, 'totp']], $this->notifier->acts());
+    }
+
     #[Test]
     public function aRevokedCredentialIsNotRenewed(): void
     {
@@ -156,6 +177,24 @@ final class BackupCodesRenewalTest extends TestCase
 
         // When
         $this->renewal->renew($totp, Fixtures::context());
+    }
+
+    #[Test]
+    public function aPersonOfAFederatedDomainIsToldNothing(): void
+    {
+        // Given
+        $totp = $this->totp();
+        $this->upstreamProviders->declare($this->alice->tenant, new UpstreamProvider('https://idp.acme.example/saml', [new EmailDomain('acme.example')]));
+        $this->alice->changeEmail(new EmailAddress('alice@acme.example'), true, Fixtures::now());
+
+        // When
+        try {
+            $this->renewal->renew($totp, Fixtures::context());
+        } catch (CredentialEnrolmentFailedException) {
+        }
+
+        // Then
+        static::assertSame([], $this->notifier->told);
     }
 
     private function totp(): TotpCredential

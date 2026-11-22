@@ -46,6 +46,7 @@ use Beffroi\Core\Domain\Event\PersonProvisioned;
 use Beffroi\Core\Domain\Event\PersonTookTheirArchive;
 use Beffroi\Core\Domain\Event\PasswordRehashed;
 use Beffroi\Core\Domain\Event\PasswordUsed;
+use Beffroi\Core\Domain\Event\TenantContactChanged;
 use Beffroi\Core\Domain\Event\TenantDataKeysDestroyed;
 use Beffroi\Core\Domain\Event\TenantDataKeysRewrapped;
 use Beffroi\Core\Domain\Event\TenantKeyRetired;
@@ -208,6 +209,7 @@ final class EventsLeaveTheProcessTest extends TestCase
             $context,
         )];
         yield 'the data keys of a tenant destroyed' => [new TenantDataKeysDestroyed($tenant, 11, 10, $now, $context)];
+        yield 'the contact of a tenant an administrator changed' => [new TenantContactChanged($tenant, $now, $context, new Subject('administrator-subject'))];
     }
 
     #[Test]
