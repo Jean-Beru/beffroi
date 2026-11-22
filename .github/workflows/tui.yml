@@ -8,7 +8,9 @@ name: TUI
 # It is built at every release published and on demand, from the Actions tab or with
 # "gh workflow run tui.yml --ref <ref>". From a release tag A.B.C, by the release or by a dispatch on the tag, the four
 # files are uploaded to that release with SHA256SUMS, their digests, and SHA256SUMS.asc, the detached signature of
-# that file by the key that signs the release tags; a file the release carries already is replaced. From any other
+# that file by the key that signs the release tags, SIGNING_KEY_FINGERPRINT, published at https://github.com/Spomky.gpg;
+# a SIGNING_SECRET_KEY that holds another key signs nothing and fails the run. A file the release carries already is
+# replaced. From any other
 # ref the four files are built, each one is run once, and they are kept as artifacts of the run for three days;
 # nothing is published. No pull request builds them.
 #
@@ -69,6 +71,7 @@ env:
   SPC_VERSION: "2.8.5"
   MICRO_EXTENSIONS: "dom,filter,iconv,intl,mbstring,openssl,pcntl,phar,posix,simplexml,sodium,zlib"
   ALPINE_IMAGE: "alpine:3.22"
+  SIGNING_KEY_FINGERPRINT: "5E85361FC66BB177139388310B2A1B9931D62A89"
 
 jobs:
   prepare:
@@ -277,14 +280,19 @@ jobs:
         env:
           SIGNING_SECRET_KEY: ${{ secrets.SIGNING_SECRET_KEY }}
         run: |
-          fingerprint=$(docker run --rm -e SIGNING_SECRET_KEY -e OWNER="$(id -u):$(id -g)" -v "${PWD}/dist:/dist" -w /dist "${ALPINE_IMAGE}" sh -euc '
+          fingerprint=$(docker run --rm -e SIGNING_SECRET_KEY -e SIGNING_KEY_FINGERPRINT -e OWNER="$(id -u):$(id -g)" -v "${PWD}/dist:/dist" -w /dist "${ALPINE_IMAGE}" sh -euc '
             trap "chown \"${OWNER}\" SHA256SUMS.asc" EXIT
             apk add --no-cache gnupg > /dev/null
             export GNUPGHOME="$(mktemp -d)"
             printf "%s" "${SIGNING_SECRET_KEY}" | gpg --batch --quiet --import
-            gpg --batch --yes --armor --detach-sign --output SHA256SUMS.asc SHA256SUMS
+            held=$(gpg --batch --with-colons --list-secret-keys | awk -F: "/^fpr/ { print \$10; exit }")
+            if [ "${held}" != "${SIGNING_KEY_FINGERPRINT}" ]; then
+              echo "::error title=Not the published key::SIGNING_SECRET_KEY holds the key ${held}, and the key published at https://github.com/Spomky.gpg is ${SIGNING_KEY_FINGERPRINT}: nothing is signed." >&2
+              exit 1
+            fi
+            gpg --batch --yes --armor --detach-sign --local-user "${SIGNING_KEY_FINGERPRINT}" --output SHA256SUMS.asc SHA256SUMS
             gpg --batch --verify SHA256SUMS.asc SHA256SUMS
-            gpg --batch --with-colons --list-secret-keys | awk -F: "/^fpr/ { print \$10; exit }"
+            echo "${held}"
           ')
           echo "SHA256SUMS is signed by the key ${fingerprint}." >> "${GITHUB_STEP_SUMMARY}"
       - name: "Upload them to the release"
