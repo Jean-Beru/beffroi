@@ -27,3 +27,7 @@ services:
     test.beffroi.environment_roles.pending_approval_channels:
         alias: beffroi.pending_approval_channels
         public: true
+    # The channels a change to the credentials of a person goes through, which mail and SMS join while they are on.
+    test.beffroi.environment_roles.credential_change_channels:
+        alias: App\Credential\CredentialChangeChannels
+        public: true

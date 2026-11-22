@@ -6,6 +6,7 @@ namespace App\Tests\Symfony\Functional\Controller;
 
 use Beffroi\Oidc\Tests\Fixture\Secrets;
 use function array_filter;
+use function array_values;
 use function base64_decode;
 use function base64_encode;
 use Closure;
@@ -64,7 +65,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionFactoryInterface;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\Messenger\Envelope;
-use Symfony\Component\Messenger\Transport\TransportInterface;
+use Symfony\Component\Messenger\Transport\InMemory\InMemoryTransport;
 use Symfony\Component\Uid\Uuid;
 
 abstract class BrowserTestCase extends DatabaseTestCase
@@ -526,13 +527,7 @@ abstract class BrowserTestCase extends DatabaseTestCase
      */
     protected static function queued(): array
     {
-        $envelopes = [];
-        foreach (self::service('test.beffroi.notification_queue', TransportInterface::class)->get() as $envelope) {
-            static::assertInstanceOf(Envelope::class, $envelope);
-            $envelopes[] = $envelope;
-        }
-
-        return $envelopes;
+        return array_values(self::service('test.beffroi.notification_queue', InMemoryTransport::class)->all());
     }
 
     protected static function forgetEvents(): void

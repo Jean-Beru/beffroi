@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Symfony\Unit\Credential;
 
-use App\Controller\AccountController;
 use App\Credential\CredentialChangeNotices;
 use App\Locale\Moments;
-use App\Locale\ServedLocales;
-use App\Locale\UserLocale;
 use App\Locale\UserTimeZone;
+use App\Tests\Symfony\Fixture\CatalogueNotices;
 use Beffroi\Core\Domain\Credential\CredentialChange;
 use Beffroi\Core\Domain\Event\BackupCodesRenewed;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
@@ -21,37 +19,21 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\TenantContact;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use DateTimeImmutable;
-use function dirname;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function sprintf;
-use Symfony\Component\Routing\Generator\UrlGenerator;
-use Symfony\Component\Routing\RequestContext;
-use Symfony\Component\Routing\Route;
-use Symfony\Component\Routing\RouteCollection;
-use Symfony\Component\Translation\Loader\XliffFileLoader;
-use Symfony\Component\Translation\Translator;
 
 /**
  * NIST SP 800-63B-4 §4.6
  */
 final class CredentialChangeNoticesTest extends TestCase
 {
-    private const string CATALOGUE = '%s/apps/beffroi/translations/beffroi+intl-icu.%s.xlf';
-
     private User $alice;
-
-    private Translator $translator;
 
     protected function setUp(): void
     {
         $this->alice = Fixtures::user();
-        $this->translator = new Translator('en');
-        $this->translator->addLoader('xlf', new XliffFileLoader());
-        foreach (['en', 'fr'] as $locale) {
-            $this->translator->addResource('xlf', sprintf(self::CATALOGUE, dirname(__DIR__, 4), $locale), $locale, 'beffroi+intl-icu');
-        }
     }
 
     #[Test]
@@ -62,6 +44,16 @@ final class CredentialChangeNoticesTest extends TestCase
 
         // Then
         static::assertSame('Acme', $notice->title);
+    }
+
+    #[Test]
+    public function theSubjectNamesTheTenantAndSaysHowThePersonSignsInChanged(): void
+    {
+        // When
+        $notice = $this->notices()->of($this->alice, $this->enrolled());
+
+        // Then
+        static::assertSame('Acme: a change to how you sign in', $notice->subject);
     }
 
     #[Test]
@@ -129,6 +121,25 @@ final class CredentialChangeNoticesTest extends TestCase
         );
     }
 
+    /**
+     * Architecture §5.7, OIDC Core §5.1
+     */
+    #[Test]
+    public function theNoticeIsWrittenOnTheClockOfThePerson(): void
+    {
+        // Given
+        $this->alice->updateProfile(new Profile(zoneinfo: 'Europe/Paris', locale: 'fr'), Fixtures::now());
+
+        // When
+        $notice = $this->notices()->of($this->alice, $this->enrolled());
+
+        // Then
+        static::assertSame(
+            'Une passkey a été ajoutée à votre compte le 22 nov. 2026, 15:05 UTC+1. Si ce n\'était pas vous, ouvrez votre compte.',
+            $notice->body,
+        );
+    }
+
     #[Test]
     public function theNoticeOpensTheAccountUnderTheOriginOfTheIssuer(): void
     {
@@ -141,15 +152,7 @@ final class CredentialChangeNoticesTest extends TestCase
 
     private function notices(): CredentialChangeNotices
     {
-        $routes = new RouteCollection();
-        $routes->add(AccountController::ROUTE, new Route('/account'));
-
-        return new CredentialChangeNotices(
-            $this->translator,
-            new UserLocale(new ServedLocales(['en', 'fr'], 'en')),
-            new Moments(new UserTimeZone()),
-            new UrlGenerator($routes, new RequestContext()),
-        );
+        return CatalogueNotices::create();
     }
 
     private function enrolled(): CredentialChange

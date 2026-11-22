@@ -379,7 +379,14 @@ final class AccountPasskeysTest extends PasskeyTestCase
         $this->enrol(self::user('alice'), self::device());
 
         // Then
-        static::assertSame([[CredentialEnrolled::NAME, 'passkey']], self::toldOnTheLane());
+        static::assertSame(
+            [
+                [CredentialEnrolled::NAME, 'passkey', 'web_push'],
+                [CredentialEnrolled::NAME, 'passkey', 'mail'],
+                [CredentialEnrolled::NAME, 'passkey', 'sms'],
+            ],
+            self::toldOnTheLane(),
+        );
     }
 
     /**
@@ -399,7 +406,14 @@ final class AccountPasskeysTest extends PasskeyTestCase
         $this->browser->submit($form);
 
         // Then
-        static::assertSame([[CredentialRevoked::NAME, 'passkey']], self::toldOnTheLane());
+        static::assertSame(
+            [
+                [CredentialRevoked::NAME, 'passkey', 'web_push'],
+                [CredentialRevoked::NAME, 'passkey', 'mail'],
+                [CredentialRevoked::NAME, 'passkey', 'sms'],
+            ],
+            self::toldOnTheLane(),
+        );
     }
 
     #[Test]
@@ -625,7 +639,8 @@ final class AccountPasskeysTest extends PasskeyTestCase
     }
 
     /**
-     * @return list<array{string, ?string}> the act and the kind of each change told, oldest first
+     * @return list<array{string, ?string, string}> the act, the kind and the channel of each notice of a change, oldest
+     *                                              first
      */
     private static function toldOnTheLane(): array
     {
@@ -633,7 +648,7 @@ final class AccountPasskeysTest extends PasskeyTestCase
         foreach (self::queued() as $envelope) {
             $message = $envelope->getMessage();
             if ($message instanceof TellUserOfCredentialChange) {
-                $told[] = [$message->change->act, $message->change->kind];
+                $told[] = [$message->change->act, $message->change->kind, $message->channel];
             }
         }
 

@@ -1327,6 +1327,10 @@ services:
     test.beffroi.pending_approval_delivery:
         alias: App\MessageHandler\TellUserOfPendingApprovalHandler
         public: true
+    # What a change to the credentials of a person is told through, as a use case of the core tells it.
+    test.beffroi.credential_change_notifier:
+        alias: Beffroi\Core\Port\CredentialChangeNotifierInterface
+        public: true
     test.beffroi.mails:
         class: Symfony\Component\Mailer\EventListener\MessageLoggerListener
         public: true
