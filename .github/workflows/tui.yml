@@ -161,12 +161,18 @@ jobs:
       SPC_ARCHIVE: ${{ matrix.spc }}
       SPC_SHA256: ${{ matrix.spc-sha256 }}
     steps:
+      # A key of the cache takes no comma.
+      - name: "The key of the micro"
+        id: key
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: echo "key=tui-micro-spc${SPC_VERSION}-php${PHP_PATCH}-${MICRO_EXTENSIONS//,/+}-${PLATFORM}" >> "${GITHUB_OUTPUT}"
       - name: "The micro of this platform, from the cache"
         id: micro
         uses: actions/cache/restore@v6
         with:
           path: micro.sfx
-          key: tui-micro-spc${{ env.SPC_VERSION }}-php${{ needs.prepare.outputs.php }}-${{ env.MICRO_EXTENSIONS }}-${{ matrix.platform }}
+          key: ${{ steps.key.outputs.key }}
       - name: "Docker Hub, under the account of the repository"
         if: steps.micro.outputs.cache-hit != 'true' && runner.os == 'Linux'
         uses: docker/login-action@v4
