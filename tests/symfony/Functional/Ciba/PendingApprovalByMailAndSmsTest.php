@@ -12,6 +12,7 @@ use App\Message\TellUserOfPendingApproval;
 use App\MessageHandler\TellUserOfPendingApprovalHandler;
 use App\Tests\Symfony\Functional\Controller\BrowserTestCase;
 use Beffroi\Core\Domain\Identity\EmailAddress;
+use Beffroi\Core\Domain\Notification\ChosenChannels;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
@@ -88,6 +89,23 @@ final class PendingApprovalByMailAndSmsTest extends BrowserTestCase
     }
 
     /**
+     * Decision 0050
+     */
+    #[Test]
+    public function aPendingApprovalReachesThePersonByTheChannelsTheyChoseAlone(): void
+    {
+        // Given
+        $this->alice(verified: true, chosen: new ChosenChannels(['mail'], ['pending_approval' => ['sms']]));
+        $this->ask();
+
+        // When
+        self::deliverQueued();
+
+        // Then
+        static::assertSame([0, 1], [count(self::mails()), count(self::texts())]);
+    }
+
+    /**
      * Architecture §5.6
      */
     #[Test]
@@ -157,11 +175,12 @@ final class PendingApprovalByMailAndSmsTest extends BrowserTestCase
         static::assertStringNotContainsString($authRequestId, self::texts()[0]->getSubject());
     }
 
-    private function alice(bool $verified): void
+    private function alice(bool $verified, ?ChosenChannels $chosen = null): void
     {
         $alice = self::userWithPassword('alice', 'correct horse battery staple');
         $alice->changeEmail(new EmailAddress(self::ADDRESS), $verified, self::now());
         $alice->changePhoneNumber(self::NUMBER, $verified, self::now());
+        $alice->chooseChannels($chosen ?? ChosenChannels::none(), self::now());
         self::service('test.beffroi.users', UserRepositoryInterface::class)->save($alice);
     }
 

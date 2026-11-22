@@ -73,6 +73,42 @@ final class UserColumnsTest extends DatabaseTestCase
         static::assertSame(self::PLAINTEXTS['address'], $read->address->formatted);
         static::assertSame(self::PLAINTEXTS['profile'], $read->profile->name);
         static::assertSame(self::PLAINTEXTS['source'], $read->source->provider);
+        static::assertSame([self::PLAINTEXTS['notification_channels']], $read->notificationChannels->forEveryKind);
+    }
+
+    /**
+     * Decision 0050
+     */
+    #[Test]
+    public function aPersonWhoChoseNoChannelLeavesTheColumnEmpty(): void
+    {
+        // Given
+        self::user('bob', 'bob-subject');
+
+        // When
+        $chosen = self::connection()->fetchOne('SELECT notification_channels FROM beffroi_user');
+
+        // Then
+        static::assertNull($chosen);
+    }
+
+    /**
+     * Decision 0050
+     */
+    #[Test]
+    public function anEmptyColumnOfChannelsIsReadBackAsAPersonWhoChoseNothing(): void
+    {
+        // Given
+        $saved = self::ada();
+        self::connection()->executeStatement('UPDATE beffroi_user SET notification_channels = NULL');
+        self::reload();
+
+        // When
+        $read = self::users()->find($saved->id);
+
+        // Then
+        static::assertInstanceOf(User::class, $read);
+        static::assertTrue($read->notificationChannels->isNone());
     }
 
     /**

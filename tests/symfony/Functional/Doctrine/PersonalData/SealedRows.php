@@ -19,6 +19,7 @@ use Beffroi\Core\Domain\Identity\PushSubscription;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Identity\UserSource;
+use Beffroi\Core\Domain\Notification\ChosenChannels;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
 use Beffroi\Core\Domain\Session\AuthenticationProofs;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
@@ -95,6 +96,7 @@ final readonly class SealedRows
             'profile' => 'Augusta Ada King-Noel',
             'source' => 'login.acme-federation.example',
             'mail_encryption' => 'the certificate of ada-lovelace',
+            'notification_channels' => 'carrier_pigeon',
         ],
         'beffroi_linked_identity' => [
             'provider' => 'login.acme-federation.example',
@@ -351,6 +353,7 @@ final readonly class SealedRows
         $user->changeAddress(new Address($values['address']), $this->now);
         $user->changeEmail(new EmailAddress($values['email']), true, $this->now);
         $user->encryptMailTo(new MailEncryptionKey('smime', $values['mail_encryption'], 'ADA0', [new EmailAddress($values['email'])]), $this->now);
+        $user->chooseChannels(new ChosenChannels([$values['notification_channels']]), $this->now);
         $user->updateProfile(
             new Profile(
                 $values['profile'],
