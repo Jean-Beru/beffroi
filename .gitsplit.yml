@@ -16,21 +16,21 @@
 
 splits:
   - prefix: "src/core"
-    target: "https://${GH_TOKEN}@github.com/beffroi-auth/core.git"
+    target: "https://x-access-token:${GH_TOKEN}@github.com/beffroi-auth/core.git"
   - prefix: "src/oidc"
-    target: "https://${GH_TOKEN}@github.com/beffroi-auth/oidc.git"
+    target: "https://x-access-token:${GH_TOKEN}@github.com/beffroi-auth/oidc.git"
   - prefix: "src/xml-security"
-    target: "https://${GH_TOKEN}@github.com/beffroi-auth/xml-security.git"
+    target: "https://x-access-token:${GH_TOKEN}@github.com/beffroi-auth/xml-security.git"
   - prefix: "src/saml2-model"
-    target: "https://${GH_TOKEN}@github.com/beffroi-auth/saml2-model.git"
+    target: "https://x-access-token:${GH_TOKEN}@github.com/beffroi-auth/saml2-model.git"
   - prefix: "src/saml2-bindings"
-    target: "https://${GH_TOKEN}@github.com/beffroi-auth/saml2-bindings.git"
+    target: "https://x-access-token:${GH_TOKEN}@github.com/beffroi-auth/saml2-bindings.git"
   - prefix: "src/saml"
-    target: "https://${GH_TOKEN}@github.com/beffroi-auth/saml.git"
+    target: "https://x-access-token:${GH_TOKEN}@github.com/beffroi-auth/saml.git"
   - prefix: "apps/beffroi"
-    target: "https://${GH_TOKEN}@github.com/beffroi-auth/application.git"
+    target: "https://x-access-token:${GH_TOKEN}@github.com/beffroi-auth/application.git"
   - prefix: "apps/tui"
-    target: "https://${GH_TOKEN}@github.com/beffroi-auth/tui.git"
+    target: "https://x-access-token:${GH_TOKEN}@github.com/beffroi-auth/tui.git"
 
 origins:
   - ^\d+\.\d+\.x$
