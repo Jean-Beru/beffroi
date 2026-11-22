@@ -12,6 +12,7 @@ use function array_values;
 use function base64_decode;
 use function base64_encode;
 use App\Message\AdvanceKeyLifecycle;
+use App\Message\IssueLogoutToken;
 use App\Message\SendLogoutToken;
 use App\Message\TellUserOfCredentialChange;
 use Beffroi\Core\Domain\Credential\CredentialChange;
@@ -94,6 +95,13 @@ final class SealedBodySerializerTest extends TestCase
             'oidc-demo',
             'https://demo.localhost/backchannel-logout',
             'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhbGljZSJ9.signature',
+            Uuid::v7(),
+            Fixtures::user()->subject,
+            Fixtures::context(),
+        )];
+        yield 'a logout token still to issue' => [new IssueLogoutToken(
+            Fixtures::tenant(),
+            'oidc-demo',
             Uuid::v7(),
             Fixtures::user()->subject,
             Fixtures::context(),
