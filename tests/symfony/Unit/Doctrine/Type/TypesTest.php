@@ -42,6 +42,7 @@ use App\Doctrine\Type\ClaimNamesType;
 use App\Doctrine\Type\GrantedMembersType;
 use App\Doctrine\Type\UserSourceType;
 use App\Doctrine\Type\MailEncryptionKeyType;
+use App\Doctrine\Type\ChosenChannelsType;
 use App\Doctrine\Type\TenantContactType;
 use App\Doctrine\Type\TenantLookType;
 use App\Doctrine\Type\LogoutProgressType;
@@ -357,6 +358,7 @@ final class TypesTest extends TestCase
         yield 'a string for the progress of a chain' => [LogoutProgressType::class, '{}'];
         yield 'a name for the source of a person' => [UserSourceType::class, 'local'];
         yield 'a string for the key mail is encrypted to' => [MailEncryptionKeyType::class, 'smime'];
+        yield 'a list of channels for the channels a person chose' => [ChosenChannelsType::class, ['mail']];
         yield 'a list of strings for claims by name' => [ClaimNamesType::class, ['email']];
         yield 'the members of what a token gives' => [GrantedMembersType::class, ['resources' => ['https://api.example/invoices']]];
     }
@@ -430,6 +432,8 @@ final class TypesTest extends TestCase
         yield 'the source of a person that names no provider' => [UserSourceType::class, '{"claims":["email"]}'];
         yield 'the source of a person whose claims are not names' => [UserSourceType::class, '{"provider":"workforce","claims":[12]}'];
         yield 'a key mail is encrypted to that names no format' => [MailEncryptionKeyType::class, '{"material":"m","fingerprint":"F","addresses":[]}'];
+        yield 'the channels a person chose that are not names' => [ChosenChannelsType::class, '{"every_kind":["Web Push"]}'];
+        yield 'the channels a person chose that are not a list' => [ChosenChannelsType::class, '{"every_kind":"mail"}'];
         yield 'claims by name that are a JSON object' => [ClaimNamesType::class, '{"email":true}'];
         yield 'claims by name that are not names' => [ClaimNamesType::class, '["email",12]'];
         yield 'what a token gives that no token may give' => [GrantedMembersType::class, '{"requires_consent":false}'];
@@ -518,10 +522,10 @@ final class TypesTest extends TestCase
     }
 
     #[Test]
-    public function theProviderDeclaresThirtyEightTypes(): void
+    public function theProviderDeclaresThirtyNineTypes(): void
     {
         // When / Then
-        static::assertCount(38, BeffroiExtension::DBAL_TYPES);
+        static::assertCount(39, BeffroiExtension::DBAL_TYPES);
     }
 
     /**

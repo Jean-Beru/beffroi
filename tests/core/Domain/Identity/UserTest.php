@@ -11,6 +11,7 @@ use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Identity\UserSource;
+use Beffroi\Core\Domain\Notification\ChosenChannels;
 use Beffroi\Core\Domain\Tenant\SelfServedClaims;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
@@ -38,6 +39,37 @@ final class UserTest extends TestCase
         static::assertEquals(Profile::empty(), $user->profile);
         static::assertNull($user->address);
         static::assertSame($user->createdAt, $user->updatedAt);
+    }
+
+    /**
+     * Decision 0050
+     */
+    #[Test]
+    public function aNewUserChoseNoChannel(): void
+    {
+        // When
+        $user = Fixtures::user();
+
+        // Then
+        static::assertTrue($user->notificationChannels->isNone());
+    }
+
+    /**
+     * Decision 0050
+     */
+    #[Test]
+    public function choosingChannelsDatesTheUser(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $later = new DateTimeImmutable('2026-09-16T00:00:00+00:00');
+        $chosen = new ChosenChannels(['mail']);
+
+        // When
+        $user->chooseChannels($chosen, $later);
+
+        // Then
+        static::assertSame([$chosen, $later], [$user->notificationChannels, $user->updatedAt]);
     }
 
     #[Test]

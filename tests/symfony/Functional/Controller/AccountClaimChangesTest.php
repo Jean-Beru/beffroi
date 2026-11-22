@@ -85,6 +85,36 @@ final class AccountClaimChangesTest extends BrowserTestCase
         static::assertSame(['verified', 'not verified'], [$row->eq(1)->text(), $row->eq(2)->text()]);
     }
 
+    /**
+     * Decision 0050
+     */
+    #[Test]
+    #[DataProvider('provideChoicesOfChannels')]
+    public function aChoiceOfChannelsIsSaidInWords(?string $value, string $said): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        self::aChange($alice, $value, 'mail', claim: 'notification_channels.pending_approval');
+        self::reload();
+
+        // When
+        $page = $this->changesPage();
+
+        // Then
+        static::assertSame($said, $page->filter('tbody tr[data-change]')->first()->filter('td')->eq(1)->text());
+    }
+
+    /**
+     * @return iterable<string, array{string|null, string}>
+     */
+    public static function provideChoicesOfChannels(): iterable
+    {
+        yield 'nothing chosen' => [null, 'Not chosen'];
+        yield 'no channel' => ['', 'No channel'];
+        yield 'channels' => ['sms web_push', 'Text message, Browsers'];
+    }
+
     #[Test]
     public function aPersonWhoChangedNothingIsToldSo(): void
     {

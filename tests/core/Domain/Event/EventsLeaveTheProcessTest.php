@@ -36,6 +36,7 @@ use Beffroi\Core\Domain\Event\PersonAskedForTheirArchive;
 use Beffroi\Core\Domain\Event\GroupCreated;
 use Beffroi\Core\Domain\Event\GroupMembershipAdded;
 use Beffroi\Core\Domain\Event\GroupMembershipRemoved;
+use Beffroi\Core\Domain\Event\NotificationChannelsChosen;
 use Beffroi\Core\Domain\Event\PersonDescribed;
 use Beffroi\Core\Domain\Event\PersonDescribedThemselves;
 use Beffroi\Core\Domain\Event\PersonDisabled;
@@ -147,6 +148,13 @@ final class EventsLeaveTheProcessTest extends TestCase
             $now,
             $context,
             new Subject('administrator-subject'),
+        )];
+        yield 'a person who chose their notification channels' => [new NotificationChannelsChosen(
+            $tenant,
+            $user->subject,
+            ['notification_channels', 'notification_channels.pending_approval'],
+            $now,
+            $context,
         )];
         yield 'a person who asked for their archive' => [new PersonAskedForTheirArchive($now, $tenant, Uuid::v7(), $user->subject, $context)];
         yield 'a person who took their archive' => [new PersonTookTheirArchive($now, $tenant, Uuid::v7(), $user->subject, $context)];

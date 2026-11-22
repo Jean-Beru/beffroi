@@ -7,6 +7,8 @@ namespace App\Tests\Symfony\Functional\Administration;
 use function array_column;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
 use Beffroi\Core\Domain\Journal\JournalEntry;
+use Beffroi\Core\Domain\Notification\ChosenChannels;
+use Beffroi\Core\Port\UserRepositoryInterface;
 use Beffroi\Oidc\Domain\Event\JournalReadByAnAdministrator;
 use Beffroi\Oidc\Domain\Event\PersonReadByAnAdministrator;
 use Beffroi\Oidc\Domain\Event\SessionsReadByAnAdministrator;
@@ -98,6 +100,38 @@ final class AdministrationApiTest extends AdministrationTestCase
                 array_column(self::listOf($person, 'groups'), 'name'),
             ],
         );
+    }
+
+    /**
+     * Decision 0050
+     */
+    #[Test]
+    public function aPersonIsReadWithTheChannelsTheyChose(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $alice->chooseChannels(new ChosenChannels(['mail'], ['pending_approval' => ['sms']]), self::now());
+        self::service('test.beffroi.users', UserRepositoryInterface::class)->save($alice);
+        $token = $this->administratorToken($alice);
+
+        // When
+        $person = self::json($this->api('/users', $token, query: ['username' => 'alice']));
+
+        // Then
+        static::assertSame(['every_kind' => ['mail'], 'set_apart' => ['pending_approval' => ['sms']]], $person['notification_channels'] ?? null);
+    }
+
+    #[Test]
+    public function aPersonWhoChoseNothingIsReadWithNoChannelChosen(): void
+    {
+        // Given
+        $token = $this->administratorToken(self::user('alice'));
+
+        // When
+        $person = self::json($this->api('/users', $token, query: ['username' => 'alice']));
+
+        // Then
+        static::assertSame(['every_kind' => null, 'set_apart' => []], $person['notification_channels'] ?? null);
     }
 
     #[Test]

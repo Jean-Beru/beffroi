@@ -10,8 +10,10 @@ use App\Messenger\NotificationNotDeliveredException;
 use App\Tests\Symfony\Fixture\ScriptedApprovalChannel;
 use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Notification\ChosenChannels;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Domain\Ciba\PendingApproval;
+use Beffroi\Oidc\Domain\Ciba\PendingApprovalKind;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -119,11 +121,46 @@ final class TellUserOfPendingApprovalHandlerTest extends TestCase
     }
 
     /**
+     * Decision 0050
+     */
+    #[Test]
+    public function aChannelThePersonDidNotChooseTellsThemNothing(): void
+    {
+        // Given
+        $this->alice->chooseChannels(new ChosenChannels(null, ['pending_approval' => ['mail']]), new DateTimeImmutable('2026-09-28T09:00:00+00:00'));
+        $push = ScriptedApprovalChannel::reaching('web_push');
+        $mail = ScriptedApprovalChannel::reaching('mail');
+
+        // When
+        $this->handler([$push, $mail])($this->message());
+
+        // Then
+        static::assertSame([0, 1], [$push->told, $mail->told]);
+    }
+
+    /**
+     * Decision 0050
+     */
+    #[Test]
+    public function aPersonWhoChoseNoChannelIsToldByNoneAndTheLaneDoesNotComeBack(): void
+    {
+        // Given
+        $this->alice->chooseChannels(new ChosenChannels([]), new DateTimeImmutable('2026-09-28T09:00:00+00:00'));
+        $handler = $this->handler([ScriptedApprovalChannel::refusing('No browser of this user was reached: the push service answered 503.')]);
+
+        // When
+        $handler($this->message());
+
+        // Then
+        $this->expectNotToPerformAssertions();
+    }
+
+    /**
      * @param list<ScriptedApprovalChannel> $channels
      */
     private function handler(array $channels): TellUserOfPendingApprovalHandler
     {
-        return new TellUserOfPendingApprovalHandler($this->users, $channels);
+        return new TellUserOfPendingApprovalHandler($this->users, $channels, new PendingApprovalKind());
     }
 
     private function message(?User $user = null): TellUserOfPendingApproval

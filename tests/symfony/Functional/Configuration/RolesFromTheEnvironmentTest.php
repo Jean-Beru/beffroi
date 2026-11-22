@@ -8,9 +8,9 @@ use App\Ciba\MailApprovalChannel;
 use App\Ciba\SmsApprovalChannel;
 use App\Configuration\SwitchedServices;
 use App\Credential\CredentialChangeChannels;
-use App\Credential\MailCredentialChangeChannel;
-use App\Credential\SmsCredentialChangeChannel;
+use App\Mail\MailSender;
 use App\Saml\SamlSigning;
+use App\Sms\SmsSender;
 use App\Tests\Symfony\Functional\Command\ConsoleTestCase;
 use Beffroi\Core\Port\ApplicationServerAlgorithmsInterface;
 use Beffroi\Core\Domain\Key\KeyAlgorithmInterface;
@@ -292,8 +292,8 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
      */
     public static function provideCredentialChangeChannelsOfADsnTheEnvironmentNames(): iterable
     {
-        yield 'mail' => [MailCredentialChangeChannel::NAME];
-        yield 'SMS' => [SmsCredentialChangeChannel::NAME];
+        yield 'mail' => [MailSender::CHANNEL];
+        yield 'SMS' => [SmsSender::CHANNEL];
     }
 
     /**
@@ -320,8 +320,8 @@ final class RolesFromTheEnvironmentTest extends ConsoleTestCase
      */
     public static function provideCredentialChangeChannelsOfADsn(): iterable
     {
-        yield 'mail' => ['BEFFROI_TEST_MAIL_DSN', MailCredentialChangeChannel::NAME];
-        yield 'SMS' => ['BEFFROI_TEST_SMS_DSN', SmsCredentialChangeChannel::NAME];
+        yield 'mail' => ['BEFFROI_TEST_MAIL_DSN', MailSender::CHANNEL];
+        yield 'SMS' => ['BEFFROI_TEST_SMS_DSN', SmsSender::CHANNEL];
     }
 
     /**

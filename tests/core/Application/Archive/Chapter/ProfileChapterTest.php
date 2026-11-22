@@ -11,6 +11,7 @@ use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Identity\UserSource;
+use Beffroi\Core\Domain\Notification\ChosenChannels;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use function array_keys;
 use PHPUnit\Framework\Attributes\Test;
@@ -56,6 +57,7 @@ final class ProfileChapterTest extends TestCase
                 'disabled_at',
                 'source',
                 'mail_encryption',
+                'notification_channels',
             ],
             array_keys($lines[0]),
         );
@@ -195,6 +197,23 @@ final class ProfileChapterTest extends TestCase
             ],
             $lines[0]['source'],
         );
+    }
+
+    /**
+     * Decision 0050
+     */
+    #[Test]
+    public function theChannelsThePersonChoseAreWrittenAsTheirDocument(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $user->chooseChannels(new ChosenChannels(['web_push'], ['pending_approval' => ['sms']]), Fixtures::now());
+
+        // When
+        $lines = new ProfileChapter()->of($user);
+
+        // Then
+        static::assertSame(['every_kind' => ['web_push'], 'set_apart' => ['pending_approval' => ['sms']]], $lines[0]['notification_channels']);
     }
 
     #[Test]
