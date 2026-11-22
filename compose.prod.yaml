@@ -63,7 +63,7 @@ services:
       SERVER_NAME: ${SERVER_NAME:?the host the provider is served on}
       # The host that asks for a client certificate (RFC 8705 §5), for a deployment whose clients authenticate
       # with one or bind their tokens to it: a host of its own, and the origin the discovery document announces.
-      # Left out, the provider serves one host and announces no alias.
+      # Left out, the provider serves no mutual TLS: no method that reads a certificate, no token bound to one.
       # CADDY_EXTRA_CONFIG: import mtls.Caddyfile
       # MTLS_SERVER_NAME: mtls.${SERVER_NAME}
       # BEFFROI_MTLS_ORIGIN: https://mtls.${SERVER_NAME}
