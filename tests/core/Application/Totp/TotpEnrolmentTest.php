@@ -30,6 +30,7 @@ use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Core\Port\SecretSealerInterface;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingCredentialChangeNotifier;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Core\Tests\Fixture\Totps;
 use ParagonIE\ConstantTime\Base32;
@@ -52,6 +53,8 @@ final class TotpEnrolmentTest extends TestCase
 
     private RecordingEventDispatcher $events;
 
+    private RecordingCredentialChangeNotifier $notifier;
+
     private MockClock $clock;
 
     private TotpEnrolment $enrolment;
@@ -64,6 +67,7 @@ final class TotpEnrolmentTest extends TestCase
         $this->credentials = new InMemoryCredentialRepository();
         $this->hasher = new FakePasswordHasher();
         $this->events = new RecordingEventDispatcher();
+        $this->notifier = new RecordingCredentialChangeNotifier();
         $this->clock = new MockClock('2026-09-20T12:00:15+00:00');
         $this->upstreamProviders = new InMemoryUpstreamProviders();
         $this->enrolment = $this->enrolmentSealingWith(Totps::sealer());
@@ -209,6 +213,28 @@ final class TotpEnrolmentTest extends TestCase
         static::assertEquals($this->clock->now(), $enrolled->occurredAt);
     }
 
+    /**
+     * NIST SP 800-63B-4 §4.1.2.1
+     */
+    #[Test]
+    public function thePersonIsToldAnAuthenticatorAppWasAddedToTheirAccount(): void
+    {
+        // Given
+        $provisioning = $this->enrolment->begin($this->alice);
+
+        // When
+        $this->enrolment->complete(
+            $this->alice,
+            $provisioning,
+            Totps::codeAt($this->clock->now(), $provisioning->secret),
+            Fixtures::context($this->clock->now()),
+        );
+
+        // Then
+        static::assertSame([[CredentialEnrolled::NAME, 'totp']], $this->notifier->acts());
+        static::assertEquals($this->clock->now(), $this->notifier->told[0]->occurredAt);
+    }
+
     #[Test]
     public function aFirstCodeThatDoesNotHoldIsRefused(): void
     {
@@ -244,6 +270,25 @@ final class TotpEnrolmentTest extends TestCase
         static::assertSame([], $this->credentials->findByUser($this->alice));
         static::assertSame([], $this->events->events);
         static::assertSame(0, $this->hasher->hashed);
+    }
+
+    /**
+     * NIST SP 800-63B-4 §4.1.2.1
+     */
+    #[Test]
+    public function aRefusedFirstCodeTellsThePersonNothing(): void
+    {
+        // Given
+        $provisioning = $this->enrolment->begin($this->alice);
+
+        // When
+        try {
+            $this->enrolment->complete($this->alice, $provisioning, '000000', Fixtures::context($this->clock->now()));
+        } catch (CredentialEnrolmentFailedException) {
+        }
+
+        // Then
+        static::assertSame([], $this->notifier->told);
     }
 
     #[Test]
@@ -379,6 +424,34 @@ final class TotpEnrolmentTest extends TestCase
     }
 
     /**
+     * NIST SP 800-63B-4 §4.1.2.1, §4.5
+     */
+    #[Test]
+    public function thePersonIsToldTheAppHeldWasRemovedAndTheNewOneAdded(): void
+    {
+        // Given
+        $this->credentials->save(Totps::credential($this->alice, $this->hasher));
+        $provisioning = $this->enrolment->beginInPlaceOfTheOneHeld($this->alice);
+
+        // When
+        $this->enrolment->completeInPlaceOfTheOneHeld(
+            $this->alice,
+            $provisioning,
+            Totps::codeAt($this->clock->now(), $provisioning->secret),
+            Fixtures::context($this->clock->now()),
+        );
+
+        // Then
+        static::assertSame(
+            [
+                [CredentialRevoked::NAME,  'totp'],
+                [CredentialEnrolled::NAME, 'totp'],
+            ],
+            $this->notifier->acts(),
+        );
+    }
+
+    /**
      * Decision 0026
      */
     #[Test]
@@ -485,9 +558,10 @@ final class TotpEnrolmentTest extends TestCase
             Totps::algorithm(),
             new TotpCodeMatcher(Totps::algorithm()),
             $sealer,
-            new CredentialRevocation($this->credentials, $this->clock, $this->events),
+            new CredentialRevocation($this->credentials, $this->clock, $this->events, $this->notifier),
             $this->clock,
             $this->events,
+            $this->notifier,
         );
     }
 }

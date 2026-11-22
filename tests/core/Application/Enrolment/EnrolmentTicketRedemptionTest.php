@@ -19,6 +19,7 @@ use Beffroi\Core\Domain\Ticket\IssuedTicket;
 use Beffroi\Core\Exception\TicketRefusedException;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingCredentialChangeNotifier;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -57,6 +58,7 @@ final class EnrolmentTicketRedemptionTest extends TestCase
             $this->tickets,
             new TicketIssuing(new SymfonyUuidGenerator(), new PlatformRandomness(), $this->hasher, $this->clock),
             new RecordingEventDispatcher(),
+            new RecordingCredentialChangeNotifier(),
         )->issue($this->alice, Fixtures::context($this->clock->now()));
         $this->redemption = new EnrolmentTicketRedemption(
             $this->tickets,

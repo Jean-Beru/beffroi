@@ -40,6 +40,19 @@ final class RetentionWindowTest extends TestCase
     }
 
     #[Test]
+    public function whatIsWrittenIsKeptTheDaysOfTheWindowAfterwards(): void
+    {
+        // Given
+        $window = new RetentionWindow(180);
+
+        // When
+        $until = $window->keptUntil(new DateTimeImmutable('2026-04-14 09:30:00'));
+
+        // Then
+        static::assertSame('2026-10-11 09:30:00', $until->format('Y-m-d H:i:s'));
+    }
+
+    #[Test]
     #[DataProvider('provideDaysThatKeepNothing')]
     public function aWindowKeepsADayOrMore(int $days): void
     {

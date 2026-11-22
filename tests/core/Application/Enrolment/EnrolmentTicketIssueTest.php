@@ -16,6 +16,7 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Exception\TicketRefusedException;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingCredentialChangeNotifier;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -32,6 +33,8 @@ final class EnrolmentTicketIssueTest extends TestCase
 
     private RecordingEventDispatcher $events;
 
+    private RecordingCredentialChangeNotifier $notifier;
+
     private MockClock $clock;
 
     private EnrolmentTicketIssue $issue;
@@ -42,11 +45,13 @@ final class EnrolmentTicketIssueTest extends TestCase
         $this->hasher = new FakePasswordHasher();
         $this->tickets = new InMemoryEnrolmentTicketRepository();
         $this->events = new RecordingEventDispatcher();
+        $this->notifier = new RecordingCredentialChangeNotifier();
         $this->clock = new MockClock('2026-10-11T12:00:00+00:00');
         $this->issue = new EnrolmentTicketIssue(
             $this->tickets,
             new TicketIssuing(new SymfonyUuidGenerator(), new PlatformRandomness(), $this->hasher, $this->clock),
             $this->events,
+            $this->notifier,
         );
     }
 
@@ -82,6 +87,21 @@ final class EnrolmentTicketIssueTest extends TestCase
         static::assertCount(1, $acts);
         static::assertSame($issued->ticket, $acts[0]->ticket);
         static::assertSame($this->alice->subject, $acts[0]->subject());
+    }
+
+    /**
+     * Decision 0049
+     */
+    #[Test]
+    public function thePersonIsToldALinkToAddAPasskeyWasIssued(): void
+    {
+        // When
+        $this->issue->issue($this->alice, Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame([[EnrolmentTicketIssued::NAME, null]], $this->notifier->acts());
+        static::assertEquals($this->clock->now(), $this->notifier->told[0]->occurredAt);
+        static::assertTrue($this->alice->id->equals($this->notifier->told[0]->userId));
     }
 
     #[Test]
@@ -210,5 +230,21 @@ final class EnrolmentTicketIssueTest extends TestCase
         // Then
         static::assertSame([], $this->tickets->unspentOf($this->alice));
         static::assertSame([], $this->events->of(EnrolmentTicketIssued::class));
+    }
+
+    #[Test]
+    public function aDisabledPersonIsToldNothing(): void
+    {
+        // Given
+        $this->alice->disable($this->clock->now());
+
+        // When
+        try {
+            $this->issue->issue($this->alice, Fixtures::context($this->clock->now()));
+        } catch (TicketRefusedException) {
+        }
+
+        // Then
+        static::assertSame([], $this->notifier->told);
     }
 }

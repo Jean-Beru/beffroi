@@ -24,6 +24,7 @@ use Beffroi\Core\Exception\PasswordRefusedException;
 use Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RecordingCredentialChangeNotifier;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -49,6 +50,8 @@ final class PasswordChangeTest extends TestCase
 
     private RecordingEventDispatcher $events;
 
+    private RecordingCredentialChangeNotifier $notifier;
+
     private MockClock $clock;
 
     private BreachedPasswordsOfARecord $breaches;
@@ -63,6 +66,7 @@ final class PasswordChangeTest extends TestCase
         $this->credentials = new InMemoryCredentialRepository();
         $this->hasher = new FakePasswordHasher();
         $this->events = new RecordingEventDispatcher();
+        $this->notifier = new RecordingCredentialChangeNotifier();
         $this->clock = new MockClock('2026-09-15T13:00:00+00:00');
         $this->breaches = BreachedPasswordsOfARecord::holding([self::BREACHED]);
         $this->upstreamProviders = new InMemoryUpstreamProviders();
@@ -98,6 +102,23 @@ final class PasswordChangeTest extends TestCase
         static::assertSame($credential, $announced[0]->credential);
     }
 
+    /**
+     * Decision 0049
+     */
+    #[Test]
+    public function thePersonIsToldTheirPasswordWasChanged(): void
+    {
+        // Given
+        $this->passwordInUse();
+
+        // When
+        $this->change->change($this->alice, self::IN_USE, Fixtures::plainPassword(self::POSED), Fixtures::context());
+
+        // Then
+        static::assertSame([[PasswordChanged::NAME, 'password']], $this->notifier->acts());
+        static::assertEquals($this->clock->now(), $this->notifier->told[0]->occurredAt);
+    }
+
     #[Test]
     public function aPasswordInUseThatWasNotTypedIsRefused(): void
     {
@@ -127,6 +148,22 @@ final class PasswordChangeTest extends TestCase
         // Then
         static::assertTrue($this->hasher->verify($credential->hash, self::IN_USE));
         static::assertSame([], $this->events->events);
+    }
+
+    #[Test]
+    public function aPasswordThatWasNotReplacedTellsThePersonNothing(): void
+    {
+        // Given
+        $this->passwordInUse();
+
+        // When
+        try {
+            $this->change->change($this->alice, 'not the password', Fixtures::plainPassword(self::POSED), Fixtures::context());
+        } catch (PasswordChangeRefusedException) {
+        }
+
+        // Then
+        static::assertSame([], $this->notifier->told);
     }
 
     #[Test]
@@ -310,6 +347,7 @@ final class PasswordChangeTest extends TestCase
             $this->clock,
             $this->events,
             new FederatedDomains($this->upstreamProviders),
+            $this->notifier,
         );
     }
 

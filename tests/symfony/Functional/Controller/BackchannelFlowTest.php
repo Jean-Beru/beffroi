@@ -9,8 +9,6 @@ use App\Message\SendClientNotification;
 use App\Message\TellUserOfPendingApproval;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Messenger\Envelope;
-use Symfony\Component\Messenger\Transport\TransportInterface;
 
 final class BackchannelFlowTest extends BrowserTestCase
 {
@@ -475,20 +473,6 @@ final class BackchannelFlowTest extends BrowserTestCase
     {
         $crawler = $this->browser->request('GET', '/account/approvals');
         $this->browser->submit($crawler->selectButton($button)->form());
-    }
-
-    /**
-     * @return list<Envelope>
-     */
-    private static function queued(): array
-    {
-        $envelopes = [];
-        foreach (self::service('test.beffroi.notification_queue', TransportInterface::class)->get() as $envelope) {
-            static::assertInstanceOf(Envelope::class, $envelope);
-            $envelopes[] = $envelope;
-        }
-
-        return $envelopes;
     }
 
     /**
