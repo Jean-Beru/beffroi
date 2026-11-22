@@ -5,16 +5,17 @@ declare(strict_types=1);
 namespace App\Tests\Symfony\Functional\Key;
 
 use AsyncAws\Core\Configuration;
-use AsyncAws\Core\Exception\Http\ClientException;
 use AsyncAws\Kms\Input\DecryptRequest;
 use AsyncAws\Kms\KmsClient;
-use function base64_encode;
 use function getenv;
 use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
 use Beffroi\Core\Application\Key\KeyTakeOver;
 use Beffroi\Core\Domain\Key\TenantKey;
+use Beffroi\Core\Exception\RuntimeException;
+use Beffroi\Core\Port\KeySealerInterface;
 use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use function is_string;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
@@ -23,14 +24,13 @@ use function strlen;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\KeyManagement\Dsn;
 use Symfony\Component\KeyManagement\Envelope;
+use Symfony\Component\KeyManagement\Exception\DecryptionFailedException;
 
 final class AwsKmsCustodyTest extends DatabaseTestCase
 {
     private const string SCHEME = 'aws-kms://';
 
     private const string ALIAS = 'alias/beffroi-default';
-
-    private const string AAD = 'beffroi:signing-key:v2:default';
 
     private Dsn $dsn;
 
@@ -45,50 +45,52 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
     }
 
     #[Test]
-    public function theDataKeyOfASealedKeyIsWrappedByTheKeyOfTheTenant(): void
+    public function theEnvelopeOfASealedKeyNamesTheArnOfTheKeyBehindTheAliasOfTheTenant(): void
     {
         // Given
         $takeOver = self::service('test.beffroi.key_take_over', KeyTakeOver::class);
+        $keyBehindTheAlias = $this->describeKey(self::ALIAS)['Arn'] ?? null;
 
         // When
         $rotated = $takeOver->rotate(self::tenant(), Algorithms::rs256(), self::context());
 
         // Then
-        $envelope = self::envelopeOf($rotated);
-        static::assertSame(self::ALIAS, $envelope->keyId);
-        static::assertIsString($envelope->wrappedDek);
-        $unwrapped = $this->kms()->decrypt(new DecryptRequest([
-            'KeyId' => self::ALIAS,
-            'CiphertextBlob' => $envelope->wrappedDek,
-            'EncryptionContext' => [
-                'aad' => base64_encode(self::AAD),
-            ],
-        ]));
-        static::assertSame(32, strlen((string) $unwrapped->getPlaintext()));
-        static::assertStringContainsString(':key/', (string) $unwrapped->getKeyId());
+        static::assertSame($keyBehindTheAlias, Envelope::fromBytes(self::sealedPrivateJwkOf($rotated))->keyId);
     }
 
     #[Test]
-    public function theKmsRefusesToUnwrapTheDataKeyUnderAnotherTenant(): void
+    public function theKmsUnwrapsTheDataKeyOfASealedKeyUnderNoContext(): void
     {
         // Given
-        $rotated = self::service('test.beffroi.key_take_over', KeyTakeOver::class)->rotate(self::tenant(), Algorithms::rs256(), self::context());
-        $envelope = self::envelopeOf($rotated);
-
-        // Then
-        $this->expectException(ClientException::class);
-        $this->expectExceptionMessageIsOrContains('InvalidCiphertextException');
+        $envelope = Envelope::fromBytes(self::aSealedKey());
 
         // When
-        $this->kms()
-            ->decrypt(new DecryptRequest([
-                'KeyId' => self::ALIAS,
-                'CiphertextBlob' => (string) $envelope->wrappedDek,
-                'EncryptionContext' => [
-                    'aad' => base64_encode('beffroi:signing-key:v2:other'),
-                ],
-            ]))
-            ->getPlaintext();
+        $unwrapped = $this->kms()->decrypt(new DecryptRequest([
+            'KeyId' => $envelope->keyId,
+            'CiphertextBlob' => (string) $envelope->wrappedDek,
+        ]));
+
+        // Then
+        static::assertSame(32, strlen((string) $unwrapped->getPlaintext()));
+    }
+
+    #[Test]
+    public function aSealedKeyOpenedForAnotherTenantIsRefusedByTheLocalAead(): void
+    {
+        // Given
+        $sealed = self::aSealedKey();
+
+        // When
+        try {
+            self::service('test.beffroi.key_sealer', KeySealerInterface::class)->unseal(Fixtures::tenant('other'), $sealed);
+            static::fail('The key of one tenant should not have been opened for another.');
+        } catch (RuntimeException $exception) {
+            // Then
+            static::assertSame('The sealed key could not be opened.', $exception->getMessage());
+            $refusal = $exception->getPrevious();
+            static::assertInstanceOf(DecryptionFailedException::class, $refusal);
+            static::assertNull($refusal->getPrevious(), 'A refusal of the KMS carries the error AWS answered.');
+        }
     }
 
     #[Test]
@@ -104,12 +106,19 @@ final class AwsKmsCustodyTest extends DatabaseTestCase
         static::assertSame('AWS_KMS', $key['Origin'] ?? null);
     }
 
-    private static function envelopeOf(TenantKey $key): Envelope
+    private static function aSealedKey(): string
+    {
+        $rotated = self::service('test.beffroi.key_take_over', KeyTakeOver::class)->rotate(self::tenant(), Algorithms::rs256(), self::context());
+
+        return self::sealedPrivateJwkOf($rotated);
+    }
+
+    private static function sealedPrivateJwkOf(TenantKey $key): string
     {
         $stored = self::service('test.beffroi.keys', TenantKeyRepositoryInterface::class)
             ->find(self::tenant(), $key->kid) ?? static::fail('The key is stored.');
 
-        return Envelope::fromBytes($stored->sealedPrivateJwk);
+        return $stored->sealedPrivateJwk;
     }
 
     private function kms(): KmsClient
