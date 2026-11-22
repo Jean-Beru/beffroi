@@ -133,7 +133,7 @@ final class PushedAuthorizationRequestResolverTest extends TestCase
     }
 
     /**
-     * FAPI 2.0 Security Profile §5.3.1
+     * FAPI 2.0 Security Profile §5.3.2.2, note 3
      */
     #[Test]
     public function aReferenceIsReadAgainUntilItIsSpent(): void

@@ -386,6 +386,22 @@ final class Clients
         );
     }
 
+    public static function requiringSenderConstrainedTokens(Tenant $tenant, string $clientId = 'sender-constrained-client'): Client
+    {
+        return new Client(
+            $tenant,
+            new ClientRegistration(
+                $clientId,
+                new ClientPresentation('Single page application whose tokens are bound to what it proves'),
+                Methods::none(),
+                false,
+                [new RedirectUri('https://spa.example/callback')],
+                Shapes::jwt(),
+                requiresSenderConstrainedTokens: true,
+            ),
+        );
+    }
+
     /**
      * OIDC Core §8.1
      */
