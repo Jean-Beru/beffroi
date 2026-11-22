@@ -28,4 +28,4 @@ castor prepare-pr
 
 Every QA task runs inside the `ghcr.io/spomky-labs/phpqa` image when Docker is available. `castor start` and `castor provision` bring up the development stack on https://op.localhost; `castor conformance` plays the OpenID certification plans against it, `castor saml-sp` and `castor saml-idp` play the two SAML roles against SimpleSAMLphp.
 
-The documentation is at [doc.beffroi.tech](https://doc.beffroi.tech).
+The documentation is at [doc.beffroi.tech](https://doc.beffroi.tech) and the website at [beffroi.tech](https://beffroi.tech). The project has an account on [Bluesky](https://bsky.app/profile/beffroi.tech) and a page on [LinkedIn](https://www.linkedin.com/company/beffroi-auth).
