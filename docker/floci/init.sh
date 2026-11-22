@@ -4,10 +4,10 @@
 # and keeps nothing across a restart in the storage of the stack (memory). Idempotent: a key whose alias
 # resolves is left alone, a key is never deleted here.
 #
-# What a real account does with the key policy (Encrypt refused, GenerateDataKey and Decrypt under the alias
-# only, no export, no deletion without a waiting period) has no equivalent here: with IAM enforcement off,
-# its default, Floci evaluates no key policy, and it never evaluates a grant on a cryptographic call. It is
-# documented, not replayed.
+# What a real account does with the key policy (GenerateDataKey and Decrypt on this key, Encrypt as well
+# for a rewrap of the data keys under it, no export, no deletion without a waiting period) has no
+# equivalent here: with IAM enforcement off, its default, Floci evaluates no key policy, and it never
+# evaluates a grant on a cryptographic call. It is documented, not replayed.
 set -eu
 
 : "${BEFFROI_TENANT_SLUG:=default}"
