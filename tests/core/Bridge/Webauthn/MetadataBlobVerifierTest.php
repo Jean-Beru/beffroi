@@ -124,14 +124,17 @@ final class MetadataBlobVerifierTest extends TestCase
         static::assertSame($payload, $blob->payload);
     }
 
+    /**
+     * RFC 5280 §6.1.1 (d)
+     */
     #[Test]
-    public function aChainThatEndsWithTheNameOfThePinnedRootOnAnotherKeyIsRefused(): void
+    public function aChainUnderARootThatCarriesTheNameOfThePinnedRootOnAnotherKeyIsRefused(): void
     {
         // Given
-        $other = MetadataSigner::create('Another Service');
-        $token = $this->service->sign(MetadataBlobs::payload([MetadataBlobs::entry(self::AAGUID)]), [
-            ...$this->service->chain(),
-            $this->service->rootNameOnAnotherKeyIssuedBy($other),
+        $impostor = MetadataSigner::create();
+        $token = $impostor->sign(MetadataBlobs::payload([MetadataBlobs::entry(self::AAGUID)]), [
+            ...$impostor->chain(),
+            base64_encode($impostor->rootCertificateInDer()),
         ]);
 
         // Then
