@@ -149,6 +149,7 @@ final class TokenHandlerTest extends TestCase
         );
         $refreshGrant = new RefreshTokenGrant(
             $this->refreshTokens,
+            $this->refreshTokens,
             $this->codes,
             new RefreshTokenRevocation($this->refreshTokens),
             $sessions,

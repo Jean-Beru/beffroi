@@ -7,6 +7,7 @@ namespace App\Tests\Symfony\Functional\Doctrine;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use function array_map;
+use function sprintf;
 use DateTimeImmutable;
 use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Oidc\Domain\Scope\Scopes;
@@ -23,6 +24,7 @@ use Beffroi\Oidc\Domain\Token\RefreshTokenFamily;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Oidc\Domain\Consent\Consent;
 use Beffroi\Oidc\Port\RefreshTokenRepositoryInterface;
+use Beffroi\Oidc\Port\RefreshTokenRotationInterface;
 use Beffroi\Oidc\Port\RefreshTokensOfAConsentInterface;
 use Beffroi\Oidc\Tests\Fixture\Methods;
 use PHPUnit\Framework\Attributes\Test;
@@ -89,6 +91,68 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
         static::assertTrue($rotated->isRotated());
         static::assertEquals(self::now()->modify('+1 hour'), $rotated->rotatedAt);
         static::assertFalse($rotated->isRevoked());
+    }
+
+    /**
+     * RFC 9700 §4.14.2
+     */
+    #[Test]
+    public function aRotationClaimedIsWrittenToTheStore(): void
+    {
+        // Given
+        $token = self::stored();
+
+        // When
+        self::rotation()->rotate($token, self::now()->modify('+1 hour'));
+
+        // Then
+        self::reload();
+        $rotated = self::tokens()->findByTokenHash($token->tokenHash) ?? static::fail('The token was not stored.');
+        static::assertEquals(self::now()->modify('+1 hour'), $rotated->rotatedAt);
+    }
+
+    /**
+     * RFC 9700 §4.14.2
+     */
+    #[Test]
+    public function aRotationClaimedMarksTheCopyOfTheCaller(): void
+    {
+        // Given
+        $token = self::stored();
+
+        // When
+        self::rotation()->rotate($token, self::now()->modify('+1 hour'));
+
+        // Then
+        static::assertEquals(self::now()->modify('+1 hour'), $token->rotatedAt);
+    }
+
+    /**
+     * RFC 9700 §4.14.2
+     */
+    #[Test]
+    public function aTokenAnotherRequestRotatedIsNotRotatedAgain(): void
+    {
+        // Given
+        $token = self::stored();
+        self::changedByAnotherRequest($token, 'rotated_at');
+
+        // When / Then
+        static::assertFalse(self::rotation()->rotate($token, self::now()->modify('+1 hour')));
+    }
+
+    /**
+     * RFC 9700 §4.14.2
+     */
+    #[Test]
+    public function aTokenAnotherRequestRevokedIsNotRotated(): void
+    {
+        // Given
+        $token = self::stored();
+        self::changedByAnotherRequest($token, 'revoked_at');
+
+        // When / Then
+        static::assertFalse(self::rotation()->rotate($token, self::now()->modify('+1 hour')));
     }
 
     #[Test]
@@ -310,6 +374,36 @@ final class DoctrineRefreshTokenRepositoryTest extends DatabaseTestCase
     private static function hashes(array $tokens): array
     {
         return array_map(static fn (RefreshToken $token): string => $token->tokenHash, $tokens);
+    }
+
+    /**
+     * A token read back by this request, as a grant holds it.
+     */
+    private static function stored(): RefreshToken
+    {
+        $token = self::token(Secrets::draw(), self::client(), self::session(self::user()), self::family(), null, self::now()->modify('+1 minute'));
+        self::tokens()->save($token);
+        self::reload();
+
+        return self::tokens()->findByTokenHash($token->tokenHash) ?? static::fail('The token was not stored.');
+    }
+
+    /**
+     * What a concurrent request writes: the row, and nothing this request's manager holds.
+     */
+    private static function changedByAnotherRequest(RefreshToken $token, string $column): void
+    {
+        self::entityManager()
+            ->getConnection()
+            ->executeStatement(sprintf('UPDATE beffroi_refresh_token SET %s = ? WHERE token_hash = ?', $column), [
+                self::now()->modify('+30 minutes')->format('Y-m-d H:i:s'),
+                $token->tokenHash,
+            ]);
+    }
+
+    private static function rotation(): RefreshTokenRotationInterface
+    {
+        return self::service('test.beffroi.refresh_token_rotation', RefreshTokenRotationInterface::class);
     }
 
     private static function tokens(): RefreshTokenRepositoryInterface

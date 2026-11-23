@@ -13,6 +13,7 @@ use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Token\RefreshToken;
 use Beffroi\Oidc\Domain\Token\RefreshTokenFamily;
 use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\SuccessorWrittenAfterARead;
 use Beffroi\Oidc\Tests\Fixture\Tokens;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -78,6 +79,23 @@ final class RefreshTokenRevocationTest extends TestCase
         static::assertTrue($this->first->isRevoked());
         static::assertTrue($this->second->isRevoked());
         static::assertFalse($this->ofAnotherFamily->isRevoked());
+    }
+
+    /**
+     * RFC 9700 §4.14.2
+     */
+    #[Test]
+    public function aSuccessorWrittenWhileItsFamilyIsRevokedIsRevokedToo(): void
+    {
+        // Given
+        $successor = Tokens::refreshToken('successor', $this->client, $this->session, $this->clock->now(), $this->family);
+        $revocation = new RefreshTokenRevocation(new SuccessorWrittenAfterARead($this->refreshTokens, $successor));
+
+        // When
+        $revocation->revokeFamily($this->family->id, $this->clock->now());
+
+        // Then
+        static::assertTrue($successor->isRevoked());
     }
 
     #[Test]
