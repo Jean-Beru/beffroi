@@ -36,7 +36,7 @@ framework:
     translator:
         paths:
             - '%kernel.project_dir%/../../apps/beffroi/translations'
-    # The two locales the provider ships (architecture §5.7); the pages choose between them, never the URL.
+    # Two of the locales the provider ships (architecture §5.7); the pages choose between them, never the URL.
     default_locale: en
     enabled_locales: ['en', 'fr']
     # The scheduled messages of the provider go through the routing of Messenger like every other message
