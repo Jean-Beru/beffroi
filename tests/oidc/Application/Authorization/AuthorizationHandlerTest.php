@@ -721,6 +721,81 @@ final class AuthorizationHandlerTest extends TestCase
         $this->granted($decision);
     }
 
+    /**
+     * OIDC Core §3.1.2.2, §5.5.1
+     */
+    #[Test]
+    public function itGrantsWhenTheSessionIsTheUserTheClaimsParameterAsksTheIdTokenFor(): void
+    {
+        // Given
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
+
+        // When
+        $decision = $this->handler->begin($this->request(claims: '{"id_token":{"sub":{"value":"alice-subject"}}}'), $this->session(), $this->context);
+
+        // Then
+        $this->granted($decision);
+    }
+
+    /**
+     * OIDC Core §3.1.2.2, §5.5.1
+     */
+    #[Test]
+    public function itRequiresALoginWhenTheSessionIsNotTheUserTheClaimsParameterAsksTheIdTokenFor(): void
+    {
+        // Given
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $this->client, new Scopes([Scope::openid()]), Fixtures::now()));
+
+        // When
+        $decision = $this->handler->begin($this->request(claims: '{"id_token":{"sub":{"value":"bob-subject"}}}'), $this->session(), $this->context);
+
+        // Then
+        $this->loginRequired($decision, LoginRequirement::DifferentUser);
+    }
+
+    /**
+     * OIDC Core §3.1.2.2, §5.5.1
+     */
+    #[Test]
+    #[DataProvider('provideSubjectsThatNameNobody')]
+    public function aSubjectTheClaimsParameterAsksForThatNamesNobodyIsAnsweredLoginRequired(string $claims): void
+    {
+        // Then
+        $this->expectException(LoginRequiredException::class);
+        $this->expectExceptionMessageIs('login_required: The sub the claims parameter asks the ID token for names no end user of this client.');
+
+        // When
+        $this->handler->begin($this->request(claims: $claims), $this->session(), $this->context);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideSubjectsThatNameNobody(): iterable
+    {
+        yield 'a subject this provider never issued' => ['{"id_token":{"sub":{"value":"nobody-subject"}}}'];
+        yield 'a value that is no subject' => ['{"id_token":{"sub":{"value":"two words"}}}'];
+        yield 'a number' => ['{"id_token":{"sub":{"value":42}}}'];
+    }
+
+    /**
+     * OIDC Core §3.1.2.1, §3.1.2.2
+     */
+    #[Test]
+    public function aHintAndAClaimsParameterThatNameTwoUsersAreAnsweredLoginRequired(): void
+    {
+        // Then
+        $this->expectException(LoginRequiredException::class);
+        $this->expectExceptionMessageIs('login_required: The id_token_hint parameter and the sub the claims parameter asks the ID token for name two end users.');
+
+        // When
+        $this->handler->begin(
+            $this->request(idTokenHint: self::ALICE_HINT, claims: '{"id_token":{"sub":{"value":"bob-subject"}}}'),
+            $this->session(),
+            $this->context,
+        );
+    }
+
     #[Test]
     public function itRequiresALoginWhenThereIsNoSessionForTheIdTokenHint(): void
     {
