@@ -190,6 +190,55 @@ final class MessageBodySealingTest extends TestCase
         yield 'an empty "kid"' => [['kid' => '']];
     }
 
+    /**
+     * RFC 7516 §4.1.6
+     */
+    #[Test]
+    public function aSealedBodyNamesTheKeyItIsSealedToWithoutBeingOpened(): void
+    {
+        // Given
+        $sealed = $this->sealer->seal($this->tenant, self::BODY);
+
+        // When / Then
+        static::assertSame(Keys::messagePair()->kid, SealedMessageBody::keyOf($this->tenant, $sealed));
+    }
+
+    #[Test]
+    public function aBodySealedForAnotherTenantNamesNoKeyOfThisOne(): void
+    {
+        // Given
+        $sealed = $this->sealer->seal($this->tenant, self::BODY);
+
+        // When / Then
+        static::assertNull(SealedMessageBody::keyOf(Fixtures::tenant('other', 'https://id.other.example'), $sealed));
+    }
+
+    /**
+     * @param array<string, string> $header
+     */
+    #[Test]
+    #[DataProvider('provideHeadersThatNameNoKey')]
+    public function aBodyThatNamesNoKeyIsSealedToNone(array $header): void
+    {
+        // Given
+        $sealed = $this->sealedWith([
+            'alg' => 'ECDH-ES+A256KW',
+            'enc' => 'A256GCM',
+            SealedMessageBody::TENANT_HEADER => $this->tenant->slug,
+            ...$header,
+        ]);
+
+        // When / Then
+        static::assertNull(SealedMessageBody::keyOf($this->tenant, $sealed));
+    }
+
+    #[Test]
+    public function whatIsNoCompactJweIsSealedToNoKey(): void
+    {
+        // When / Then
+        static::assertNull(SealedMessageBody::keyOf($this->tenant, 'not a JWE'));
+    }
+
     #[Test]
     public function aBodySealedUnderAnotherAlgorithmThanTheKeyIsHeldForIsNotOpened(): void
     {

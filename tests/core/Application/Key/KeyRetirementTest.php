@@ -7,6 +7,7 @@ namespace Beffroi\Core\Tests\Application\Key;
 use Beffroi\Core\Application\Key\KeyRetirement;
 use Beffroi\Core\Application\Key\KeyStaging;
 use Beffroi\Core\Application\Key\KeyTakeOver;
+use Beffroi\Core\Application\Key\NamedKey;
 use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Beffroi\Core\Domain\Event\TenantKeyRetired;
 use Beffroi\Core\Domain\Key\KeyStatus;
@@ -20,6 +21,7 @@ use Beffroi\Core\Exception\RetirementNotDueException;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\KeyLifecycle;
+use Beffroi\Core\Tests\Fixture\KeysStillNeeded;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -207,6 +209,74 @@ final class KeyRetirementTest extends TestCase
     }
 
     #[Test]
+    public function retireDueLeavesADueKeyThatIsStillNeeded(): void
+    {
+        // Given
+        $first = $this->firstRotation();
+        $second = $this->takeOver->rotate($this->tenant, Algorithms::rs256(), $this->context);
+        $this->clock->modify('+1 day');
+
+        // When
+        $retired = $this->retirementHeldFor([$first->kid])->retireDue($this->tenant, $this->context);
+
+        // Then
+        static::assertSame([], $retired);
+        static::assertSame(KeyStatus::Retiring, $first->status);
+        static::assertSame([$first, $second], $this->repository->findInService($this->tenant));
+    }
+
+    #[Test]
+    public function retireDueRetiresADueKeyNothingNeedsAnyMore(): void
+    {
+        // Given
+        $first = $this->firstRotation();
+        $this->takeOver->rotate($this->tenant, Algorithms::rs256(), $this->context);
+        $this->clock->modify('+1 day');
+
+        // When
+        $retired = $this->retirementHeldFor(['another-key'])->retireDue($this->tenant, $this->context);
+
+        // Then
+        static::assertSame([$first], $retired);
+    }
+
+    #[Test]
+    public function aDueKeyThatIsStillNeededIsNotRetiredByHand(): void
+    {
+        // Given
+        $first = $this->firstRotation();
+        $this->takeOver->rotate($this->tenant, Algorithms::rs256(), $this->context);
+        $this->clock->modify('+1 day');
+
+        // Then
+        $this->expectException(RetirementNotDueException::class);
+        $this->expectExceptionMessageIs(sprintf(
+            'The key "%s" still opens %s: its retirement waits until nothing needs it any more.',
+            $first->kid,
+            KeysStillNeeded::NAME,
+        ));
+
+        // When
+        $this->retirementHeldFor([$first->kid])->retire($this->tenant, $first->kid, $this->context);
+    }
+
+    #[Test]
+    public function retiringADueKeyThatIsStillNeededBeforeItsDateRetiresItAsForced(): void
+    {
+        // Given
+        $first = $this->firstRotation();
+        $this->takeOver->rotate($this->tenant, Algorithms::rs256(), $this->context);
+        $this->clock->modify('+1 day');
+
+        // When
+        $this->retirementHeldFor([$first->kid])->retireBeforeItsDate($this->tenant, $first->kid, $this->context);
+
+        // Then
+        static::assertSame(KeyStatus::Retired, $first->status);
+        static::assertSame(RetirementReason::Forced, $this->events->of(TenantKeyRetired::class)[0]->reason);
+    }
+
+    #[Test]
     public function theActiveKeyCannotBeRetiredWithoutARotation(): void
     {
         // Given
@@ -242,6 +312,14 @@ final class KeyRetirementTest extends TestCase
 
         // When
         $this->retirement->retire($this->tenant, 'nope', $this->context);
+    }
+
+    /**
+     * @param list<string> $kids
+     */
+    private function retirementHeldFor(array $kids): KeyRetirement
+    {
+        return new KeyRetirement($this->repository, new NamedKey($this->repository), $this->clock, $this->events, [new KeysStillNeeded($kids)]);
     }
 
     private function firstRotation(): TenantKey
