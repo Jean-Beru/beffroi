@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Symfony\Functional\Controller;
 
 use App\Archive\ZipArchiveContainer;
+use App\Controller\AccountArchiveRequestController;
 use Beffroi\Core\Domain\Archive\ArchivePassword;
 use Beffroi\Core\Domain\Archive\PersonalArchive;
 use Beffroi\Core\Domain\Event\DomainEventInterface;
@@ -185,6 +186,43 @@ final class AccountArchiveTest extends BrowserTestCase
         $latest = self::archives()->latestOf(self::reread($alice));
         static::assertNotNull($latest);
         static::assertFalse($latest->id->equals($stalled->id));
+    }
+
+    #[Test]
+    public function askingMoreOftenThanAnHourAllowsIsRefusedOnThePage(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        for ($asked = 0; $asked < AccountArchiveRequestController::LIMIT; ++$asked) {
+            $this->ask();
+        }
+
+        // When
+        $page = $this->ask();
+
+        // Then
+        static::assertCount(1, $page->filter('p[data-error="too_many_requests"]'));
+    }
+
+    #[Test]
+    public function aRequestRefusedForItsNumberBuildsNoArchive(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        for ($asked = 0; $asked < AccountArchiveRequestController::LIMIT; ++$asked) {
+            $this->ask();
+        }
+        $last = self::archives()->latestOf(self::reread($alice));
+
+        // When
+        $this->ask();
+
+        // Then
+        $latest = self::archives()->latestOf(self::reread($alice));
+        static::assertNotNull($last);
+        static::assertTrue($latest?->id->equals($last->id));
     }
 
     #[Test]
