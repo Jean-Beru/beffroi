@@ -46,6 +46,13 @@ use Beffroi\Saml\Bridge\Configuration\ConfigurationServiceProviders;
 use Beffroi\Saml\Bridge\Configuration\ConfigurationUpstreamIdentityProviders;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
+use App\Configuration\KeysSection;
+use Beffroi\Core\Bridge\KeyManagement\EnvelopeSecretSealer;
+use App\Http\TotpProvisioningSealer;
+use Beffroi\Oidc\Application\Token\SealedPerson;
+use Beffroi\Oidc\Application\Ciba\BackchannelAuthenticationHandler;
+use Beffroi\Oidc\Application\Ciba\BackchannelApproval;
+use function array_unique;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -1082,6 +1089,52 @@ final class BeffroiExtensionTest extends TestCase
                 ],
             ],
         ]);
+    }
+
+    /**
+     * Architecture §3.3
+     */
+    #[Test]
+    public function theSortsOfSecretAreSealedForFourPurposes(): void
+    {
+        // When
+        $container = self::load([]);
+
+        // Then
+        $purposes = [EnvelopeSecretSealer::KEPT];
+        foreach ([KeysSection::PERSON_SEALER, KeysSection::BACKCHANNEL_SEALER, KeysSection::TOTP_PROVISIONING_SEALER] as $sealer) {
+            $purpose = $container->getDefinition($sealer)->getArgument('$purpose');
+            static::assertIsString($purpose);
+            $purposes[] = $purpose;
+        }
+        static::assertCount(4, array_unique($purposes));
+    }
+
+    /**
+     * Architecture §3.3
+     */
+    #[Test]
+    #[DataProvider('provideWhatSealsASortOfSecret')]
+    public function eachSortOfSecretIsSealedByTheSealerOfItsPurpose(string $service, string $sealer): void
+    {
+        // When
+        $container = self::load([]);
+
+        // Then
+        $argument = $container->getDefinition($service)->getArgument('$sealer');
+        static::assertInstanceOf(Reference::class, $argument);
+        static::assertSame($sealer, (string) $argument);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideWhatSealsASortOfSecret(): iterable
+    {
+        yield 'the person of an access token' => [SealedPerson::class, KeysSection::PERSON_SEALER];
+        yield 'a backchannel request when it is asked' => [BackchannelAuthenticationHandler::class, KeysSection::BACKCHANNEL_SEALER];
+        yield 'a backchannel request when it is answered' => [BackchannelApproval::class, KeysSection::BACKCHANNEL_SEALER];
+        yield 'a TOTP being provisioned' => [TotpProvisioningSealer::class, KeysSection::TOTP_PROVISIONING_SEALER];
     }
 
     /**
