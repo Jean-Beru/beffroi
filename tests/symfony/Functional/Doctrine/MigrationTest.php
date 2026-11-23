@@ -84,6 +84,8 @@ use DoctrineMigrations\Version20261122210500;
 use DoctrineMigrations\Version20261123110900;
 use DoctrineMigrations\Version20261123200600;
 use DoctrineMigrations\Version20261124090000;
+use DoctrineMigrations\Version20261124100000;
+use DoctrineMigrations\Version20261124100500;
 use function implode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -173,6 +175,8 @@ final class MigrationTest extends DatabaseTestCase
         Version20261123110900::class,
         Version20261123200600::class,
         Version20261124090000::class,
+        Version20261124100000::class,
+        Version20261124100500::class,
     ];
 
     #[Test]
@@ -511,6 +515,16 @@ final class MigrationTest extends DatabaseTestCase
                     $statements = array_values(array_filter(
                         $statements,
                         static fn (string $earlier): bool => preg_match('/^CREATE (UNIQUE )?INDEX ' . preg_quote($matches[1], '/') . ' /', $earlier) !== 1,
+                    ));
+
+                    continue;
+                }
+                if (preg_match('/^DROP TABLE (\S+)$/', $statement, $matches) === 1) {
+                    $statements = array_values(array_filter(
+                        $statements,
+                        static fn (string $earlier): bool => (
+                            preg_match('/^(CREATE TABLE |ALTER TABLE |CREATE (UNIQUE )?INDEX \S+ ON )' . preg_quote($matches[1], '/') . '[ (]/', $earlier) !== 1
+                        ),
                     ));
 
                     continue;
