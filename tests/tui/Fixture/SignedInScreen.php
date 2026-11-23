@@ -57,7 +57,7 @@ final readonly class SignedInScreen
     private array $sections;
 
     /**
-     * @param array<string, array<string, mixed>|Closure(): MockResponse> $answers the document each path of the API answers to a GET, or the response, and to another method under the method, a space and the path
+     * @param array<string, array<string, mixed>|Closure(): MockResponse> $answers the document each path of the API answers to a GET, or the response, and to another method under the method, a space and the path; an endpoint of the provider under the method, a space and its URL
      * @param array<string, mixed> $tokens the answer of the token endpoint the session holds
      */
     public function __construct(
@@ -70,7 +70,9 @@ final readonly class SignedInScreen
     ) {
         $this->http = RecordedRequests::routed(static function (string $method, string $url) use ($answers): MockResponse {
             $path = substr($url, strlen(FakeProvider::ADMINISTRATION));
-            $answer = str_starts_with($url, FakeProvider::ADMINISTRATION) ? $answers[$method === 'GET' ? $path : $method . ' ' . $path] ?? null : null;
+            $answer = str_starts_with($url, FakeProvider::ADMINISTRATION)
+                ? $answers[$method === 'GET' ? $path : $method . ' ' . $path] ?? null
+                : $answers[$method . ' ' . $url] ?? null;
             if ($answer instanceof Closure) {
                 return $answer();
             }

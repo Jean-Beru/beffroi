@@ -45,6 +45,7 @@ use Beffroi\Oidc\Tests\Fixture\Proofs;
 use Beffroi\Oidc\Tests\Fixture\Subjects;
 use Beffroi\Oidc\Tests\Fixture\Tokens;
 use Closure;
+use DateTimeImmutable;
 use function sprintf;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -213,6 +214,18 @@ final class AdministratorOfARequestTest extends TestCase
             },
             InvalidTokenException::class,
         ];
+        yield 'a token of a session that has expired (decisions 0031 and 0038)' => [
+            static function (self $test): array {
+                $signedInAt = Fixtures::now()->modify('-13 hours');
+                $token = $test->token('alice', self::passkey($signedInAt), true, signedInAt: $signedInAt);
+
+                return [
+                    'DPoP ' . $token,
+                    self::proof($token),
+                ];
+            },
+            InvalidTokenException::class,
+        ];
         yield 'a token of a person taken out of the group since it was issued' => [
             static function (self $test): array {
                 $token = $test->token('alice', self::passkey(), true);
@@ -246,12 +259,17 @@ final class AdministratorOfARequestTest extends TestCase
 
     /**
      * An access token of a sign-in by the person of that username, with the proofs given, addressed to the resource
-     * given and bound to the key of Proofs when it is bound.
+     * given and bound to the key of Proofs when it is bound, issued now for a session opened when given.
      */
-    public function token(string $username, AuthenticationProofs $proofs, bool $bound, string $resource = Administrations::RESOURCE): string
-    {
+    public function token(
+        string $username,
+        AuthenticationProofs $proofs,
+        bool $bound,
+        string $resource = Administrations::RESOURCE,
+        ?DateTimeImmutable $signedInAt = null,
+    ): string {
         $user = $this->users->findByUsername($this->tenant, $username) ?? static::fail(sprintf('Nobody is named "%s" here.', $username));
-        $session = Fixtures::session($user, proofs: $proofs);
+        $session = Fixtures::session($user, $signedInAt, $proofs);
         $this->sessions->save($session);
         $code = Tokens::code('the-code', $this->client, $session, Fixtures::now(), resources: ResourceIndicators::of([$resource]));
         $this->grants->save($code);
@@ -279,9 +297,9 @@ final class AdministratorOfARequestTest extends TestCase
         ]);
     }
 
-    private static function passkey(): AuthenticationProofs
+    private static function passkey(?DateTimeImmutable $provenAt = null): AuthenticationProofs
     {
-        return AuthenticationProofs::ofAll([new AuthenticationMethod('hwk'), new AuthenticationMethod('user')], Fixtures::now());
+        return AuthenticationProofs::ofAll([new AuthenticationMethod('hwk'), new AuthenticationMethod('user')], $provenAt ?? Fixtures::now());
     }
 
     private static function password(): AuthenticationProofs

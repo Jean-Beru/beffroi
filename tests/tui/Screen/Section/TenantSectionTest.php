@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Tui\Tests\Screen\Section;
 
+use Beffroi\Tui\Tests\Fixture\FakeProvider;
 use Beffroi\Tui\Tests\Fixture\SignedInScreen;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -82,6 +83,34 @@ final class TenantSectionTest extends TestCase
 
         // Then
         static::assertStringContainsString('The administration API refuses the tokens', $this->screen->screen());
+    }
+
+    /**
+     * RFC 6749 §5.2, decision 0038: the provider no longer renews the tokens of a session whose sign-in expired, which
+     * is said with what to do.
+     */
+    #[Test]
+    public function aRefreshTheProviderRefusesIsSaidWithWhatToDo(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/tenant' => static fn (): MockResponse => new MockResponse('', [
+                'http_code' => 401,
+                'response_headers' => [
+                    'WWW-Authenticate' => 'DPoP error="invalid_token", error_description="The access token expired."',
+                ],
+            ]),
+            'POST ' . FakeProvider::ISSUER . '/token' => SignedInScreen::answered([
+                'error' => 'invalid_grant',
+                'error_description' => 'The session the administrator signed in with has ended or expired.',
+            ], 400),
+        ], tokens: ['refresh_token' => 'the-refresh-token']);
+
+        // When
+        $this->screen->open('section.tenant');
+
+        // Then
+        static::assertStringContainsString('The provider no longer renews the tokens of this session: quit, then sign in again.', $this->screen->screen());
     }
 
     /**

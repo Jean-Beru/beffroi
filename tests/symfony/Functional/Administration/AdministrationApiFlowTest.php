@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Symfony\Functional\Administration;
 
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\Clock\Clock;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -41,6 +42,46 @@ final class AdministrationApiFlowTest extends AdministrationTestCase
 
         // Then
         static::assertSame('access_denied', self::redirectedQuery($response)['error'] ?? null);
+    }
+
+    /**
+     * RFC 6749 §6
+     */
+    #[Test]
+    public function aTokenForTheApiIsRefreshedWhileTheSessionOfTheAdministratorLasts(): void
+    {
+        // Given
+        $refreshToken = self::string($this->administratorTokens(self::user('alice'), scope: 'openid offline_access')['refresh_token'] ?? null);
+        self::mockTime(Clock::get()->now()->modify('+11 hours'));
+
+        // When
+        $response = $this->refreshed($refreshToken);
+
+        // Then
+        static::assertSame([Response::HTTP_OK, self::API], [
+            $response->getStatusCode(),
+            self::claimsOf(self::string(self::json($response)['access_token'] ?? null))['aud'] ?? null,
+        ]);
+    }
+
+    /**
+     * Decisions 0031 and 0038, RFC 6749 §5.2
+     */
+    #[Test]
+    public function aTokenForTheApiIsNotRefreshedOnceTheSessionOfTheAdministratorExpired(): void
+    {
+        // Given
+        $refreshToken = self::string($this->administratorTokens(self::user('alice'), scope: 'openid offline_access')['refresh_token'] ?? null);
+        self::mockTime(Clock::get()->now()->modify('+12 hours'));
+
+        // When
+        $response = $this->refreshed($refreshToken);
+
+        // Then
+        static::assertSame(
+            [Response::HTTP_BAD_REQUEST, 'invalid_grant'],
+            [$response->getStatusCode(), self::json($response)['error'] ?? null],
+        );
     }
 
     /**

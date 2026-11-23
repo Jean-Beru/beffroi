@@ -41,6 +41,8 @@ abstract class AdministrationTestCase extends PasskeyTestCase
 
     protected const string API = 'https://admin.op.test';
 
+    protected const string SCOPE = 'openid profile';
+
     /**
      * The origin of the issuer of the test kernel, which a proof names in its "htu" (RFC 9449 §4.3).
      */
@@ -90,32 +92,65 @@ abstract class AdministrationTestCase extends PasskeyTestCase
      */
     protected function administratorToken(User $administrator, ?string $resource = self::API): string
     {
+        return self::string($this->administratorTokens($administrator, $resource)['access_token'] ?? null);
+    }
+
+    /**
+     * What the token endpoint answers the sign-in of an administrator with a passkey, for the API unless another
+     * resource or none is named, bound to the key of Proofs.
+     *
+     * @return array<array-key, mixed>
+     */
+    protected function administratorTokens(User $administrator, ?string $resource = self::API, string $scope = self::SCOPE): array
+    {
         self::signingKey();
         $device = self::device();
         self::administers($administrator);
         $this->enrol($administrator, $device);
-        $code = $this->codeAfterAPasskeyLogin($device, $resource);
+        $code = $this->codeAfterAPasskeyLogin($device, $resource, $scope);
         $this->browser->request('POST', '/token', self::tokenParameters($code), server: [
             'HTTP_DPOP' => self::proof('POST', self::ISSUER . '/token'),
         ]);
 
-        return self::string(self::json($this->browser->getResponse())['access_token'] ?? null);
+        return self::json($this->browser->getResponse());
     }
 
-    protected function codeAfterAPasskeyLogin(SoftwareAuthenticator $device, ?string $resource = self::API): string
+    /**
+     * RFC 6749 §6: the refresh of the tokens of the client of the API, proving the key of Proofs.
+     */
+    protected function refreshed(string $refreshToken): Response
     {
-        return self::redirectedQuery($this->afterAPasskeyLogin($device, $resource))['code'] ?? static::fail('The client got no code.');
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $refreshToken,
+                'client_id' => self::CLIENT,
+            ],
+            server: [
+                'HTTP_DPOP' => self::proof('POST', self::ISSUER . '/token'),
+            ],
+        );
+
+        return $this->browser->getResponse();
+    }
+
+    protected function codeAfterAPasskeyLogin(SoftwareAuthenticator $device, ?string $resource = self::API, string $scope = self::SCOPE): string
+    {
+        return self::redirectedQuery($this->afterAPasskeyLogin($device, $resource, $scope))['code'] ?? static::fail('The client got no code.');
     }
 
     /**
      * A browser that holds no session asks for the API, its person signs in with the passkey, and the interaction
      * goes on to the client.
      */
-    protected function afterAPasskeyLogin(SoftwareAuthenticator $device, ?string $resource = self::API): Response
+    protected function afterAPasskeyLogin(SoftwareAuthenticator $device, ?string $resource = self::API, string $scope = self::SCOPE): Response
     {
         $this->forgetTheBrowser();
         $this->browser->request('GET', '/authorize', self::authorizationParameters(self::CLIENT, [
             'redirect_uri' => self::REDIRECT_URI,
+            'scope' => $scope,
             ...(
                 $resource === null
                     ? []
