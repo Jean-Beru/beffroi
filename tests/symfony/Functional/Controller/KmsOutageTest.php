@@ -459,7 +459,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * RFC 9700 §4.13.2
+     * RFC 9700 §4.14.2
      */
     #[Test]
     #[DataProvider('provideTheFamiliesOfASession')]
@@ -481,7 +481,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * RFC 9700 §4.13.2
+     * RFC 9700 §4.14.2
      */
     #[Test]
     #[DataProvider('provideTheFamiliesOfASession')]
@@ -804,7 +804,7 @@ final class KmsOutageTest extends PasskeyTestCase
     }
 
     /**
-     * RFC 9700 §4.13.2
+     * RFC 9700 §4.14.2
      */
     private function refreshTokenOfTheOfflineClient(): string
     {

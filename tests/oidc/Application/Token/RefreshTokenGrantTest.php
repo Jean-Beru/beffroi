@@ -93,7 +93,7 @@ final class RefreshTokenGrantTest extends TestCase
     {
         $this->tenant = Fixtures::tenant();
         $this->alice = Fixtures::user($this->tenant);
-        // A public client: the refresh token of a confidential client is not rotated (RFC 9700 §4.13.2,
+        // A public client: the refresh token of a confidential client is not rotated (RFC 9700 §4.14.2,
         // FAPI 2.0 Security Profile §5.3.2.1-9).
         $this->client = Clients::public($this->tenant);
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
@@ -126,7 +126,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 6749 §6, RFC 9700 §4.13
+     * RFC 6749 §6, RFC 9700 §4.14
      */
     #[Test]
     public function itRotatesTheTokenPresented(): void
@@ -145,7 +145,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 9700 §4.13
+     * RFC 9700 §4.14
      */
     #[Test]
     public function itIssuesASuccessorInTheSameFamilyWithASlidingExpiry(): void
@@ -362,7 +362,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 9700 §4.13.2
+     * RFC 9700 §4.14.2
      */
     #[Test]
     public function aTokenLeftAsItWasIsRefreshedOnceTheKmsAnswers(): void
@@ -429,7 +429,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 9700 §4.13.2
+     * RFC 9700 §4.14.2
      */
     #[Test]
     public function aTokenLeftAsItWasIsRefreshedOnceItsPersonOpens(): void
@@ -596,7 +596,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 9700 §4.13.2
+     * RFC 9700 §4.14.2
      */
     #[Test]
     public function itRefusesARotatedTokenPresentedAgain(): void
@@ -614,7 +614,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 9700 §4.13.2
+     * RFC 9700 §4.14.2
      */
     #[Test]
     public function aRotatedTokenPresentedAgainRevokesTheWholeFamily(): void
@@ -637,7 +637,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 9700 §4.13.2
+     * RFC 9700 §4.14.2
      */
     #[Test]
     public function aReuseIsAnnouncedWithWhatWasRevoked(): void
@@ -677,7 +677,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 9700 §4.13.2
+     * RFC 9700 §4.14.2
      */
     #[Test]
     public function aReuseIsRefusedAsSuchWhileItsSessionCannotBeOpened(): void
@@ -695,7 +695,7 @@ final class RefreshTokenGrantTest extends TestCase
     }
 
     /**
-     * RFC 9700 §4.13.2
+     * RFC 9700 §4.14.2
      */
     #[Test]
     public function aReuseIsAnnouncedWithWhatWasRevokedWhileItsSessionCannotBeOpened(): void
