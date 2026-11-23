@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Beffroi\Tui\Tests\Fixture;
 
 use Beffroi\Tui\Update\GitHubReleases;
+use Beffroi\Tui\Update\Sha256Sums;
+use function hash;
 use function json_encode;
 use const JSON_THROW_ON_ERROR;
 use const JSON_UNESCAPED_SLASHES;
@@ -14,16 +16,19 @@ use Symfony\Component\HttpClient\Response\MockResponse;
 
 /**
  * GitHub serving one release of the repository: its listing in the REST API, its `SHA256SUMS` giving the digest
- * given for the PHAR, a signature, and the PHAR itself.
+ * given for the PHAR and the digest of the tag of a release, that one or another, a signature, and the PHAR itself.
  */
 final readonly class FakeGitHub
 {
     public const string PROGRAM = 'the new program';
 
-    public static function serving(string $tag, string $digest): RecordedRequests
+    /**
+     * @param string|null $sumsOf the tag the sums name, the one of the release served when null
+     */
+    public static function serving(string $tag, string $digest, ?string $sumsOf = null): RecordedRequests
     {
         $files = [
-            'SHA256SUMS' => sprintf("%s  beffroi-tui.phar\n", $digest),
+            'SHA256SUMS' => sprintf("%s  beffroi-tui.phar\n%s  %s\n", $digest, hash('sha256', ($sumsOf ?? $tag) . "\n"), Sha256Sums::RELEASE),
             'SHA256SUMS.asc' => "-----BEGIN PGP SIGNATURE-----\n-----END PGP SIGNATURE-----\n",
             'beffroi-tui.phar' => self::PROGRAM,
         ];

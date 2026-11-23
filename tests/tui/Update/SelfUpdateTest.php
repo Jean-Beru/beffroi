@@ -98,6 +98,44 @@ final class SelfUpdateTest extends TestCase
     }
 
     #[Test]
+    public function theSignedSumsOfAnotherReleaseAreRefused(): void
+    {
+        // Given
+        $http = FakeGitHub::serving('0.0.9', hash('sha256', FakeGitHub::PROGRAM), sumsOf: '0.0.2');
+
+        // Then
+        $this->expectException(SelfUpdateException::class);
+        $this->expectExceptionMessageIs('The signed SHA256SUMS served as the release 0.0.9 are those of another release: nothing is replaced.');
+
+        // When
+        self::selfUpdate($http, FakeSignature::vouching())->update($this->runningPhar());
+    }
+
+    #[Test]
+    public function theSignedSumsOfAnotherReleaseStopTheUpdateBeforeTheProgramIsDownloaded(): void
+    {
+        // Given
+        $http = FakeGitHub::serving('0.0.9', hash('sha256', FakeGitHub::PROGRAM), sumsOf: '0.0.2');
+
+        // When
+        try {
+            self::selfUpdate($http, FakeSignature::vouching())->update($this->runningPhar());
+            static::fail('The update went on.');
+        } catch (SelfUpdateException) {
+        }
+
+        // Then
+        static::assertSame(
+            ['the old program', false, ['.', '..', 'beffroi-tui']],
+            [
+                file_get_contents($this->program),
+                in_array(FakeGitHub::download('0.0.9', 'beffroi-tui.phar'), array_column($http->requests, 'url'), true),
+                scandir($this->directory->path),
+            ],
+        );
+    }
+
+    #[Test]
     public function aFileThatIsNotTheOneTheSignedSumsNameIsRefused(): void
     {
         // Given

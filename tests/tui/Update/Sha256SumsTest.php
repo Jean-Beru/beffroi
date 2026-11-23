@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Beffroi\Tui\Tests\Update;
 
+use Beffroi\Tui\Update\ReleaseVersion;
 use Beffroi\Tui\Update\SelfUpdateException;
 use Beffroi\Tui\Update\Sha256Sums;
 use function file_get_contents;
+use function hash;
+use function sprintf;
+use function str_repeat;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -34,6 +38,37 @@ final class Sha256SumsTest extends TestCase
 
         // When / Then
         static::assertSame('f426e530171b9adea6176a27aa494f021a79610ac7d86ba90b15c513097943ed', $sums->digestOf('beffroi-tui.phar'));
+    }
+
+    #[Test]
+    public function theSumsOfAReleaseNameItsTag(): void
+    {
+        // Given
+        $sums = Sha256Sums::parse(sprintf("%s  beffroi-tui.phar\n%s  release\n", str_repeat('0', 64), hash('sha256', "0.1.0\n")));
+
+        // When / Then
+        static::assertTrue($sums->areOf(self::version('0.1.0')));
+    }
+
+    #[Test]
+    #[DataProvider('provideSumsOfAnotherRelease')]
+    public function theSumsOfAnotherReleaseAreNotOfIt(string $text): void
+    {
+        // Given
+        $sums = Sha256Sums::parse($text);
+
+        // When / Then
+        static::assertFalse($sums->areOf(self::version('0.1.1')));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideSumsOfAnotherRelease(): iterable
+    {
+        yield 'another tag' => [sprintf("%s  release\n", hash('sha256', "0.1.0\n"))];
+        yield 'the tag without its line feed' => [sprintf("%s  release\n", hash('sha256', '0.1.1'))];
+        yield 'no tag at all' => [sprintf("%s  beffroi-tui.phar\n", str_repeat('0', 64))];
     }
 
     #[Test]
@@ -92,5 +127,10 @@ final class Sha256SumsTest extends TestCase
 
         // When
         Sha256Sums::parse("f426e530171b9adea6176a27aa494f021a79610ac7d86ba90b15c513097943ed  beffroi-tui.phar\n8a5c33b3c3a5633f40a4d5683799047b204efda8d0c7b3b63380a01a658f701c  beffroi-tui.phar\n");
+    }
+
+    private static function version(string $tag): ReleaseVersion
+    {
+        return ReleaseVersion::fromTag($tag) ?? static::fail(sprintf('%s is a release tag.', $tag));
     }
 }
