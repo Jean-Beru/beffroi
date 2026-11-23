@@ -12,7 +12,9 @@ only as pre-releases until Symfony 8.2.0 is out: until then, a project that requ
 
 - `beffroi/beffroi`, the provider: an OAuth 2.0 authorization server, an OpenID Provider and a SAML 2.0 identity
   provider in one Symfony application on FrankenPHP, configured through its environment. Each release publishes it as
-  the image `ghcr.io/beffroi-auth/beffroi`, for linux/amd64 and linux/arm64.
+  the image `ghcr.io/beffroi-auth/beffroi`, for linux/amd64 and linux/arm64. Its server runs 4 threads of the provider
+  and 2 of the administration API whatever the cores of the host, each holding one connection to the database, and
+  `FRANKENPHP_WORKER_NUM` and `FRANKENPHP_ADMINISTRATION_WORKER_NUM` set them.
 - `beffroi/core`, the identity model the provider owns: tenants, people with a stable `sub`, credentials, linked
   identities, groups, authentication sessions and keys.
 - Passwords under typed hashes, passkeys, TOTP and backup codes, each a credential of its own; `amr` and `acr` on the

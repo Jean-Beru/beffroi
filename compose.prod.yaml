@@ -59,6 +59,16 @@
 #
 # then named by BEFFROI_DATABASE_USER=beffroi_runtime and BEFFROI_DATABASE_PASSWORD=<password>. Left unset, the
 # processes connect as POSTGRES_USER, and whoever holds its password can rewrite any row.
+#
+# The connections to PostgreSQL. Each thread of a worker of the server opens one as it starts and keeps it for as
+# long as it lives: 4 for the site of SERVER_NAME (FRANKENPHP_WORKER_NUM), and 2 for the administration API when the
+# server serves it (FRANKENPHP_ADMINISTRATION_WORKER_NUM), whatever the cores of the host. Before they start, the
+# entrypoint holds one at a time, to wait for the database, migrate, grant and write the tenant. The worker holds one,
+# for the schedule and the four lanes, and each "exec op bin/console" one while it runs. So a server, its worker and
+# the administration API hold 7 at rest, and a rolling update that starts a new server before it stops the old one
+# holds both servers' at once: max_connections, 100 by default and shared by every application of the database, is
+# sized on that. A pooler in front of PostgreSQL lowers none of it: the locks of the provider are advisory locks of a
+# session, which a pooler keeps only in its session mode, one connection of the database per connection of a thread.
 
 # What the provider and its worker read alike: one value, written once, so that the two processes never serve
 # two different issuers or two different databases.
