@@ -82,7 +82,10 @@ final class MessengerContractTest extends TestCase
             static::assertSame(LaneDsn::of($name, SecretFile::PREFIX . ':' . MessengerContract::DSN_ENVIRONMENT_VARIABLE), $lane['dsn'] ?? null);
         }
         static::assertSame('sync://', $transports['sync'] ?? null);
-        static::assertSame(MessengerContract::FAILURE_DSN, $transports[MessengerContract::FAILURE_TRANSPORT] ?? null);
+        static::assertSame(
+            ['dsn' => MessengerContract::FAILURE_DSN, 'options' => MessengerContract::TRANSPORT_OPTIONS],
+            $transports[MessengerContract::FAILURE_TRANSPORT] ?? null,
+        );
     }
 
     #[Test]
