@@ -35,6 +35,17 @@ final class LocalesSectionTest extends TestCase
         static::assertSame(['de', 'fr'], $served->all);
     }
 
+    #[Test]
+    public function aDefaultLocaleWithoutACatalogueIsRefusedWhenNoLocaleIsNamed(): void
+    {
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIs('The default locale "pt" has no catalogue in the application, which has "en", "fr".');
+
+        // When
+        LocalesSection::served(['en', 'fr'], 'pt', []);
+    }
+
     /**
      * @param list<mixed> $chosen
      */
