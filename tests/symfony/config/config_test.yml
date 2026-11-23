@@ -762,11 +762,10 @@ beffroi:
             backchannel_client_notification_endpoint: 'https://terminal.test/ciba'
         # CIBA Core §4 (issue #292): a client of the backchannel flow that sees its users under a "sub" of
         # its own sector. It registers no redirection URI, as every client of this flow does, so what says
-        # which sector it is of is the host of its jwks_uri.
+        # which sector it is of is the host of its jwks_uri, where the key it authenticates with is published.
         pairwise-terminal:
             client_name: 'Payment terminal of a sector'
-            secret: 'pairwise-terminal-secret-of-at-least-32-c'
-            token_endpoint_auth_method: client_secret_basic
+            token_endpoint_auth_method: private_key_jwt
             grant_types: ['urn:openid:params:grant-type:ciba']
             scope: 'openid profile'
             requires_consent: false
