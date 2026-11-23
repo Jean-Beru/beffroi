@@ -81,7 +81,7 @@ final class TenantSectionTest extends TestCase
         $this->screen->open('section.tenant');
 
         // Then
-        static::assertStringContainsString('The administration API no longer takes the tokens', $this->screen->screen());
+        static::assertStringContainsString('The administration API refuses the tokens', $this->screen->screen());
     }
 
     /**

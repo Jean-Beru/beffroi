@@ -151,7 +151,7 @@ final class ScreenFitsTheTerminalTest extends TestCase
 
         // Then
         $lines = explode("\n", $this->screen->screen());
-        static::assertSame([true, true], [str_contains($lines[0], 'Administration'), str_contains($lines[$rows - 1], 'take back')]);
+        static::assertSame([true, true], [str_contains($lines[0], 'Administration'), str_contains($lines[$rows - 1], 'revoke')]);
     }
 
     /**

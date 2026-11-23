@@ -81,7 +81,7 @@ final class MailSigningKeysSectionTest extends TestCase
         $this->screen->open('section.mail_signing_keys');
 
         // Then
-        static::assertStringContainsString('The tenant holds no mail signing key: its mail leaves unsigned.', $this->screen->screen());
+        static::assertStringContainsString('No mail signing key: mail leaves unsigned.', $this->screen->screen());
     }
 
     /**
@@ -100,7 +100,7 @@ final class MailSigningKeysSectionTest extends TestCase
         // Then
         static::assertSame([0, true], [
             $this->screen->requestsTo('/tenant/mail-signing-keys/pgp', 'POST'),
-            str_contains($this->screen->screen(), 'Draw an OpenPGP key? It replaces the key'),
+            str_contains($this->screen->screen(), 'Generate an OpenPGP key? It replaces the key'),
         ]);
     }
 
@@ -149,7 +149,7 @@ final class MailSigningKeysSectionTest extends TestCase
             [[json_encode(['private_key' => self::KEY, 'certificates' => self::CHAIN], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES)], true],
             [
                 $this->screen->bodiesTo('/tenant/mail-signing-keys/smime', 'PUT'),
-                str_contains($this->screen->screen(), 'The mail the tenant signs in S/MIME is signed with the key'),
+                str_contains($this->screen->screen(), 'S/MIME mail is signed with the key'),
             ],
         );
     }
@@ -173,7 +173,7 @@ final class MailSigningKeysSectionTest extends TestCase
         // Then
         $screen = $this->screen->screen();
         static::assertSame([true, false], [
-            str_contains($screen, 'Nothing was sent: others may open the private key'),
+            str_contains($screen, 'Nothing was sent: the private key'),
             str_contains($screen, 'File of its certificate'),
         ]);
     }
@@ -194,7 +194,7 @@ final class MailSigningKeysSectionTest extends TestCase
         // Then
         static::assertSame([0, true], [
             $this->screen->requestsTo(sprintf('/tenant/mail-signing-keys/pgp/%s', self::PGP), 'DELETE'),
-            str_contains($this->screen->screen(), 'It is the current one'),
+            str_contains($this->screen->screen(), 'It is the current key'),
         ]);
     }
 
@@ -255,7 +255,7 @@ final class MailSigningKeysSectionTest extends TestCase
         $lines = explode("\n", $this->screen->screen());
         $last = $lines[count($lines) - 1];
         static::assertSame([true, true, true], [
-            str_contains($last, 'draw an OpenPGP key'),
+            str_contains($last, 'generate an OpenPGP key'),
             str_contains($last, 'set an S/MIME key'),
             str_contains($last, 'remove'),
         ]);

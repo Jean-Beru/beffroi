@@ -79,7 +79,7 @@ final class ClientsSectionTest extends TestCase
         // Then
         $screen = $this->screen->screen();
         static::assertSame([true, true, true], [
-            str_contains($screen, 'What it registered'),
+            str_contains($screen, 'Registered metadata'),
             str_contains($screen, 'private_key_jwt'),
             str_contains($screen, 'http://127.0.0.1:8123/callback'),
         ]);
@@ -114,7 +114,7 @@ final class ClientsSectionTest extends TestCase
         $this->screen->open('section.clients');
 
         // Then
-        static::assertStringContainsString('The tenant has no client.', $this->screen->screen());
+        static::assertStringContainsString('No client.', $this->screen->screen());
     }
 
     /**
@@ -140,7 +140,7 @@ final class ClientsSectionTest extends TestCase
         // Then
         $screen = $this->screen->screen();
         static::assertSame([true, true], [
-            str_contains($screen, 'What its initial access token gave'),
+            str_contains($screen, 'Granted by its initial access token'),
             str_contains($screen, 'https://api.example/invoices'),
         ]);
     }
@@ -185,7 +185,7 @@ final class ClientsSectionTest extends TestCase
         static::assertSame([1, 0, true], [
             $this->screen->requestsTo('/clients/invoices', 'DELETE'),
             preg_match('/Invoices +invoices/', $screen),
-            str_contains($screen, 'The client invoices is deleted'),
+            str_contains($screen, 'Client invoices deleted'),
         ]);
     }
 
@@ -350,7 +350,7 @@ final class ClientsSectionTest extends TestCase
         $screen = $this->screen->screen();
         static::assertSame([true, true], [
             str_contains($screen, self::VALUE),
-            str_contains($screen, 'Its value is shown here once, and never again'),
+            str_contains($screen, 'it will not be shown again'),
         ]);
     }
 
@@ -449,7 +449,7 @@ final class ClientsSectionTest extends TestCase
         static::assertSame([1, 1, true], [
             $this->screen->requestsTo('/initial-access-tokens/t-laptop', 'DELETE'),
             preg_match('/laptop +revoked on 2026-11-17 09:00/', $screen),
-            str_contains($screen, 'The initial access token laptop is revoked'),
+            str_contains($screen, 'Initial access token laptop revoked'),
         ]);
     }
 
