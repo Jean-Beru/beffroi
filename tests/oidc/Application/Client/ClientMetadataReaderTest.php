@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Client;
 
+use Beffroi\Core\Tests\Fixture\RsaModuli;
 use Beffroi\Oidc\Application\Client\ClientAuthenticationMethods;
 use Beffroi\Oidc\Domain\Client\Metadata\ClientMetadata;
 use Beffroi\Oidc\Domain\Client\Metadata\RegisteredMembers;
@@ -391,6 +392,23 @@ final class ClientMetadataReaderTest extends TestCase
             InvalidClientMetadataException::class,
             null,
             'either inline in "jwks" or behind a "jwks_uri", never both',
+        ];
+        yield 'an RSA key of 1024 bits (RFC 7518 section 3.3)' => [
+            [
+                'redirect_uris' => ['https://rp.example/cb'],
+                'token_endpoint_auth_method' => 'private_key_jwt',
+                'jwks' => [
+                    'keys' => [[
+                        'kty' => 'RSA',
+                        'kid' => 'weak',
+                        'n' => RsaModuli::ofBits(1024),
+                        'e' => 'AQAB',
+                    ]],
+                ],
+            ],
+            InvalidClientMetadataException::class,
+            'jwks',
+            'carries a modulus "n" of 2048 bits at least',
         ];
         yield 'signed request objects required, and read unsigned (RFC 9101 section 10.5)' => [
             [

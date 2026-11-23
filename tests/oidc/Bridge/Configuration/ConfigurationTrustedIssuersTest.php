@@ -7,6 +7,7 @@ namespace Beffroi\Oidc\Tests\Bridge\Configuration;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\RsaModuli;
 use Beffroi\Oidc\Bridge\Configuration\ConfigurationTrustedIssuers;
 use Beffroi\Oidc\Domain\Client\ClientJwks;
 use Beffroi\Oidc\Domain\Client\ClientUri;
@@ -211,6 +212,19 @@ final class ConfigurationTrustedIssuersTest extends TestCase
                 'identity_provider' => 'workforce',
             ],
             'symmetric key in a JWK Set is refused',
+        ];
+        yield 'an RSA key of 1024 bits (RFC 7518 §3.3)' => [
+            [
+                'jwks' => [
+                    'keys' => [[
+                        'kty' => 'RSA',
+                        'kid' => 'weak',
+                        'n' => RsaModuli::ofBits(1024),
+                        'e' => 'AQAB',
+                    ]],
+                ],
+            ] + self::withoutKeys(),
+            'carries a modulus "n" of 2048 bits at least',
         ];
         yield 'an algorithm nothing verifies' => [
             [

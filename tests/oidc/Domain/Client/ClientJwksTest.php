@@ -6,6 +6,7 @@ namespace Beffroi\Oidc\Tests\Domain\Client;
 
 use function array_column;
 use Beffroi\Core\Tests\Fixture\Algorithms;
+use Beffroi\Core\Tests\Fixture\RsaModuli;
 use Beffroi\Oidc\Domain\Client\ClientJwks;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Beffroi\Oidc\Tests\Fixture\Certificates;
@@ -82,7 +83,7 @@ final class ClientJwksTest extends TestCase
             [[
                 'kty' => 'RSA',
                 'kid' => 'one',
-                'n' => 'x',
+                'n' => RsaModuli::ofBits(2048),
                 'e' => 'AQAB',
             ]],
             null,
@@ -106,7 +107,7 @@ final class ClientJwksTest extends TestCase
                 [
                     'kty' => 'RSA',
                     'kid' => 'one',
-                    'n' => 'x',
+                    'n' => RsaModuli::ofBits(2048),
                     'e' => 'AQAB',
                 ],
                 self::key('two'),
@@ -177,6 +178,68 @@ final class ClientJwksTest extends TestCase
     }
 
     /**
+     * RFC 7518 §3.3, §3.5, §4.3
+     *
+     * @param array<string, mixed> $key
+     */
+    #[Test]
+    #[DataProvider('provideRsaKeysWithoutAModulusOf2048Bits')]
+    public function itRefusesAnRsaKeyThatCarriesNoModulusOf2048Bits(array $key): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('An RSA key of a JWK Set carries a modulus "n" of 2048 bits at least (RFC 7518 sections 3.3, 3.5, 4.3 and 6.3.1).');
+
+        // When
+        new ClientJwks([self::key('one'), $key]);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function provideRsaKeysWithoutAModulusOf2048Bits(): iterable
+    {
+        yield '512 bits' => [self::rsaKey(RsaModuli::ofBits(512))];
+        yield '1024 bits' => [self::rsaKey(RsaModuli::ofBits(1024))];
+        yield '2047 bits' => [self::rsaKey(RsaModuli::ofBits(2047))];
+        yield '2047 bits behind a zero octet (RFC 7518 §6.3.1.1)' => [self::rsaKey(RsaModuli::ofBits(2047, 1))];
+        yield 'a modulus that is not base64url' => [self::rsaKey('not/base64+url')];
+        yield 'a modulus that is not text' => [self::rsaKey(2048)];
+        yield 'no modulus (RFC 7518 §6.3.1)' => [[
+            'kty' => 'RSA',
+            'kid' => 'rsa',
+            'e' => 'AQAB',
+        ]];
+    }
+
+    /**
+     * RFC 7518 §3.3, §3.5, §4.3
+     */
+    #[Test]
+    #[DataProvider('provideRsaModuliOf2048BitsOrMore')]
+    public function itHoldsAnRsaKeyOf2048BitsOrMore(string $modulus): void
+    {
+        // Given
+        $key = self::rsaKey($modulus);
+
+        // When
+        $keys = new ClientJwks([$key]);
+
+        // Then
+        static::assertSame([$key], $keys->keys);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideRsaModuliOf2048BitsOrMore(): iterable
+    {
+        yield '2048 bits' => [RsaModuli::ofBits(2048)];
+        yield '2048 bits behind a zero octet (RFC 7518 §6.3.1.1)' => [RsaModuli::ofBits(2048, 1)];
+        yield '4096 bits' => [RsaModuli::ofBits(4096)];
+    }
+
+    /**
      * RFC 8705 §2.2, RFC 7517 §4.7
      */
     #[Test]
@@ -238,6 +301,19 @@ final class ClientJwksTest extends TestCase
 
         // When / Then
         static::assertFalse($keys->publishes(Certificates::selfSigned()));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function rsaKey(mixed $modulus): array
+    {
+        return [
+            'kty' => 'RSA',
+            'kid' => 'rsa',
+            'n' => $modulus,
+            'e' => 'AQAB',
+        ];
     }
 
     /**
