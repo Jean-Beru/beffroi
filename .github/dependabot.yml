@@ -33,5 +33,12 @@ updates:
       interval: weekly
   - package-ecosystem: docker
     directory: /apps/beffroi
+    target-branch: "0.1.x"
     schedule:
-      interval: weekly
+      interval: daily
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      base-images:
+        patterns: ["*"]
