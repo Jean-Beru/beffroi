@@ -77,7 +77,7 @@ env:
   BOX_SHA256: "aedabb38bad96a90868603f118956c3faa662b545c06be66df1b145aba703c0a"
   SPC_VERSION: "2.8.5"
   MICRO_EXTENSIONS: "dom,filter,iconv,intl,mbstring,openssl,pcntl,phar,posix,simplexml,sodium,zlib"
-  ALPINE_IMAGE: "alpine:3.22"
+  ALPINE_IMAGE: "alpine:3.22@sha256:49340b346798875b5592e5d420241f2f9cfba5f47e62ebb1446a1b34734e898f"
   SIGNING_KEY_FINGERPRINT: "FAFA4D7E39BAB0AE08EE4439544F6C7929EA07AF"
 
 jobs:
@@ -278,16 +278,11 @@ jobs:
           if-no-files-found: error
           retention-days: ${{ fromJSON(needs.prepare.outputs.retention) }}
 
-  publish:
-    name: "The assets of the release"
+  sums:
+    name: "SHA256SUMS"
     needs: [prepare, phar, executable]
     if: needs.prepare.outputs.tag != ''
     runs-on: ubuntu-24.04
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
-      artifact-metadata: write
     env:
       TAG: ${{ needs.prepare.outputs.tag }}
     steps:
@@ -301,13 +296,36 @@ jobs:
         run: |
           printf '%s\n' "${TAG}" > release
           sha256sum beffroi-tui.phar beffroi-tui-linux-x86_64 beffroi-tui-linux-aarch64 beffroi-tui-macos-aarch64 release > SHA256SUMS
-      - name: "Docker Hub, under the account of the repository"
-        uses: docker/login-action@v4
+      - uses: actions/upload-artifact@v7
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      # GnuPG in a container of its own, whatever the runner carries: the key is imported into a home that exists
-      # inside that container alone and goes with it, and the signature is verified before anything is uploaded.
+          name: sums
+          path: |
+            dist/release
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: ${{ fromJSON(needs.prepare.outputs.retention) }}
+
+  # The one job that reads the key of the releases, in the environment "release", which admits the release tags alone
+  # once the settings of the repository say so: it runs no action of a third party, and GnuPG in a container of its own
+  # whatever the runner carries, Alpine named by its digest, so that a tag moved on Docker Hub changes nothing. The key
+  # is imported into a home that exists inside that container alone and goes with it, and the signature is verified
+  # before it leaves the job.
+  sign:
+    name: "SHA256SUMS.asc"
+    needs: [prepare, sums]
+    if: needs.prepare.outputs.tag != ''
+    runs-on: ubuntu-24.04
+    environment: release
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: sums
+          path: dist
+      - name: "Docker Hub, under the account of the repository"
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: printf '%s' "${DOCKERHUB_TOKEN}" | docker login --username "${DOCKERHUB_USERNAME}" --password-stdin
       - name: "SHA256SUMS.asc"
         env:
           SIGNING_SECRET_KEY: ${{ secrets.SIGNING_SECRET_KEY }}
@@ -326,7 +344,33 @@ jobs:
             gpg --batch --verify SHA256SUMS.asc SHA256SUMS
             echo "${held}"
           ')
+          docker logout
           echo "SHA256SUMS is signed by the key ${fingerprint}." >> "${GITHUB_STEP_SUMMARY}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: signature
+          path: dist/SHA256SUMS.asc
+          if-no-files-found: error
+          retention-days: ${{ fromJSON(needs.prepare.outputs.retention) }}
+
+  publish:
+    name: "The assets of the release"
+    needs: [prepare, sign]
+    if: needs.prepare.outputs.tag != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+    steps:
+      # Every artifact of the run: the four files, the sums and their signature.
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
       - name: "Upload them to the release"
         env:
           GH_TOKEN: ${{ github.token }}
