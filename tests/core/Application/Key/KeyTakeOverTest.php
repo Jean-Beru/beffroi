@@ -397,6 +397,53 @@ final class KeyTakeOverTest extends TestCase
     }
 
     #[Test]
+    public function aRotationForACompromiseRetiresTheKeyThatRetires(): void
+    {
+        // Given
+        $lifecycle = $this->lifecycleThatDrawsKeys();
+        $retiring = $this->aKeyRetires($lifecycle);
+
+        // When
+        $key = $lifecycle->takeOver->rotateAfterCompromise($this->tenant, Algorithms::edDsa(), $this->context);
+
+        // Then
+        static::assertSame(KeyStatus::Retired, $retiring->status);
+        static::assertEquals($this->clock->now(), $retiring->retiredAt);
+        static::assertSame([$key], $lifecycle->keys->findInService($this->tenant));
+    }
+
+    #[Test]
+    public function aRotationForACompromiseSaysTheKeyThatRetiresIsRetiredAsCompromised(): void
+    {
+        // Given
+        $lifecycle = $this->lifecycleThatDrawsKeys();
+        $retiring = $this->aKeyRetires($lifecycle);
+
+        // When
+        $lifecycle->takeOver->rotateAfterCompromise($this->tenant, Algorithms::edDsa(), $this->context);
+
+        // Then
+        [, $event] = $lifecycle->events->of(TenantKeyRetired::class);
+        static::assertSame($retiring, $event->retired);
+        static::assertSame(RetirementReason::Compromised, $event->reason);
+    }
+
+    #[Test]
+    public function aRotationForACompromiseLeavesAKeyThatRetiresForAnotherAlgorithm(): void
+    {
+        // Given
+        $lifecycle = $this->lifecycleThatDrawsKeys();
+        $lifecycle->takeOver->rotate($this->tenant, Algorithms::es256(), $this->context);
+        $retiring = $this->aKeyRetires($lifecycle);
+
+        // When
+        $lifecycle->takeOver->rotateAfterCompromise($this->tenant, Algorithms::es256(), $this->context);
+
+        // Then
+        static::assertSame(KeyStatus::Retiring, $retiring->status);
+    }
+
+    #[Test]
     public function aKeyThatWaitsDoesNotTakeOverFromANewerKey(): void
     {
         // Given
@@ -480,6 +527,16 @@ final class KeyTakeOverTest extends TestCase
             [new FixedLifetimeArtifact(new DateInterval(KeyLifecycle::LONGEST_LIFETIME))],
             generator: new JwtLibraryKeyPairGenerator(Algorithms::everyUse()),
         );
+    }
+
+    private function aKeyRetires(KeyLifecycle $lifecycle): TenantKey
+    {
+        $retiring = $lifecycle->takeOver->rotate($this->tenant, Algorithms::edDsa(), $this->context);
+        $this->clock->modify('+30 days');
+        $lifecycle->takeOver->rotate($this->tenant, Algorithms::edDsa(), $this->context);
+        $this->clock->modify('+1 minute');
+
+        return $retiring;
     }
 
     private function aSuccessorWaits(KeyLifecycle $lifecycle): TenantKey
