@@ -97,6 +97,57 @@ final class OriginLoadListenerTest extends TestCase
         $this->expectNotToPerformAssertions();
     }
 
+    /**
+     * Decision 0014, RFC 4291 §2.5.1
+     */
+    #[Test]
+    public function twoAddressesOfOneIpv6PrefixOfSixtyFourBitsShareTheBudget(): void
+    {
+        // Given
+        $listener = self::listener();
+        $listener(self::event('beffroi_protocol_token', address: '2001:db8:1:2::1'));
+
+        // Then
+        $this->expectException(LoadBudgetSpentException::class);
+
+        // When
+        $listener(self::event('beffroi_protocol_token', address: '2001:db8:1:2:ffff:ffff:ffff:fffe'));
+    }
+
+    /**
+     * Decision 0014, RFC 4291 §2.5.1
+     */
+    #[Test]
+    public function twoIpv6PrefixesOfSixtyFourBitsHaveABudgetEach(): void
+    {
+        // Given
+        $listener = self::listener();
+        $listener(self::event('beffroi_protocol_token', address: '2001:db8:1:2::1'));
+
+        // When
+        $listener(self::event('beffroi_protocol_token', address: '2001:db8:1:3::1'));
+
+        // Then
+        $this->expectNotToPerformAssertions();
+    }
+
+    /**
+     * Decision 0014
+     */
+    #[Test]
+    public function anIpv4AddressMappedIntoIpv6KeepsItsBudget(): void
+    {
+        // Given
+        $listener = self::listener();
+        $listener(self::event('beffroi_protocol_token', address: '::ffff:198.51.100.7'));
+
+        // When
+        $listener(self::event('beffroi_protocol_token', address: '::ffff:198.51.100.8'));
+
+        // Then
+        $this->expectNotToPerformAssertions();
+    }
+
     #[Test]
     public function theListenerRunsAfterTheRouterAndBeforeTheFirewall(): void
     {
