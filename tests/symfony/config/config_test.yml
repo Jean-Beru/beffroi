@@ -212,6 +212,12 @@ parameters:
     env(BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_DELAY): 2
     env(BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_MULTIPLIER): 3
     env(BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_MAX_DELAY): 60
+    # Shorter than the default of the provider, and unlike the one of a logout token, so that a test of a notice plays
+    # its whole schedule quickly and tells it from the other.
+    env(BEFFROI_TEST_NOTICE_RETRIES): 3
+    env(BEFFROI_TEST_NOTICE_RETRY_DELAY): 60
+    env(BEFFROI_TEST_NOTICE_RETRY_MULTIPLIER): 2
+    env(BEFFROI_TEST_NOTICE_RETRY_MAX_DELAY): 600
     env(BEFFROI_TEST_CLIENT_NOTIFICATION_TIMEOUT): 3.0
     env(BEFFROI_TEST_WEB_PUSH_TIMEOUT): 3.0
     env(BEFFROI_TEST_BREACHED_PASSWORDS_TIMEOUT): 2.0
@@ -331,6 +337,11 @@ beffroi:
         retry_delay: '%env(int:BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_DELAY)%'
         retry_multiplier: '%env(int:BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_MULTIPLIER)%'
         retry_max_delay: '%env(int:BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_MAX_DELAY)%'
+    notices:
+        retries: '%env(int:BEFFROI_TEST_NOTICE_RETRIES)%'
+        retry_delay: '%env(int:BEFFROI_TEST_NOTICE_RETRY_DELAY)%'
+        retry_multiplier: '%env(int:BEFFROI_TEST_NOTICE_RETRY_MULTIPLIER)%'
+        retry_max_delay: '%env(int:BEFFROI_TEST_NOTICE_RETRY_MAX_DELAY)%'
     passwords:
         breached:
             timeout: '%env(float:BEFFROI_TEST_BREACHED_PASSWORDS_TIMEOUT)%'
