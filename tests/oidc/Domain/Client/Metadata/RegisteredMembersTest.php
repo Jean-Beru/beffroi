@@ -55,6 +55,42 @@ final class RegisteredMembersTest extends TestCase
     }
 
     /**
+     * Decision 0012
+     */
+    #[Test]
+    public function aClientDoesNotRegisterItsRequestObjectsReadUnsigned(): void
+    {
+        // Then
+        $this->expectException(InvalidClientMetadataException::class);
+        $this->expectExceptionMessageIs('A client does not register "none" as its request_object_signing_alg: a request object is read unsigned only for a client whoever declares it names so (decision 0012).');
+
+        // When
+        new RegisteredMembers([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'request_object_signing_alg' => 'none',
+        ]);
+    }
+
+    /**
+     * RFC 9101 §10.5
+     */
+    #[Test]
+    public function aClientRegistersTheAlgorithmItsRequestObjectsAreSignedWith(): void
+    {
+        // Given
+        $members = [
+            'redirect_uris' => ['https://rp.example/cb'],
+            'request_object_signing_alg' => 'ES256',
+        ];
+
+        // When
+        $source = new RegisteredMembers($members);
+
+        // Then
+        static::assertSame($members, $source->members());
+    }
+
+    /**
      * RFC 7591 §2
      */
     #[Test]
