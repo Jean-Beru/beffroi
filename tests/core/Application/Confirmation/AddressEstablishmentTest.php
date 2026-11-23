@@ -18,14 +18,17 @@ use Beffroi\Core\Domain\Confirmation\ConfirmableAddressInterface;
 use Beffroi\Core\Domain\Confirmation\ConfirmableEmail;
 use Beffroi\Core\Domain\Confirmation\ConfirmablePhoneNumber;
 use Beffroi\Core\Domain\Event\AddressConfirmationSent;
+use Beffroi\Core\Domain\Event\AddressConfirmationWithheld;
 use Beffroi\Core\Domain\Event\AddressEstablished;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Identity\UserSource;
 use Beffroi\Core\Exception\AddressConfirmationRefusedException;
+use Beffroi\Core\Exception\AddressConfirmationWithheldException;
 use Beffroi\Core\Port\RandomnessInterface;
 use Beffroi\Core\Tests\Fixture\FakeAttemptLimiter;
+use Beffroi\Core\Tests\Fixture\FakeConfirmationSendLimiter;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingAddressConfirmationSender;
@@ -228,6 +231,88 @@ final class AddressEstablishmentTest extends TestCase
 
         // Then
         $acts = $this->events->of(AddressConfirmationSent::class);
+        static::assertCount(1, $acts);
+        static::assertSame(['phone_number', $this->alice->subject->value], [$acts[0]->claim, $acts[0]->subject()->value]);
+    }
+
+    #[Test]
+    public function aSendIsCountedForThePersonAndTheAddress(): void
+    {
+        // Given
+        $sends = new FakeConfirmationSendLimiter();
+
+        // When
+        $this->establishment(new ConfirmablePhoneNumber(), sends: $sends)->send($this->alice, Fixtures::context());
+
+        // Then
+        static::assertSame([[$this->alice->id->toRfc4122(), self::PHONE_NUMBER]], $sends->sends);
+    }
+
+    #[Test]
+    public function aSendPastTheBudgetIsRefused(): void
+    {
+        // Given
+        $establishment = $this->establishment(new ConfirmablePhoneNumber(), sends: new FakeConfirmationSendLimiter(1));
+        $establishment->send($this->alice, Fixtures::context());
+
+        // Then
+        $this->expectException(AddressConfirmationWithheldException::class);
+        $this->expectExceptionMessageIs('The person or the address has had every confirmation its budget allows.');
+
+        // When
+        $establishment->send($this->alice, Fixtures::context());
+    }
+
+    #[Test]
+    public function aSendPastTheBudgetSendsNothing(): void
+    {
+        // Given
+        $establishment = $this->establishment(new ConfirmablePhoneNumber(), sends: new FakeConfirmationSendLimiter(1));
+        $establishment->send($this->alice, Fixtures::context());
+
+        // When
+        try {
+            $establishment->send($this->alice, Fixtures::context());
+        } catch (AddressConfirmationWithheldException) {
+        }
+
+        // Then
+        static::assertCount(1, $this->sender->sent);
+    }
+
+    #[Test]
+    public function aSendPastTheBudgetLeavesTheConfirmationSentBeforeOpen(): void
+    {
+        // Given
+        $establishment = $this->establishment(new ConfirmablePhoneNumber(), sends: new FakeConfirmationSendLimiter(1));
+        $establishment->send($this->alice, Fixtures::context());
+        $code = $this->sender->last()->code;
+        try {
+            $establishment->send($this->alice, Fixtures::context());
+        } catch (AddressConfirmationWithheldException) {
+        }
+
+        // When
+        $establishment->confirm($this->alice, $code, Fixtures::context());
+
+        // Then
+        static::assertSame(self::PHONE_NUMBER, $this->alice->verifiedPhoneNumber());
+    }
+
+    #[Test]
+    public function aSendPastTheBudgetIsAnActOfTheAccount(): void
+    {
+        // Given
+        $establishment = $this->establishment(new ConfirmablePhoneNumber(), sends: new FakeConfirmationSendLimiter(0));
+
+        // When
+        try {
+            $establishment->send($this->alice, Fixtures::context());
+        } catch (AddressConfirmationWithheldException) {
+        }
+
+        // Then
+        $acts = $this->events->of(AddressConfirmationWithheld::class);
         static::assertCount(1, $acts);
         static::assertSame(['phone_number', $this->alice->subject->value], [$acts[0]->claim, $acts[0]->subject()->value]);
     }
@@ -781,6 +866,7 @@ final class AddressEstablishmentTest extends TestCase
         ConfirmableAddressInterface $kind,
         FakeAttemptLimiter $attempts = new FakeAttemptLimiter(),
         RandomnessInterface $randomness = new FixedRandomness(),
+        FakeConfirmationSendLimiter $sends = new FakeConfirmationSendLimiter(),
     ): AddressEstablishment {
         $uuids = new SymfonyUuidGenerator();
 
@@ -788,6 +874,7 @@ final class AddressEstablishmentTest extends TestCase
             $kind,
             $this->confirmations,
             $this->sender,
+            $sends,
             new AddressConfirmationIssuing($uuids, $randomness, $this->hasher, $this->clock),
             new AddressConfirmationRedeeming($this->hasher, new DecoyHash($this->hasher, $uuids), $attempts, $this->clock),
             $this->users,
