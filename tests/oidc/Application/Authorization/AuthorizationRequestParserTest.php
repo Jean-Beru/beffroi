@@ -951,21 +951,21 @@ final class AuthorizationRequestParserTest extends TestCase
                 'scope' => 'openid  profile',
             ],
             'invalid_scope',
-            'The scope parameter is not a space-separated list of scope tokens (RFC 6749 section 3.3).',
+            'The scope parameter is not a space-separated list of at most 100 scope tokens (RFC 6749 section 3.3).',
         ];
         yield 'scope with a trailing space' => [
             [
                 'scope' => 'openid ',
             ],
             'invalid_scope',
-            'The scope parameter is not a space-separated list of scope tokens (RFC 6749 section 3.3).',
+            'The scope parameter is not a space-separated list of at most 100 scope tokens (RFC 6749 section 3.3).',
         ];
         yield 'scope with a double quote' => [
             [
                 'scope' => 'openid "profile"',
             ],
             'invalid_scope',
-            'The scope parameter is not a space-separated list of scope tokens (RFC 6749 section 3.3).',
+            'The scope parameter is not a space-separated list of at most 100 scope tokens (RFC 6749 section 3.3).',
         ];
         yield 'scope not allowed to the client (RFC 6749 §4.1.2.1)' => [
             [

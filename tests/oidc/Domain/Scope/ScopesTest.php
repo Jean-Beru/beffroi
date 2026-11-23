@@ -7,8 +7,10 @@ namespace Beffroi\Oidc\Tests\Domain\Scope;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
+use function array_fill;
 use function array_map;
 use function hrtime;
+use function implode;
 use function range;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -168,10 +170,48 @@ final class ScopesTest extends TestCase
     }
 
     /**
+     * RFC 6749 §3.3
+     */
+    #[Test]
+    public function aParameterOfAHundredScopesIsRead(): void
+    {
+        // When
+        $scopes = Scopes::parse(implode(' ', self::names(100)));
+
+        // Then
+        static::assertCount(100, $scopes);
+    }
+
+    /**
+     * RFC 6749 §3.3
+     */
+    #[Test]
+    public function aParameterOfMoreThanAHundredScopesIsRefusedBeforeAnyIsRead(): void
+    {
+        // Given
+        $scope = implode(' ', array_fill(0, 101, 'open"id'));
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A scope parameter names 100 scopes at most.');
+
+        // When
+        Scopes::parse($scope);
+    }
+
+    /**
      * @return list<Scope>
      */
     private static function scopes(int $count): array
     {
-        return array_map(static fn (int $index): Scope => new Scope('scope.' . $index), range(1, $count));
+        return array_map(static fn (string $name): Scope => new Scope($name), self::names($count));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function names(int $count): array
+    {
+        return array_map(static fn (int $index): string => 'scope.' . $index, range(1, $count));
     }
 }
