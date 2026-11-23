@@ -85,6 +85,24 @@ final class ClientDocumentIssuerTest extends TestCase
         $documents->address($client, ResponseFormat::signed(null, ClientEncryption::registration()));
     }
 
+    /**
+     * RFC 7518 §4.6
+     */
+    #[Test]
+    public function aClientWhoseKeyReceivesNoJweIsToldSoWhenTheDocumentIsAddressed(): void
+    {
+        // Given
+        $format = ResponseFormat::signed(null, ClientEncryption::registration());
+        $client = Clients::encryptedFor($this->tenant, $format, clientId: 'off-its-curve', jwks: new ClientJwks([ClientEncryption::keyOffItsCurve()]));
+
+        // Then
+        $this->expectException(ClientKeysUnavailableException::class);
+        $this->expectExceptionMessageIs('The document could not be encrypted under "ECDH-ES+A256KW": the key it is addressed to does not receive one.');
+
+        // When
+        $this->jwts->documents->address($client, $format);
+    }
+
     #[Test]
     public function aClientWhoseKeysCannotBeReadIsToldSoWhenTheDocumentIsAddressed(): void
     {

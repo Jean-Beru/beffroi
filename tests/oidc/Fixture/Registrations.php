@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Fixture;
 
+use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryJweEncrypter;
+use Beffroi\Core\Bridge\JwtLibrary\JoseEncryptionAlgorithms;
 use Beffroi\Core\Port\ContentEncryptionAlgorithmsInterface;
 use Beffroi\Core\Port\KeyEncryptionAlgorithmsInterface;
 use Beffroi\Core\Port\SignatureAlgorithmsInterface;
@@ -69,6 +71,7 @@ final class Registrations
             $tokenTypes ?? TokenTypes::served(),
             $authorizationDetailTypes ?? AuthorizationDetailTypes::served(),
             $subjects ?? Subjects::ofAProvider(),
+            new JwtLibraryJweEncrypter(new JoseEncryptionAlgorithms(Algorithms::keyEncryption(), Algorithms::contentEncryption())->manager()),
         );
     }
 
