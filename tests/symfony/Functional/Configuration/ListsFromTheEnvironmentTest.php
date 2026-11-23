@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Symfony\Functional\Configuration;
 
 use App\Doctrine\PersonalData\TenantDataKeyStores;
+use App\Locale\ServedLocales;
 use App\Tenant\TenantFactory;
 use Beffroi\Core\Bridge\Configuration\ConfigurationAdministratorGroups;
 use Beffroi\Core\Domain\Tenant\Tenant;
@@ -37,6 +38,7 @@ final class ListsFromTheEnvironmentTest extends KernelTestCase
         'BEFFROI_TEST_SAML_IDENTITY_PROVIDERS',
         'BEFFROI_TEST_TENANT_SCOPES',
         'BEFFROI_TEST_TENANT_ADMINISTRATORS',
+        'BEFFROI_TEST_LOCALES',
     ];
 
     private const array JWKS = [
@@ -308,6 +310,40 @@ final class ListsFromTheEnvironmentTest extends KernelTestCase
 
         // When
         static::getContainer()->get('test.beffroi.environment_lists.identity_providers');
+    }
+
+    /**
+     * Architecture §5.7
+     */
+    #[Test]
+    public function theLanguagesServedAreTheOnesTheEnvironmentNames(): void
+    {
+        // Given
+        self::carry('BEFFROI_TEST_LOCALES', ['fr', 'en']);
+
+        // When
+        $served = self::service('test.beffroi.environment_lists.served_locales', ServedLocales::class);
+
+        // Then
+        static::assertSame(['en', 'fr'], $served->all);
+    }
+
+    /**
+     * Architecture §5.7
+     */
+    #[Test]
+    public function aLanguageWithoutACatalogueIsRefusedWhenItsServiceIsBuilt(): void
+    {
+        // Given
+        self::carry('BEFFROI_TEST_LOCALES', ['en', 'sv']);
+        self::bootKernel(['environment' => self::ENVIRONMENT]);
+
+        // Then
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessageIs('The "beffroi" configuration key "locales" names "sv", which no catalogue of the application holds; it has "en", "fr".');
+
+        // When
+        static::getContainer()->get('test.beffroi.environment_lists.served_locales');
     }
 
     private static function carry(string $variable, mixed $list): void

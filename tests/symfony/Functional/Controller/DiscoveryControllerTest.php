@@ -85,6 +85,20 @@ final class DiscoveryControllerTest extends BrowserTestCase
     }
 
     /**
+     * OpenID Connect Discovery 1.0 §3 "ui_locales_supported", architecture §5.7
+     */
+    #[Test]
+    public function theMetadataAnnouncesTheLanguagesThePagesAreServedIn(): void
+    {
+        // When
+        $this->browser->request('GET', '/.well-known/openid-configuration');
+
+        // Then
+        $metadata = self::json($this->browser->getResponse());
+        static::assertSame(['en', 'fr'], $metadata['ui_locales_supported']);
+    }
+
+    /**
      * OIDC Discovery §3 "scopes_supported", OIDC Core §5.4, §11
      */
     #[Test]
