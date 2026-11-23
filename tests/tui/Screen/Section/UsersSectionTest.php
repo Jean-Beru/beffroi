@@ -93,7 +93,7 @@ final class UsersSectionTest extends TestCase
     }
 
     /**
-     * Once a person is shown, the keys go to what can be read of them, and `s` reads their open sessions.
+     * Once a person is shown, the keys go to what can be read of them, and `s` reads their sessions.
      */
     #[Test]
     public function theSessionsAreReadWhenTheAdministratorAsksForThem(): void
@@ -205,7 +205,7 @@ final class UsersSectionTest extends TestCase
     }
 
     #[Test]
-    public function anOpenSessionIsEndedOnceTheAdministratorConfirmsIt(): void
+    public function aSessionIsEndedOnceTheAdministratorConfirmsIt(): void
     {
         // Given
         $this->screen = new SignedInScreen([
@@ -225,6 +225,29 @@ final class UsersSectionTest extends TestCase
             $this->screen->requestsTo('/users/0193-alice/sessions/session-1', 'DELETE'),
             str_contains($screen, '203.0.113.4'),
             str_contains($screen, 'Session of alice ended'),
+        ]);
+    }
+
+    /**
+     * A person whose every session ended holds none the view could list, an expired one that did not end included.
+     */
+    #[Test]
+    public function aPersonWithoutASessionIsSaidToHoldNone(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/users?username=alice' => self::alice(),
+            '/users/0193-alice/sessions' => ['sessions' => []],
+        ]);
+        self::lookUpAlice($this->screen);
+
+        // When
+        $this->screen->press('s');
+
+        // Then
+        static::assertSame([true, true], [
+            str_contains($this->screen->screen(), 'Sessions · read logged'),
+            str_contains($this->screen->screen(), 'No session.'),
         ]);
     }
 
