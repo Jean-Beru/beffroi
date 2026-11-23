@@ -112,6 +112,30 @@ final class EnvelopeSecretSealerTest extends TestCase
     }
 
     #[Test]
+    public function aSecretSealedForOnePurposeDoesNotOpenForAnother(): void
+    {
+        // Given
+        $sealed = new EnvelopeSecretSealer(Keys::envelopes(), Keys::KMS_KEY_ID, 'beffroi:access-token-person:v1:')->seal($this->tenant, Totps::SEED);
+
+        // Then
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageIs('The sealed secret could not be opened.');
+
+        // When
+        new EnvelopeSecretSealer(Keys::envelopes(), Keys::KMS_KEY_ID)->unseal($this->tenant, $sealed);
+    }
+
+    #[Test]
+    public function aSecretSealedForAPurposeOpensForThatPurpose(): void
+    {
+        // Given
+        $sealer = new EnvelopeSecretSealer(Keys::envelopes(), Keys::KMS_KEY_ID, 'beffroi:access-token-person:v1:');
+
+        // When / Then
+        static::assertSame(Totps::SEED, $sealer->unseal($this->tenant, $sealer->seal($this->tenant, Totps::SEED)));
+    }
+
+    #[Test]
     public function theEnvelopeOfASecretDoesNotOpenAsATenantKey(): void
     {
         // Given
