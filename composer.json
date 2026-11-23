@@ -77,8 +77,8 @@
         "symfony/twig-bundle": "8.2.*",
         "symfony/uid": "8.2.*",
         "twig/twig": "^3.21",
-        "web-auth/webauthn-lib": "^5.3.12",
-        "web-token/jwt-library": "^4.2"
+        "web-auth/webauthn-lib": "^5.3.15",
+        "web-token/jwt-library": "^4.2.7"
     },
     "require-dev": {
         "symfony/aws-key-management": "8.2.*",
