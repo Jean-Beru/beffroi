@@ -37,6 +37,24 @@ final class ClientEncryption
         return new ClientJwks($keys);
     }
 
+    /**
+     * RFC 7518 §6.2.1: a key on P-256 whose coordinates are both the "x" of RFC 7515 appendix A.3, a point off the
+     * curve, which a set publishes like any key and to which no JWE is encrypted.
+     *
+     * @return array<string, mixed>
+     */
+    public static function keyOffItsCurve(): array
+    {
+        return [
+            'kty' => 'EC',
+            'crv' => 'P-256',
+            'use' => 'enc',
+            'kid' => 'off-its-curve',
+            'x' => 'f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU',
+            'y' => 'f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU',
+        ];
+    }
+
     public static function registration(): ResponseEncryption
     {
         return new ResponseEncryption(Algorithms::ecdhEsA256Kw(), Algorithms::a256Gcm());
