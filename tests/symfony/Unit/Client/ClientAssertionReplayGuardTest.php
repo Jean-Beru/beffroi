@@ -12,6 +12,8 @@ use Beffroi\Oidc\Tests\Fixture\Clients;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Symfony\Component\Lock\LockFactory;
+use Symfony\Component\Lock\Store\InMemoryStore;
 
 /**
  * RFC 7523 §3, §4
@@ -24,7 +26,7 @@ final class ClientAssertionReplayGuardTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->guard = new ClientAssertionReplayGuard(new SeenOnce(new ArrayAdapter()));
+        $this->guard = new ClientAssertionReplayGuard(new SeenOnce(new ArrayAdapter(), new LockFactory(new InMemoryStore())));
         // The pool expires its items against the wall clock, so the assertion expires an hour ahead of it.
         $this->expiresAt = new DateTimeImmutable('+1 hour');
     }
