@@ -41,6 +41,7 @@ use Beffroi\Core\Domain\Event\NotificationChannelsChosen;
 use Beffroi\Core\Domain\Event\PersonDescribed;
 use Beffroi\Core\Domain\Event\PersonDescribedThemselves;
 use Beffroi\Core\Domain\Event\AddressConfirmationSent;
+use Beffroi\Core\Domain\Event\AddressConfirmationWithheld;
 use Beffroi\Core\Domain\Event\AddressEstablished;
 use Beffroi\Core\Domain\Event\PersonDisabled;
 use Beffroi\Core\Domain\Event\PersonEnabled;
@@ -145,6 +146,7 @@ final class EventsLeaveTheProcessTest extends TestCase
         yield 'a person who said something of themselves' => [new PersonDescribedThemselves($user, 'nickname', false, $now, $context)];
         yield 'a person who took something back' => [new PersonDescribedThemselves($user, 'nickname', true, $now, $context)];
         yield 'a confirmation sent to an address' => [new AddressConfirmationSent($user, 'phone_number', $now, $context)];
+        yield 'a confirmation withheld' => [new AddressConfirmationWithheld($user, 'phone_number', $now, $context)];
         yield 'an address established' => [new AddressEstablished($user, 'phone_number', $now, $context)];
         yield 'a notice of a change a channel gave up on' => [new CredentialChangeNotTold(
             $now,
