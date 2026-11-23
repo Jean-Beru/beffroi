@@ -161,6 +161,27 @@ final class DoctrineDeviceAuthorizationRecordRepositoryTest extends DatabaseTest
     }
 
     #[Test]
+    public function theCodeARecordCarriesIsHeld(): void
+    {
+        // Given
+        self::records()->save(self::record(Secrets::draw(), self::client('appliance-app')));
+        self::reload();
+
+        // When
+        $held = self::records()->holdsUserCode(UserCode::hashOf(self::USER_CODE));
+
+        // Then
+        static::assertTrue($held);
+    }
+
+    #[Test]
+    public function aCodeNoRecordCarriesIsNotHeld(): void
+    {
+        // When / Then
+        static::assertFalse(self::records()->holdsUserCode(UserCode::hashOf('ZXWVTSRQ')));
+    }
+
+    #[Test]
     public function aCodeThisProviderNeverAnsweredIsFoundByNothing(): void
     {
         // When / Then

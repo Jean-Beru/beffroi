@@ -301,6 +301,25 @@ final class DeviceAuthorizationHandlerTest extends TestCase
     }
 
     #[Test]
+    public function itDrawsAgainWhenTheCodeItDrewIsHeldByARequestThatExpired(): void
+    {
+        // Given
+        $first = $this->ask();
+        $this->clock->modify('+601 seconds');
+
+        // When
+        $second = $this->handler(UserCodes::drawer([$first->userCode->value, self::SECOND_CODE]))->handle(
+            $this->tenant,
+            self::basic('television', Clients::SECRET),
+            self::parameters([]),
+            $this->context,
+        );
+
+        // Then
+        static::assertSame(self::SECOND_CODE, $second->userCode->value);
+    }
+
+    #[Test]
     public function theLifetimeAndTheIntervalAreTheOnesTheDeploymentWired(): void
     {
         // Given
