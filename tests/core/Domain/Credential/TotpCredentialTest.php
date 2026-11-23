@@ -230,6 +230,28 @@ final class TotpCredentialTest extends TestCase
     }
 
     #[Test]
+    #[DataProvider('provideBackupCodePositions')]
+    public function anUnspentBackupCodeIsHeldOnlyWhereTheListHasOne(int $index, bool $held): void
+    {
+        // Given
+        $totp = Totps::credential(Fixtures::user(), $this->hasher);
+        $totp->spendBackupCode(3, Fixtures::now());
+
+        // When / Then
+        static::assertSame($held, $totp->holdsUnspentBackupCode($index));
+    }
+
+    /**
+     * @return iterable<string, array{int, bool}>
+     */
+    public static function provideBackupCodePositions(): iterable
+    {
+        yield 'an unspent code' => [4, true];
+        yield 'a spent code' => [3, false];
+        yield 'a position past the list' => [10, false];
+    }
+
+    #[Test]
     public function aBackupCodeSpentIsMarkedAndDatesTheCredential(): void
     {
         // Given

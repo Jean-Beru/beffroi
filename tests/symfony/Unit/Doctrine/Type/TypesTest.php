@@ -487,6 +487,12 @@ final class TypesTest extends TestCase
         yield 'JSONB on PostgreSQL for a claims request' => [ClaimsRequestType::class, [], new PostgreSQLPlatform(), 'JSONB'];
         yield 'JSONB on PostgreSQL for a confirmation' => [ConfirmationType::class, [], new PostgreSQLPlatform(), 'JSONB'];
         yield 'JSONB on PostgreSQL for a password hash' => [PasswordHashType::class, [], new PostgreSQLPlatform(), 'JSONB'];
+        yield 'JSON on PostgreSQL for backup codes, whose text the spend of one compares as it was written' => [
+            BackupCodesType::class,
+            [],
+            new PostgreSQLPlatform(),
+            'JSON',
+        ];
         yield 'JSON on PostgreSQL otherwise' => [AddressType::class, [], new PostgreSQLPlatform(), 'JSON'];
         yield 'CLOB on SQLite' => [ClaimsRequestType::class, [], new SQLitePlatform(), 'CLOB'];
         yield 'a string with a length' => [
