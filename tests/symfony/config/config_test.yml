@@ -896,6 +896,12 @@ services:
     Beffroi\Core\Port\BreachedPasswordsInterface:
         alias: Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord
 
+    # The requests whose URL a client or a person chooses go to the MockHttpClient a test hands, under names nobody
+    # resolves: the guard of a deployment (App\Http\PrivateNetworkGuard) is held to its rules by its own tests.
+    App\Tests\Symfony\Fixture\UnguardedRequests: ~
+    App\Http\OutboundGuardInterface:
+        alias: App\Tests\Symfony\Fixture\UnguardedRequests
+
     # Issue #282: the HTTP client of the firewall of the application. What it asks the provider is handled by
     # this kernel, the provider it serves, as a request of its own: nothing of this kernel reaches a host.
     beffroi_test.provider_of_this_kernel:
