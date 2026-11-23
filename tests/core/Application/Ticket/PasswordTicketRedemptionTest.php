@@ -43,6 +43,7 @@ use Beffroi\Core\Tests\Fixture\FixedClaims;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingCredentialChangeNotifier;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Core\Tests\Fixture\SectionsOneAtATime;
 use function count;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
@@ -78,6 +79,8 @@ final class PasswordTicketRedemptionTest extends TestCase
 
     private MockClock $clock;
 
+    private SectionsOneAtATime $sections;
+
     private PasswordTicketRedemption $redemption;
 
     /**
@@ -95,10 +98,16 @@ final class PasswordTicketRedemptionTest extends TestCase
         $this->events = new RecordingEventDispatcher();
         $this->notifier = new RecordingCredentialChangeNotifier();
         $this->clock = new MockClock('2026-11-17T12:00:00+00:00');
+        $this->sections = new SectionsOneAtATime();
         $active = new ActivePassword(new ActiveCredentials($this->credentials));
         $this->redemption = new PasswordTicketRedemption(
             $this->tickets,
-            new TicketRedeeming($this->hasher, new DecoyHash($this->hasher, new SymfonyUuidGenerator(), new FakeMonotonicClock()), $this->clock),
+            new TicketRedeeming(
+                $this->hasher,
+                new DecoyHash($this->hasher, new SymfonyUuidGenerator(), new FakeMonotonicClock()),
+                $this->clock,
+                $this->sections,
+            ),
             $active,
             $this->hasher,
             new UserProvisioner(
@@ -230,6 +239,55 @@ final class PasswordTicketRedemptionTest extends TestCase
         $this->redemption->redeem($this->alice->tenant, $this->issued->ticket->id, $this->issued->value);
     }
 
+    /**
+     * Decision 0026
+     */
+    #[Test]
+    public function thePasswordIsWrittenAloneAmongTheRedemptionsOfTheTicket(): void
+    {
+        // When
+        $this->redemption->spend($this->issued->ticket, Fixtures::plainPassword(self::POSED), Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame(['beffroi.ticket.' . $this->issued->ticket->id->toRfc4122()], $this->sections->entered);
+    }
+
+    /**
+     * Decision 0026
+     */
+    #[Test]
+    public function aTicketAnotherRedemptionSpentMeanwhileIsRefused(): void
+    {
+        // Given
+        $this->spentByAnotherRedemption();
+
+        // Then
+        $this->expectException(TicketRefusedException::class);
+        $this->expectExceptionMessageIs('This ticket opens nothing.');
+
+        // When
+        $this->redemption->spend($this->issued->ticket, Fixtures::plainPassword(self::POSED), Fixtures::context($this->clock->now()));
+    }
+
+    /**
+     * Decision 0026
+     */
+    #[Test]
+    public function aTicketAnotherRedemptionSpentMeanwhileWritesNoPassword(): void
+    {
+        // Given
+        $this->spentByAnotherRedemption();
+
+        // When
+        try {
+            $this->redemption->spend($this->issued->ticket, Fixtures::plainPassword(self::POSED), Fixtures::context($this->clock->now()));
+        } catch (TicketRefusedException) {
+        }
+
+        // Then
+        static::assertNull(new ActivePassword(new ActiveCredentials($this->credentials))->of($this->alice));
+    }
+
     #[Test]
     public function everySessionOfThePersonEndsWithTheSecretItOpenedWith(): void
     {
@@ -318,6 +376,7 @@ final class PasswordTicketRedemptionTest extends TestCase
         // Given
         $carol = Fixtures::user(Fixtures::hardenedTenant(), 'carol');
         $ticket = new PasswordTicket(Uuid::v7(), $carol, $this->hasher->hash('the value'), $this->clock->now(), $this->clock->now()->modify('+72 hours'));
+        $this->tickets->save($ticket);
 
         // Then
         $this->expectException(CredentialEnrolmentFailedException::class);
@@ -342,6 +401,15 @@ final class PasswordTicketRedemptionTest extends TestCase
                 DateTimeImmutable $expiresAt,
             ): PasswordTicket => new PasswordTicket($id, $user, $secret, $issuedAt, $expiresAt),
         );
+    }
+
+    /**
+     * What the store holds once another request has redeemed the same ticket: its row spent.
+     */
+    private function spentByAnotherRedemption(): void
+    {
+        $this->issued->ticket->spend($this->clock->now());
+        $this->tickets->save($this->issued->ticket);
     }
 
     private function passwordInUse(): PasswordCredential

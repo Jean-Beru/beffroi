@@ -38,6 +38,7 @@ use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingCredentialChangeNotifier;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Core\Tests\Fixture\SectionsOneAtATime;
 use Beffroi\Core\Tests\Fixture\Totps;
 use function count;
 use DateTimeImmutable;
@@ -82,10 +83,11 @@ final class TotpTicketRedemptionTest extends TestCase
         $this->tickets = new InMemoryTotpTicketRepository();
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-11-17T12:00:15+00:00');
+        $sections = new SectionsOneAtATime();
         $notifier = new RecordingCredentialChangeNotifier();
         $this->redemption = new TotpTicketRedemption(
             $this->tickets,
-            new TicketRedeeming($this->hasher, new DecoyHash($this->hasher, new SymfonyUuidGenerator(), new FakeMonotonicClock()), $this->clock),
+            new TicketRedeeming($this->hasher, new DecoyHash($this->hasher, new SymfonyUuidGenerator(), new FakeMonotonicClock()), $this->clock, $sections),
             new TotpEnrolment(
                 $this->credentials,
                 new EnrolmentRefusal(new FederatedDomains(new InMemoryUpstreamProviders())),
@@ -181,6 +183,44 @@ final class TotpTicketRedemptionTest extends TestCase
         $this->redemption->redeem($this->alice->tenant, $this->issued->ticket->id, $this->issued->value);
     }
 
+    /**
+     * Decision 0026
+     */
+    #[Test]
+    public function aTicketAnotherRedemptionSpentMeanwhileIsRefused(): void
+    {
+        // Given
+        $provisioning = $this->redemption->begin($this->issued->ticket);
+        $this->spentByAnotherRedemption();
+
+        // Then
+        $this->expectException(TicketRefusedException::class);
+        $this->expectExceptionMessageIs('This ticket opens nothing.');
+
+        // When
+        $this->spend($provisioning);
+    }
+
+    /**
+     * Decision 0026
+     */
+    #[Test]
+    public function aTicketAnotherRedemptionSpentMeanwhileEnrolsNoApp(): void
+    {
+        // Given
+        $provisioning = $this->redemption->begin($this->issued->ticket);
+        $this->spentByAnotherRedemption();
+
+        // When
+        try {
+            $this->spend($provisioning);
+        } catch (TicketRefusedException) {
+        }
+
+        // Then
+        static::assertNull($this->activeTotp());
+    }
+
     #[Test]
     public function everySessionOfThePersonEndsWithTheSecretItOpenedWith(): void
     {
@@ -270,6 +310,15 @@ final class TotpTicketRedemptionTest extends TestCase
             Totps::codeAt($this->clock->now(), $provisioning->secret),
             Fixtures::context($this->clock->now()),
         );
+    }
+
+    /**
+     * What the store holds once another request has redeemed the same ticket: its row spent.
+     */
+    private function spentByAnotherRedemption(): void
+    {
+        $this->issued->ticket->spend($this->clock->now());
+        $this->tickets->save($this->issued->ticket);
     }
 
     private function activeTotp(): ?TotpCredential

@@ -5,6 +5,11 @@ declare(strict_types=1);
 namespace Beffroi\Core\Tests\Application\Enrolment;
 
 use Beffroi\Core\Application\Authentication\DecoyHash;
+use Beffroi\Core\Application\Credential\EnrolmentRefusal;
+use Beffroi\Core\Application\Identity\FederatedDomains;
+use Beffroi\Core\Application\Passkey\PasskeyEnrolment;
+use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Bridge\InMemory\InMemoryUpstreamProviders;
 use Beffroi\Core\Application\Enrolment\EnrolmentTicketIssue;
 use Beffroi\Core\Application\Enrolment\EnrolmentTicketRedemption;
 use Beffroi\Core\Application\Ticket\TicketIssuing;
@@ -12,15 +17,18 @@ use Beffroi\Core\Application\Ticket\TicketRedeeming;
 use Beffroi\Core\Bridge\InMemory\InMemoryEnrolmentTicketRepository;
 use Beffroi\Core\Bridge\Random\PlatformRandomness;
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Enrolment\EnrolmentTicket;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Domain\Ticket\IssuedTicket;
 use Beffroi\Core\Exception\TicketRefusedException;
+use Beffroi\Core\Tests\Fixture\FakePasskeyRegistrar;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingCredentialChangeNotifier;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Core\Tests\Fixture\SectionsOneAtATime;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -39,6 +47,12 @@ final class EnrolmentTicketRedemptionTest extends TestCase
 
     private FakePasswordHasher $hasher;
 
+    private InMemoryCredentialRepository $credentials;
+
+    private FakePasskeyRegistrar $registrar;
+
+    private PasskeyEnrolment $enrolment;
+
     private MockClock $clock;
 
     private EnrolmentTicketRedemption $redemption;
@@ -55,15 +69,29 @@ final class EnrolmentTicketRedemptionTest extends TestCase
         $this->tickets = new InMemoryEnrolmentTicketRepository();
         $this->hasher = new FakePasswordHasher();
         $this->clock = new MockClock('2026-10-11T12:00:00+00:00');
+        $sections = new SectionsOneAtATime();
         $this->issued = new EnrolmentTicketIssue(
             $this->tickets,
             new TicketIssuing(new SymfonyUuidGenerator(), new PlatformRandomness(), $this->hasher, $this->clock),
             new RecordingEventDispatcher(),
             new RecordingCredentialChangeNotifier(),
         )->issue($this->alice, Fixtures::context($this->clock->now()));
+        $this->credentials = new InMemoryCredentialRepository();
+        $this->registrar = new FakePasskeyRegistrar();
+        $this->enrolment = new PasskeyEnrolment(
+            $this->credentials,
+            new EnrolmentRefusal(new FederatedDomains(new InMemoryUpstreamProviders())),
+            new SymfonyUuidGenerator(),
+            new PlatformRandomness(),
+            $this->registrar,
+            $this->clock,
+            new RecordingEventDispatcher(),
+            new RecordingCredentialChangeNotifier(),
+        );
         $this->redemption = new EnrolmentTicketRedemption(
             $this->tickets,
-            new TicketRedeeming($this->hasher, new DecoyHash($this->hasher, new SymfonyUuidGenerator(), new FakeMonotonicClock()), $this->clock),
+            new TicketRedeeming($this->hasher, new DecoyHash($this->hasher, new SymfonyUuidGenerator(), new FakeMonotonicClock()), $this->clock, $sections),
+            $this->enrolment,
         );
     }
 
@@ -135,7 +163,7 @@ final class EnrolmentTicketRedemptionTest extends TestCase
     public function aTicketSpentOpensNothingASecondTime(): void
     {
         // Given
-        $this->redemption->spend($this->issued->ticket);
+        $this->enrol();
 
         // Then
         $this->expectException(TicketRefusedException::class);
@@ -177,7 +205,7 @@ final class EnrolmentTicketRedemptionTest extends TestCase
     public function aTicketSpentCostsWhatAWrongValueCosts(): void
     {
         // Given
-        $this->redemption->spend($this->issued->ticket);
+        $this->enrol();
 
         // When
         try {
@@ -190,13 +218,66 @@ final class EnrolmentTicketRedemptionTest extends TestCase
     }
 
     #[Test]
-    public function aSpentTicketIsSaidToBeSpentAndSaved(): void
+    public function aTicketIsSpentAndSavedOnceItsPasskeyIsEnrolled(): void
     {
         // When
-        $this->redemption->spend($this->issued->ticket);
+        $this->enrol();
 
         // Then
         static::assertEquals($this->clock->now(), $this->issued->ticket->spentAt);
         static::assertSame([], $this->tickets->unspentOf($this->alice));
+    }
+
+    /**
+     * Decision 0026
+     */
+    #[Test]
+    public function aTicketAnotherRedemptionSpentMeanwhileIsRefused(): void
+    {
+        // Given
+        $this->spentByAnotherRedemption();
+
+        // Then
+        $this->expectException(TicketRefusedException::class);
+        $this->expectExceptionMessageIs(self::REFUSED);
+
+        // When
+        $this->enrol();
+    }
+
+    /**
+     * Decision 0026
+     */
+    #[Test]
+    public function aTicketAnotherRedemptionSpentMeanwhileEnrolsNoPasskey(): void
+    {
+        // Given
+        $this->spentByAnotherRedemption();
+
+        // When
+        try {
+            $this->enrol();
+        } catch (TicketRefusedException) {
+        }
+
+        // Then
+        static::assertSame([], $this->credentials->findByUser($this->alice, PasskeyCredential::class));
+    }
+
+    private function enrol(): PasskeyCredential
+    {
+        $options = $this->enrolment->begin($this->alice);
+        $this->registrar->returns(FakePasskeyRegistrar::record($options, 'credential-of-the-ticket'));
+
+        return $this->redemption->enrol($this->issued->ticket, 'Pixel', $options, '{"id":"credential-of-the-ticket"}', Fixtures::context($this->clock->now()));
+    }
+
+    /**
+     * What the store holds once another request has redeemed the same ticket: its row spent.
+     */
+    private function spentByAnotherRedemption(): void
+    {
+        $this->issued->ticket->spend($this->clock->now());
+        $this->tickets->save($this->issued->ticket);
     }
 }
