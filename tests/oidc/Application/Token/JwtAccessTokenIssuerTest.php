@@ -9,6 +9,9 @@ use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
 use Beffroi\Core\Port\SecretSealerInterface;
 use Beffroi\Core\Tests\Fixture\EnvelopesThatThrow;
 use Beffroi\Core\Tests\Fixture\Keys;
+use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
+use Beffroi\Oidc\Application\Authorization\IdTokenHintVerifier;
+use Beffroi\Oidc\Exception\InvalidRequestException;
 use Beffroi\Oidc\Exception\LogicException;
 use Beffroi\Oidc\Tests\Fixture\Grants;
 use Symfony\Component\KeyManagement\Exception\RuntimeException as KeyManagementRuntimeException;
@@ -339,6 +342,30 @@ final class JwtAccessTokenIssuerTest extends TestCase
 
         // Then
         static::assertArrayNotHasKey(JwtAccessTokenIssuer::PERSON, $this->jwts->verify($token->value, 'spa', Fixtures::now()->modify('+9 minutes'))['claims']);
+    }
+
+    /**
+     * RFC 9068 §5, RP-Initiated Logout §2
+     */
+    #[Test]
+    public function theTokenServesAsNoIdTokenHint(): void
+    {
+        // Given
+        $authorization = UserAuthorization::fromAuthorizationCode(Grants::authorizationCode(), Tokens::code(
+            'the-code',
+            $this->client,
+            $this->session,
+            Fixtures::now(),
+        ));
+        $token = Tokens::accessToken($this->issuer, $authorization, Fixtures::now());
+        $verifier = new IdTokenHintVerifier(new JwtLibraryJwsVerifier($this->jwts->keys, Algorithms::all()));
+
+        // Then
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessageIs('invalid_request: The id_token_hint parameter is not an ID token issued by this provider.');
+
+        // When
+        $verifier->read($this->session->tenant, $token->value, false);
     }
 
     /**
