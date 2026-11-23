@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Token;
 
+use function array_map;
+use DateTimeImmutable;
 use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Beffroi\Core\Exception\KmsUnavailableException;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
@@ -48,6 +50,7 @@ use Beffroi\Oidc\Exception\InvalidScopeException;
 use Beffroi\Oidc\Exception\OAuth2Exception;
 use Beffroi\Oidc\Domain\Token\IssuedTokens;
 use Beffroi\Oidc\Domain\Token\UserAuthorizationInterface;
+use Beffroi\Oidc\Port\RefreshTokenRotationInterface;
 use Beffroi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
 use Beffroi\Oidc\Tests\Fixture\Clients;
 use Beffroi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
@@ -92,6 +95,10 @@ final class RefreshTokenGrantTest extends TestCase
 
     private UnopenedRows $rows;
 
+    private InMemoryAuthenticationSessionRepository $sessions;
+
+    private TokenIssuer $issuer;
+
     private RefreshTokenGrant $grant;
 
     protected function setUp(): void
@@ -103,8 +110,8 @@ final class RefreshTokenGrantTest extends TestCase
         $this->client = Clients::public($this->tenant);
         $this->clock = new MockClock('2026-09-15T12:00:00+00:00');
         $this->session = Fixtures::session($this->alice, $this->clock->now()->modify('-1 hour'));
-        $sessions = new InMemoryAuthenticationSessionRepository();
-        $sessions->save($this->session);
+        $this->sessions = new InMemoryAuthenticationSessionRepository();
+        $this->sessions->save($this->session);
         $this->context = Fixtures::context($this->clock->now());
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
         $this->grants = new InMemoryAuthorizationCodeRepository();
@@ -112,17 +119,8 @@ final class RefreshTokenGrantTest extends TestCase
         $this->idTokens = new FakeIdTokenIssuer();
         $this->events = new RecordingEventDispatcher();
         $this->rows = new UnopenedRows();
-        $issuer = new TokenIssuer($this->accessTokenIssuer, $this->idTokens, $this->refreshTokens, Secrets::drawer(), $this->events);
-        $this->grant = new RefreshTokenGrant(
-            $this->refreshTokens,
-            $this->grants,
-            new RefreshTokenRevocation($this->refreshTokens),
-            $sessions,
-            $issuer,
-            new RequestedAuthorizationDetails(AuthorizationDetailTypes::served()),
-            $this->clock,
-            $this->events,
-        );
+        $this->issuer = new TokenIssuer($this->accessTokenIssuer, $this->idTokens, $this->refreshTokens, Secrets::drawer(), $this->events);
+        $this->grant = $this->grantWith($this->refreshTokens);
     }
 
     #[Test]
@@ -189,7 +187,7 @@ final class RefreshTokenGrantTest extends TestCase
 
         // Then
         static::assertSame([$token, $issued->refreshToken?->token], $this->refreshTokens->all());
-        static::assertSame(3, $this->refreshTokens->saves, 'the token in setUp, the rotation, the successor');
+        static::assertSame(2, $this->refreshTokens->saves, 'the token in setUp, the successor');
     }
 
     /**
@@ -650,7 +648,86 @@ final class RefreshTokenGrantTest extends TestCase
             static::assertEquals($this->clock->now(), $token->revokedAt);
         }
         static::assertFalse($other->isRevoked());
-        static::assertSame(9, $this->refreshTokens->saves, 'two fixtures, two rotations with their successors, three revocations');
+        static::assertSame(7, $this->refreshTokens->saves, 'two fixtures, two successors, three revocations');
+    }
+
+    /**
+     * RFC 9700 §4.14.2
+     */
+    #[Test]
+    public function aTokenAnotherRequestRotatedFirstIsRefused(): void
+    {
+        // Given
+        $this->token('the-token');
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
+
+        // When
+        $this->grantWith(self::rotationLostToAnotherRequest())->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+    }
+
+    /**
+     * RFC 9700 §4.14.2
+     */
+    #[Test]
+    public function aTokenAnotherRequestRotatedFirstRevokesItsFamilyWithTheSuccessorWritten(): void
+    {
+        // Given
+        $token = $this->token('the-token');
+
+        // When
+        $this->failToGrant($this->request(), $this->grantWith(self::rotationLostToAnotherRequest()));
+
+        // Then
+        static::assertSame(
+            [true, true],
+            array_map(static fn (RefreshToken $member): bool => $member->isRevoked(), $this->refreshTokens->findByFamily($token->family->id)),
+        );
+    }
+
+    /**
+     * RFC 9700 §4.14.2
+     */
+    #[Test]
+    public function aTokenAnotherRequestRotatedFirstIsAnnouncedAsAReuse(): void
+    {
+        // Given
+        $token = $this->token('the-token');
+
+        // When
+        $this->failToGrant($this->request(), $this->grantWith(self::rotationLostToAnotherRequest()));
+
+        // Then
+        $detections = $this->events->of(RefreshTokenReuseDetected::class);
+        static::assertCount(1, $detections);
+        static::assertSame($token->tokenHash, $detections[0]->presentedTokenHash);
+    }
+
+    /**
+     * RFC 9700 §4.14.2
+     */
+    #[Test]
+    public function theSuccessorIsInTheStoreBeforeTheRotationIsClaimed(): void
+    {
+        // Given
+        $token = $this->token('the-token');
+        $familyAtTheClaim = [];
+        $rotations = static::createStub(RefreshTokenRotationInterface::class);
+        $rotations
+            ->method('rotate')
+            ->willReturnCallback(function (RefreshToken $presented, DateTimeImmutable $now) use (&$familyAtTheClaim): bool {
+                $familyAtTheClaim = $this->refreshTokens->findByFamily($presented->family->id);
+
+                return $this->refreshTokens->rotate($presented, $now);
+            });
+
+        // When
+        $issued = $this->grantWith($rotations)->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+
+        // Then
+        static::assertSame([$token, $issued->refreshToken?->token], $familyAtTheClaim);
     }
 
     /**
@@ -1140,13 +1217,39 @@ final class RefreshTokenGrantTest extends TestCase
         return RequestParameters::of($parameters);
     }
 
-    private function failToGrant(RequestParameters $request): void
+    private function failToGrant(RequestParameters $request, ?RefreshTokenGrant $grant = null): void
     {
         try {
-            $this->grant->grant(new AuthenticatedClient($this->client), $request, $this->context);
+            ($grant ?? $this->grant)->grant(new AuthenticatedClient($this->client), $request, $this->context);
             static::fail('The grant should have failed.');
         } catch (OAuth2Exception) {
         }
+    }
+
+    private function grantWith(RefreshTokenRotationInterface $rotations): RefreshTokenGrant
+    {
+        return new RefreshTokenGrant(
+            $this->refreshTokens,
+            $rotations,
+            $this->grants,
+            new RefreshTokenRevocation($this->refreshTokens),
+            $this->sessions,
+            $this->issuer,
+            new RequestedAuthorizationDetails(AuthorizationDetailTypes::served()),
+            $this->clock,
+            $this->events,
+        );
+    }
+
+    /**
+     * What a request sees when another one rotated or revoked the token between its read and its claim.
+     */
+    private static function rotationLostToAnotherRequest(): RefreshTokenRotationInterface
+    {
+        $rotations = static::createStub(RefreshTokenRotationInterface::class);
+        $rotations->method('rotate')->willReturn(false);
+
+        return $rotations;
     }
 
     /**
