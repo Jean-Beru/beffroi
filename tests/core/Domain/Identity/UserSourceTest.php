@@ -206,6 +206,25 @@ final class UserSourceTest extends TestCase
         static::assertEquals(new Profile(givenName: 'Alicia', familyName: 'Liddell', nickname: 'ali'), $rewritten);
     }
 
+    /**
+     * OIDC Core §5.1
+     */
+    #[Test]
+    public function anUpstreamSourceSayingAScriptAsAWebsiteIsRefused(): void
+    {
+        // Given
+        $source = UserSource::upstream('workforce', ['website']);
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The website "javascript:alert(1)" must be an absolute https or http URL (OIDC Core section 5.1).');
+
+        // When
+        $source->rewrite(Profile::empty(), [
+            'website' => 'javascript:alert(1)',
+        ]);
+    }
+
     #[Test]
     public function aLocalSourceRewritesNothing(): void
     {
