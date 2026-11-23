@@ -282,7 +282,7 @@ final class TotpAuthenticationTest extends TestCase
     }
 
     #[Test]
-    public function everyUnspentBackupCodeIsComparedTo(): void
+    public function anAcceptedBackupCodeIsComparedToEveryCodeOfTheSetTheSpentOnesIncluded(): void
     {
         // Given
         $this->totp->spendBackupCode(9, $this->clock->now()->modify('-1 day'));
@@ -291,7 +291,22 @@ final class TotpAuthenticationTest extends TestCase
         $this->authentication->authenticate($this->alice, Totps::BACKUP_CODES[0], Fixtures::context($this->clock->now()));
 
         // Then
-        static::assertCount(9, $this->hasher->verifiedAgainst);
+        static::assertCount(10, $this->hasher->verifiedAgainst);
+    }
+
+    #[Test]
+    public function aRefusedBackupCodeTakesAsManyComparisonsWhateverIsLeftOfTheSet(): void
+    {
+        // Given
+        foreach ([1, 2, 3, 4, 5, 6, 7, 8, 9] as $index) {
+            $this->totp->spendBackupCode($index, $this->clock->now()->modify('-1 day'));
+        }
+
+        // When
+        $this->failToAuthenticate('ZZZZZ-ZZZZZ');
+
+        // Then
+        static::assertCount(10, $this->hasher->verifiedAgainst);
     }
 
     #[Test]
