@@ -53,6 +53,8 @@ final class TokenExchangeGrantTest extends TestCase
 
     private const string ACTOR_TOKEN = 'the-token-of-the-gateway';
 
+    private const string CLIENT_URI = 'https://app.example/';
+
     private Tenant $tenant;
 
     private Client $gateway;
@@ -400,6 +402,51 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
+     * RFC 8693 §2.1, RFC 8707 §2
+     */
+    #[Test]
+    public function aTokenAddressedToItsOwnClientNamedByAnUriIsNotExchangeable(): void
+    {
+        // Given
+        $hash = new FakePasswordHasher()->hash(Clients::SECRET);
+        $gateway = Clients::gateway($this->tenant, $hash, resources: [new ResourceIndicator(self::CLIENT_URI)]);
+        $grant = $this->grant([
+            self::SUBJECT_TOKEN => Tokens::presented(
+                Clients::confidential($this->tenant, $hash, clientId: self::CLIENT_URI),
+                $this->session->user->subject,
+                $this->session,
+                audience: [self::CLIENT_URI],
+            ),
+        ]);
+
+        // Then
+        $this->expectException(InvalidTargetException::class);
+        $this->expectExceptionMessageIsOrContains('addressed to the client that holds it and to no resource');
+
+        // When
+        $grant->grant(new AuthenticatedClient($gateway), $this->request(['resource' => null]), $this->context);
+    }
+
+    /**
+     * RFC 8707 §2
+     */
+    #[Test]
+    public function aTokenAddressedToSomethingThatIsNotAResourceIsNotExchangeable(): void
+    {
+        // Given
+        $grant = $this->grant([
+            self::SUBJECT_TOKEN => $this->userToken(audience: ['somebody-else']),
+        ]);
+
+        // Then
+        $this->expectException(InvalidTargetException::class);
+        $this->expectExceptionMessageIsOrContains('addressed to something that is not a resource');
+
+        // When
+        $grant->grant($this->authenticated(), $this->request(), $this->context);
+    }
+
+    /**
      * RFC 8693 §2.1
      */
     #[Test]
@@ -609,6 +656,45 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
+     * RFC 8693 §4.4
+     */
+    #[Test]
+    public function anImpersonationIsRefusedWhenTheMayActNamesTheActorThePresentedTokenCarries(): void
+    {
+        // Given
+        $grant = $this->grant([
+            self::SUBJECT_TOKEN => $this->userToken(actor: new Actor(new Subject('first-hop')), mayAct: new MayAct(new Subject('first-hop'))),
+        ]);
+
+        // Then
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessageIsOrContains('names somebody else as the party that may act for its subject (RFC 8693 section 4.4)');
+
+        // When
+        $grant->grant($this->authenticated(), $this->request(), $this->context);
+    }
+
+    /**
+     * RFC 8693 §4.4
+     */
+    #[Test]
+    public function anImpersonationByTheClientTheMayActNamesIsServedWhateverActorThePresentedTokenCarries(): void
+    {
+        // Given
+        $grant = $this->grant([
+            self::SUBJECT_TOKEN => $this->userToken(actor: new Actor(new Subject('first-hop')), mayAct: new MayAct(new Subject('gateway'))),
+        ]);
+
+        // When
+        $issued = $grant->grant($this->authenticated(), $this->request(), $this->context);
+
+        // Then
+        $authorization = $issued->authorization;
+        static::assertInstanceOf(SubjectAuthorization::class, $authorization);
+        static::assertSame('alice-subject', $authorization->subject->value);
+    }
+
+    /**
      * RFC 8693 §2.1
      */
     #[Test]
@@ -623,7 +709,34 @@ final class TokenExchangeGrantTest extends TestCase
 
         // Then
         $this->expectException(InvalidRequestException::class);
-        $this->expectExceptionMessageIsOrContains('names the client that presents it (RFC 8693 section 2.1)');
+        $this->expectExceptionMessageIsOrContains('holds for itself, and names no person (RFC 8693 section 2.1)');
+
+        // When
+        $grant->grant(
+            $this->authenticated(),
+            $this->request([
+                'actor_token' => self::ACTOR_TOKEN,
+                'actor_token_type' => TokenTypeIdentifier::ACCESS_TOKEN,
+            ]),
+            $this->context,
+        );
+    }
+
+    /**
+     * RFC 8693 §2.1, §4.1
+     */
+    #[Test]
+    public function anActorTokenTheClientHoldsForAPersonIsRefused(): void
+    {
+        // Given
+        $grant = $this->grant([
+            self::SUBJECT_TOKEN => $this->userToken(),
+            self::ACTOR_TOKEN => Tokens::presented($this->gateway, $this->session->user->subject, $this->session),
+        ]);
+
+        // Then
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessageIsOrContains('holds for itself, and names no person (RFC 8693 section 2.1)');
 
         // When
         $grant->grant(
