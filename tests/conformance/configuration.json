@@ -131,7 +131,7 @@
                                     "xpath",
                                     "//*",
                                     10,
-                                    "Request refused|Requête refusée",
+                                    "Unable to continue|Impossible de continuer",
                                     "update-image-placeholder"
                                 ]
                             ]
@@ -231,7 +231,7 @@
                                     "xpath",
                                     "//*",
                                     10,
-                                    "Request refused|Requête refusée",
+                                    "Unable to continue|Impossible de continuer",
                                     "update-image-placeholder-optional"
                                 ]
                             ]
@@ -255,7 +255,7 @@
                                     "xpath",
                                     "//*",
                                     10,
-                                    "Request refused|Requête refusée",
+                                    "Unable to continue|Impossible de continuer",
                                     "update-image-placeholder"
                                 ]
                             ]
@@ -279,7 +279,7 @@
                                     "xpath",
                                     "//*",
                                     10,
-                                    "Request refused|Requête refusée",
+                                    "Unable to continue|Impossible de continuer",
                                     "update-image-placeholder"
                                 ]
                             ]
@@ -378,7 +378,7 @@
                                     "xpath",
                                     "//*",
                                     10,
-                                    "Request refused|Requête refusée",
+                                    "Unable to continue|Impossible de continuer",
                                     "update-image-placeholder"
                                 ]
                             ]
@@ -474,7 +474,7 @@
                                     "xpath",
                                     "//*",
                                     10,
-                                    "Request refused|Requête refusée",
+                                    "Unable to continue|Impossible de continuer",
                                     "update-image-placeholder"
                                 ]
                             ]
@@ -498,7 +498,7 @@
                                     "xpath",
                                     "//*",
                                     10,
-                                    "Request refused|Requête refusée",
+                                    "Unable to continue|Impossible de continuer",
                                     "update-image-placeholder"
                                 ]
                             ]
@@ -522,7 +522,7 @@
                                     "xpath",
                                     "//*",
                                     10,
-                                    "Request refused|Requête refusée",
+                                    "Unable to continue|Impossible de continuer",
                                     "update-image-placeholder"
                                 ]
                             ]
