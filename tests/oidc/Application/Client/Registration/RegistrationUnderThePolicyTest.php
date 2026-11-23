@@ -395,11 +395,77 @@ final class RegistrationUnderThePolicyTest extends TestCase
         return [
             'grant_types' => [self::BACKCHANNEL_GRANT],
             'backchannel_token_delivery_mode' => 'poll',
-            'token_endpoint_auth_method' => 'client_secret_basic',
+            'token_endpoint_auth_method' => 'private_key_jwt',
             'subject_type' => 'pairwise',
             'jwks_uri' => self::JWKS_URI,
             'sector_identifier_uri' => self::SECTOR_IDENTIFIER_URI,
         ];
+    }
+
+    /**
+     * CIBA Core §4
+     */
+    #[Test]
+    public function aBackchannelClientThatAuthenticatesWithASecretCannotClaimTheSectorOfItsKeys(): void
+    {
+        // Given
+        $documents = new FakeSectorIdentifierDocumentFetcher([self::JWKS_URI]);
+
+        // Then
+        $this->expectException(InvalidClientMetadataException::class);
+        $this->expectExceptionMessageIsOrContains('can vouch for no URI of the client');
+
+        // When
+        $this->read(self::backchannelWithASecretClaimingASector(), documents: $documents, grants: Grants::servedWithCiba());
+    }
+
+    /**
+     * OIDC Registration §5
+     */
+    #[Test]
+    public function aDocumentThatCanVouchForNoUriOfTheClientIsNeverRead(): void
+    {
+        // Given
+        $documents = new FakeSectorIdentifierDocumentFetcher([self::JWKS_URI]);
+
+        // When
+        try {
+            $this->read(self::backchannelWithASecretClaimingASector(), documents: $documents, grants: Grants::servedWithCiba());
+        } catch (InvalidClientMetadataException) {
+        }
+
+        // Then
+        static::assertSame([], $documents->fetched);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function backchannelWithASecretClaimingASector(): array
+    {
+        return [
+            ...self::backchannelClaimingASector(),
+            'token_endpoint_auth_method' => 'client_secret_basic',
+        ];
+    }
+
+    /**
+     * OIDC Core §8.1, RFC 8628 §3.4
+     */
+    #[Test]
+    public function aClientTheDeviceGrantReachesCannotClaimTheSectorOfItsRedirection(): void
+    {
+        // Then
+        $this->expectException(InvalidClientMetadataException::class);
+        $this->expectExceptionMessageIsOrContains('registers nothing that says which sector');
+
+        // When
+        $this->read([
+            'redirect_uris' => [self::REDIRECT_URI],
+            'grant_types' => ['authorization_code', 'urn:ietf:params:oauth:grant-type:device_code'],
+            'token_endpoint_auth_method' => 'client_secret_basic',
+            'subject_type' => 'pairwise',
+        ], grants: Grants::servedWithDeviceCode());
     }
 
     #[Test]

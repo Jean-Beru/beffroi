@@ -10,11 +10,16 @@ use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Application\Claims\Sector\RedirectUriSectorIdentifier;
 use Beffroi\Oidc\Application\Claims\SectorIdentifiers;
 use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Application\Claims\PairwiseSubjectIdentifierResolver;
+use Beffroi\Oidc\Domain\Client\ClientAuthenticationMethodInterface;
 use Beffroi\Oidc\Domain\Client\ClientRegistration;
 use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Domain\Client\GrantTypeName;
 use Beffroi\Oidc\Domain\Client\RedirectUri;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\Grants;
+use Beffroi\Oidc\Tests\Fixture\Methods;
 use Beffroi\Oidc\Tests\Fixture\Sectors;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -141,7 +146,7 @@ final class SectorIdentifiersTest extends TestCase
 
         // Then
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageIsOrContains('registers redirection URIs on one.example and other.example');
+        $this->expectExceptionMessageIsOrContains('registers redirection and login URIs on one.example and other.example');
 
         // When
         Sectors::ofAProvider()->sectorOf($onTwoHosts);
@@ -164,12 +169,144 @@ final class SectorIdentifiersTest extends TestCase
         Sectors::ofAProvider()->sectorOf($service->registration);
     }
 
+    /**
+     * CIBA Core §4
+     */
+    #[Test]
+    #[DataProvider('provideMethodsThatHoldNoKey')]
+    public function theJwksUriOfAClientThatAuthenticatesWithoutAKeyNamesNoSector(ClientAuthenticationMethodInterface $method): void
+    {
+        // Given
+        $registration = self::backchannel(Fixtures::tenant(), jwksUri: 'https://terminal.example/jwks.json', method: $method)->registration;
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('registers nothing that says which sector its subject identifiers belong to');
+
+        // When
+        Sectors::ofAProvider()->sectorOf($registration);
+    }
+
+    /**
+     * @return iterable<string, array{ClientAuthenticationMethodInterface}>
+     */
+    public static function provideMethodsThatHoldNoKey(): iterable
+    {
+        yield 'a secret' => [Methods::clientSecretBasic()];
+        yield 'nothing at all' => [Methods::none()];
+    }
+
+    /**
+     * CIBA Core §4
+     */
+    #[Test]
+    public function aClientThatAuthenticatesWithItsCertificateIsOfTheHostOfItsKeys(): void
+    {
+        // Given
+        $registration = self::backchannel(
+            Fixtures::tenant(),
+            jwksUri: 'https://terminal.example/jwks.json',
+            method: Methods::selfSignedTlsClientAuth(),
+        )->registration;
+
+        // When
+        $sector = Sectors::ofAProvider()->sectorOf($registration);
+
+        // Then
+        static::assertSame('terminal.example', $sector->host);
+    }
+
+    /**
+     * CIBA Core §4, RFC 8628 §3.4
+     *
+     * @param list<GrantTypeName> $grantTypes
+     */
+    #[Test]
+    #[DataProvider('provideGrantsWithoutARedirection')]
+    public function aClientAGrantReachesWithoutARedirectionIsOfTheHostOfItsKeysAndNotOfItsRedirection(array $grantTypes): void
+    {
+        // Given
+        $registration = self::reachedWithoutARedirection($grantTypes, Methods::privateKeyJwt(), 'https://keys.example/jwks.json')->registration;
+
+        // When
+        $sector = Sectors::ofAProvider()->sectorOf($registration);
+
+        // Then
+        static::assertSame('keys.example', $sector->host);
+    }
+
+    /**
+     * CIBA Core §4, RFC 8628 §3.4
+     *
+     * @param list<GrantTypeName> $grantTypes
+     */
+    #[Test]
+    #[DataProvider('provideGrantsWithoutARedirection')]
+    public function aClientAGrantReachesWithoutARedirectionNamesNoSectorByItsRedirection(array $grantTypes): void
+    {
+        // Given
+        $registration = self::reachedWithoutARedirection($grantTypes, Methods::clientSecretBasic())->registration;
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('registers nothing that says which sector its subject identifiers belong to');
+
+        // When
+        Sectors::ofAProvider()->sectorOf($registration);
+    }
+
+    /**
+     * @return iterable<string, array{list<GrantTypeName>}>
+     */
+    public static function provideGrantsWithoutARedirection(): iterable
+    {
+        yield 'the device grant' => [[Grants::authorizationCode(), Grants::deviceCode()]];
+        yield 'the backchannel flow' => [[Grants::authorizationCode(), Grants::ciba()]];
+    }
+
+    /**
+     * OIDC Core §4, §8.1
+     */
+    #[Test]
+    public function aClientWhoseLoginUriIsOnAnotherHostThanItsRedirectionNamesNoSectorWithoutADocument(): void
+    {
+        // Given
+        $registration = Clients::withThirdPartyInitiatedLogin(
+            Fixtures::tenant(),
+            initiateLoginUri: 'https://elsewhere.example/start',
+            subjectType: PairwiseSubjectIdentifierResolver::SUBJECT_TYPE,
+        )->registration;
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('registers redirection and login URIs on rp.example and elsewhere.example');
+
+        // When
+        Sectors::ofAProvider()->sectorOf($registration);
+    }
+
+    /**
+     * OIDC Core §4, §8.1
+     */
+    #[Test]
+    public function aClientWhoseLoginUriIsOnTheHostOfItsRedirectionIsOfThatHost(): void
+    {
+        // Given
+        $registration = Clients::withThirdPartyInitiatedLogin(Fixtures::tenant(), subjectType: PairwiseSubjectIdentifierResolver::SUBJECT_TYPE)->registration;
+
+        // When
+        $sector = Sectors::ofAProvider()->sectorOf($registration);
+
+        // Then
+        static::assertSame('rp.example', $sector->host);
+    }
+
     #[Test]
     public function aWayOfSayingItThatNobodyWiredReadsNothing(): void
     {
         // Given
         $registration = self::backchannel(Fixtures::tenant(), jwksUri: 'https://terminal.example/jwks.json')->registration;
-        $withoutTheBackchannelSource = new SectorIdentifiers([new RedirectUriSectorIdentifier()]);
+        $withoutTheBackchannelSource = new SectorIdentifiers([new RedirectUriSectorIdentifier(Sectors::withoutARedirection())]);
 
         // Then
         $this->expectException(InvalidArgumentException::class);
@@ -219,6 +356,63 @@ final class SectorIdentifiersTest extends TestCase
         static::assertSame(['https://terminal.example/jwks.json'], $published);
     }
 
+    /**
+     * OIDC Core §4, OIDC Registration §5
+     */
+    #[Test]
+    public function aClientPublishesItsLoginUriBesideItsRedirectionUris(): void
+    {
+        // Given
+        $registration = Clients::withThirdPartyInitiatedLogin(Fixtures::tenant())->registration;
+
+        // When
+        $published = Sectors::ofAProvider()->publishedUris($registration);
+
+        // Then
+        static::assertSame(['https://rp.example/callback', 'https://rp.example/start'], $published);
+    }
+
+    /**
+     * CIBA Core §4, RFC 8628 §3.4
+     */
+    #[Test]
+    public function aClientTheDeviceGrantReachesPublishesItsKeysAndNotItsRedirection(): void
+    {
+        // Given
+        $registration = self::reachedWithoutARedirection(
+            [Grants::authorizationCode(), Grants::deviceCode()],
+            Methods::privateKeyJwt(),
+            'https://keys.example/jwks.json',
+        )->registration;
+
+        // When
+        $published = Sectors::ofAProvider()->publishedUris($registration);
+
+        // Then
+        static::assertSame(['https://keys.example/jwks.json'], $published);
+    }
+
+    /**
+     * CIBA Core §4
+     */
+    #[Test]
+    public function aClientThatAuthenticatesWithASecretPublishesNothingOfItsKeys(): void
+    {
+        // Given
+        $registration = self::backchannel(
+            Fixtures::tenant(),
+            jwksUri: 'https://terminal.example/jwks.json',
+            sectorIdentifierUri: 'https://sector.example/redirect_uris.json',
+            method: Methods::clientSecretBasic(),
+        )->registration;
+
+        // When
+        $published = Sectors::ofAProvider()->publishedUris($registration);
+
+        // Then
+        static::assertSame([], $published);
+    }
+
     #[Test]
     public function anOrdinaryClientPublishesNothingOfItsKeys(): void
     {
@@ -236,18 +430,43 @@ final class SectorIdentifiersTest extends TestCase
         static::assertSame(['https://key.example/callback'], $published);
     }
 
+    /**
+     * @param list<GrantTypeName>|null $grantTypes
+     * @param list<RedirectUri> $redirectUris
+     */
     private static function backchannel(
         Tenant $tenant,
         string $clientId = 'payment-terminal',
         ?string $jwksUri = null,
         ?string $sectorIdentifierUri = null,
+        ?ClientAuthenticationMethodInterface $method = null,
+        ?array $grantTypes = null,
+        array $redirectUris = [],
     ): Client {
         return Clients::backchannel(
             $tenant,
             new FakePasswordHasher()->hash(self::SECRET_HASH_SOURCE),
             $clientId,
+            grantTypes: $grantTypes,
             jwksUri: $jwksUri,
             sectorIdentifierUri: $sectorIdentifierUri,
+            method: $method ?? ($jwksUri === null ? null : Methods::privateKeyJwt()),
+            redirectUris: $redirectUris,
+        );
+    }
+
+    /**
+     * @param list<GrantTypeName> $grantTypes
+     */
+    private static function reachedWithoutARedirection(array $grantTypes, ClientAuthenticationMethodInterface $method, ?string $jwksUri = null): Client
+    {
+        return self::backchannel(
+            Fixtures::tenant(),
+            'reached-without-a-redirection',
+            $jwksUri,
+            method: $method,
+            grantTypes: $grantTypes,
+            redirectUris: [new RedirectUri('https://rp.example/callback')],
         );
     }
 

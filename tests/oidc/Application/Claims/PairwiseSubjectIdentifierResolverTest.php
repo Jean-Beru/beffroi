@@ -16,6 +16,7 @@ use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Exception\InvalidClientMetadataException;
 use Beffroi\Oidc\Exception\LogicException;
 use Beffroi\Oidc\Tests\Fixture\Clients;
+use Beffroi\Oidc\Tests\Fixture\Methods;
 use Beffroi\Oidc\Tests\Fixture\FixedPairwiseSalt;
 use Beffroi\Oidc\Tests\Fixture\PairwiseSaltBehindAnOutage;
 use Beffroi\Oidc\Tests\Fixture\Subjects;
@@ -183,6 +184,7 @@ final class PairwiseSubjectIdentifierResolverTest extends TestCase
             $clientId,
             jwksUri: $jwksUri,
             subjectType: PairwiseSubjectIdentifierResolver::SUBJECT_TYPE,
+            method: Methods::privateKeyJwt(),
         );
     }
 

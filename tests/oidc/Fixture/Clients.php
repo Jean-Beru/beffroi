@@ -30,6 +30,7 @@ use Beffroi\Oidc\Domain\Client\RequestObject\AnyRegisteredAlgorithm;
 use Beffroi\Oidc\Domain\Client\RequestObject\RequestObjectSigningInterface;
 use Beffroi\Oidc\Domain\Resource\ResourceIndicator;
 use Beffroi\Oidc\Domain\Client\ResponseFormat;
+use Beffroi\Oidc\Domain\Client\SecretBearingMethodInterface;
 use Beffroi\Oidc\Domain\Client\SharedClientSecret;
 use Beffroi\Oidc\Domain\Client\TokenExchange;
 use Beffroi\Oidc\Domain\Exchange\MayAct;
@@ -232,6 +233,7 @@ final class Clients
      * @param list<ResourceIndicator> $resources
      * @param list<GrantTypeName>|null $grantTypes
      * @param non-empty-string|null $subjectType
+     * @param list<RedirectUri> $redirectUris
      */
     public static function backchannel(
         Tenant $tenant,
@@ -247,15 +249,20 @@ final class Clients
         ?string $jwksUri = null,
         ?string $sectorIdentifierUri = null,
         ?string $subjectType = null,
+        ?ClientAuthenticationMethodInterface $method = null,
+        array $redirectUris = [],
     ): Client {
+        $method ??= Methods::clientSecretBasic();
+        $keepsASecret = $method instanceof SecretBearingMethodInterface;
+
         return new Client(
             $tenant,
             new ClientRegistration(
                 $clientId,
                 new ClientPresentation('Payment terminal at the counter'),
-                Methods::clientSecretBasic(),
-                true,
-                [],
+                $method,
+                $keepsASecret,
+                $redirectUris,
                 Shapes::jwt(),
                 [],
                 $grantTypes ?? [Grants::ciba(), Grants::refreshToken()],
@@ -270,7 +277,7 @@ final class Clients
                 subjectType: $subjectType,
                 sectorIdentifierUri: $sectorIdentifierUri === null ? null : new ClientUri($sectorIdentifierUri),
             ),
-            new HashedClientSecret($secretHash),
+            $keepsASecret ? new HashedClientSecret($secretHash) : null,
         );
     }
 

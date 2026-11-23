@@ -517,7 +517,7 @@ final class ClientMetadataReaderTest extends TestCase
         } catch (InvalidClientMetadataException $exception) {
             // Then
             static::assertSame('sector_identifier_uri', $exception->member);
-            static::assertStringContainsString('registers redirection URIs on one.example and other.example', $exception->getMessage());
+            static::assertStringContainsString('registers redirection and login URIs on one.example and other.example', $exception->getMessage());
         }
     }
 

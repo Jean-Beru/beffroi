@@ -122,4 +122,17 @@ final readonly class Grants
             new FakeBackchannelGrant(self::ciba()),
         ]);
     }
+
+    /**
+     * RFC 6749 §4.1, RFC 8628 §3.4, CIBA Core §10.1
+     */
+    public static function servedWithEveryWayOfAskingThePerson(): ServedGrants
+    {
+        return new ServedGrants([
+            new FakeRefreshTokenIssuingGrant(self::authorizationCode()),
+            new FakeRefreshTokenSpendingGrant(self::refreshToken()),
+            new FakeUserOnAnotherDeviceGrant(self::deviceCode()),
+            new FakeBackchannelGrant(self::ciba()),
+        ]);
+    }
 }
