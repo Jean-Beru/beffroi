@@ -4,12 +4,19 @@ declare(strict_types=1);
 
 namespace App\Tests\Symfony\Functional\Controller;
 
+use App\Http\ConsentsPage;
+use function array_map;
 use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Oidc\Domain\Claims\ClaimNames;
 use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Port\ActiveConsentsInterface;
+use Beffroi\Oidc\Port\ConsentRepositoryInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Architecture §4.3, §5.2
@@ -186,6 +193,88 @@ final class AccountConsentsTest extends BrowserTestCase
         // Then
         static::assertSame(Response::HTTP_FORBIDDEN, $this->browser->getResponse()->getStatusCode());
         static::assertTrue($this->consentOf($alice)->isActive());
+    }
+
+    /**
+     * RFC 6749 §3.3
+     */
+    #[Test]
+    public function theAccessAskedForIsTheOnlyOneRead(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        $email = self::consented($alice, 'native-app', ['openid', 'email']);
+        self::consented($alice, 'legacy-app', ['openid', 'profile']);
+
+        // When
+        $crawler = $this->browser->request('GET', '/account/consents', [
+            ConsentsPage::ACCESS => 'scope:email',
+        ]);
+
+        // Then
+        static::assertSame([(string) $email->id], $crawler->filter('tbody tr[data-consent]')->extract(['data-consent']));
+    }
+
+    /**
+     * RFC 6749 §3.3, OIDC Core §5.5
+     */
+    #[Test]
+    public function theAccessOfferedIsWhatTheConsentsOfThePersonGrant(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        self::consented($alice, 'native-app', ['openid', 'email'], ['given_name']);
+        self::consented($alice, 'legacy-app', ['openid', 'profile']);
+
+        // When
+        $crawler = $this->consentsPage();
+
+        // Then
+        static::assertSame(
+            ['', 'scope:email', 'scope:openid', 'scope:profile', 'claim:given_name'],
+            $crawler->filter('select[name="access"] option')->extract(['value']),
+        );
+    }
+
+    #[Test]
+    public function theApplicationWhoseNameHoldsWhatWasTypedIsTheOnlyOneRead(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        self::consented($alice, 'native-app', ['openid']);
+        $legacy = self::consented($alice, 'legacy-app', ['openid']);
+
+        // When
+        $crawler = $this->browser->request('GET', '/account/consents', [
+            ConsentsPage::APPLICATION => 'legacy',
+        ]);
+
+        // Then
+        static::assertSame([(string) $legacy->id], $crawler->filter('tbody tr[data-consent]')->extract(['data-consent']));
+        static::assertSame('legacy', $crawler->filter('input[name="application"]')->attr('value'));
+    }
+
+    /**
+     * @param list<string> $scopes
+     * @param list<string> $claims
+     */
+    private static function consented(User $user, string $clientId, array $scopes, array $claims = []): Consent
+    {
+        $consent = new Consent(
+            Uuid::v7(),
+            self::personAgain($user),
+            self::client($clientId),
+            new Scopes(array_map(static fn (string $scope): Scope => new Scope($scope), $scopes)),
+            self::currentSecond(),
+            claims: new ClaimNames($claims),
+        );
+        self::service('test.beffroi.consents', ConsentRepositoryInterface::class)->save($consent);
+        self::reload();
+
+        return $consent;
     }
 
     /**

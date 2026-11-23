@@ -54,9 +54,12 @@ abstract class PasskeyTestCase extends BrowserTestCase
         return self::passkeyOf($user, $device);
     }
 
-    protected function passkeysPage(): Crawler
+    /**
+     * @param array<string, string> $narrowed what the table is narrowed to, by the words of its query string
+     */
+    protected function passkeysPage(array $narrowed = []): Crawler
     {
-        $crawler = $this->browser->request('GET', '/account/passkeys');
+        $crawler = $this->browser->request('GET', '/account/passkeys', $narrowed);
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
 
