@@ -147,9 +147,113 @@ final class PublishedKeySetProviderTest extends TestCase
         $this->provider($fetcher)->keysOf(self::jwksUri(), ClientAssertions::KEY_ID);
     }
 
+    #[Test]
+    public function aUrlThatFailedIsRefusedInsideTheCooldown(): void
+    {
+        // Given
+        $fetcher = self::failing();
+        $provider = $this->provider($fetcher);
+        self::failToRead($provider, ClientAssertions::KEY_ID);
+        $this->clock->modify('+' . (self::COOLDOWN - 1) . ' seconds');
+
+        // Then
+        $this->expectException(ClientKeysUnavailableException::class);
+        $this->expectExceptionMessageIs('https://key.example/jwks could not be read at 2026-09-15T10:00:00+00:00, and is not read again before 2026-09-15T10:05:00+00:00.');
+
+        // When
+        $provider->keysOf(self::jwksUri(), ClientAssertions::KEY_ID);
+    }
+
+    #[Test]
+    public function aUrlThatFailedIsNotReadAgainInsideTheCooldown(): void
+    {
+        // Given
+        $fetcher = self::failing();
+        $provider = $this->provider($fetcher);
+        self::failToRead($provider, ClientAssertions::KEY_ID);
+        $this->clock->modify('+' . (self::COOLDOWN - 1) . ' seconds');
+
+        // When
+        self::failToRead($provider, ClientAssertions::KEY_ID);
+
+        // Then
+        static::assertCount(1, $fetcher->fetched);
+    }
+
+    #[Test]
+    public function aUrlThatFailedIsReadAgainOnceTheCooldownIsOver(): void
+    {
+        // Given
+        $fetcher = self::failing();
+        $provider = $this->provider($fetcher);
+        self::failToRead($provider, ClientAssertions::KEY_ID);
+        $fetcher->failure = null;
+        $this->clock->modify('+' . self::COOLDOWN . ' seconds');
+
+        // When
+        $keys = $provider->keysOf(self::jwksUri(), ClientAssertions::KEY_ID);
+
+        // Then
+        static::assertSame(ClientAssertions::publishedKeys()->keys, $keys->keys);
+        static::assertCount(2, $fetcher->fetched);
+    }
+
+    #[Test]
+    public function aKeptSetOutlivesAReadThatFailedForAnUnknownKeyIdentifier(): void
+    {
+        // Given
+        $fetcher = new FakeClientJwksFetcher([ClientAssertions::publishedKeys()]);
+        $provider = $this->provider($fetcher);
+        $provider->keysOf(self::jwksUri(), ClientAssertions::KEY_ID);
+        $this->clock->modify('+' . (self::COOLDOWN + 1) . ' seconds');
+        $fetcher->failure = new ClientKeysUnavailableException('https://key.example/jwks answered 500.');
+        self::failToRead($provider, 'rotated-key');
+
+        // When
+        $keys = $provider->keysOf(self::jwksUri(), ClientAssertions::KEY_ID);
+
+        // Then
+        static::assertSame(ClientAssertions::publishedKeys()->keys, $keys->keys);
+        static::assertCount(2, $fetcher->fetched);
+    }
+
+    #[Test]
+    public function aReadThatFailedForAnUnknownKeyIdentifierStartsTheCooldownAgain(): void
+    {
+        // Given
+        $fetcher = new FakeClientJwksFetcher([ClientAssertions::publishedKeys()]);
+        $provider = $this->provider($fetcher);
+        $provider->keysOf(self::jwksUri(), ClientAssertions::KEY_ID);
+        $this->clock->modify('+' . (self::COOLDOWN + 1) . ' seconds');
+        $fetcher->failure = new ClientKeysUnavailableException('https://key.example/jwks answered 500.');
+        self::failToRead($provider, 'rotated-key');
+
+        // When
+        $provider->keysOf(self::jwksUri(), 'rotated-key');
+
+        // Then
+        static::assertCount(2, $fetcher->fetched);
+    }
+
     private function provider(FakeClientJwksFetcher $fetcher): PublishedKeySetProvider
     {
         return new PublishedKeySetProvider($fetcher, $this->cache, $this->clock, new DateInterval('PT' . self::COOLDOWN . 'S'));
+    }
+
+    private static function failing(): FakeClientJwksFetcher
+    {
+        $fetcher = new FakeClientJwksFetcher([ClientAssertions::publishedKeys()]);
+        $fetcher->failure = new ClientKeysUnavailableException('https://key.example/jwks answered 500.');
+
+        return $fetcher;
+    }
+
+    private static function failToRead(PublishedKeySetProvider $provider, string $keyId): void
+    {
+        try {
+            $provider->keysOf(self::jwksUri(), $keyId);
+        } catch (ClientKeysUnavailableException) {
+        }
     }
 
     private static function jwksUri(): ClientUri

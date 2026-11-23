@@ -40,16 +40,45 @@ final class ClientJwksCacheTest extends TestCase
     public function itReadsBackTheKeysAndTheMomentTheyWereRead(): void
     {
         // Given
-        $fetchedAt = Fixtures::now();
-        $this->cache->write(self::jwksUri(), new CachedClientJwks(ClientAssertions::publishedKeys(), $fetchedAt));
+        $readAt = Fixtures::now();
+        $this->cache->write(self::jwksUri(), new CachedClientJwks(ClientAssertions::publishedKeys(), $readAt));
 
         // When
         $kept = $this->cache->read(self::jwksUri());
 
         // Then
         static::assertInstanceOf(CachedClientJwks::class, $kept);
-        static::assertSame(ClientAssertions::publishedKeys()->keys, $kept->keys->keys);
-        static::assertEquals($fetchedAt, $kept->fetchedAt);
+        static::assertSame(ClientAssertions::publishedKeys()->keys, $kept->keys?->keys);
+        static::assertEquals($readAt, $kept->readAt);
+    }
+
+    #[Test]
+    public function itReadsBackAReadThatFailedAsNoKeysAndItsMoment(): void
+    {
+        // Given
+        $readAt = Fixtures::now();
+        $this->cache->write(self::jwksUri(), new CachedClientJwks(null, $readAt));
+
+        // When
+        $kept = $this->cache->read(self::jwksUri());
+
+        // Then
+        static::assertNull($kept?->keys);
+        static::assertEquals($readAt, $kept?->readAt);
+    }
+
+    #[Test]
+    public function anEntryFiledUnderTheKeyOfAUrlButNamingAnotherIsNone(): void
+    {
+        // Given
+        $other = new ClientUri('https://other.example/jwks');
+        $this->cache->write($other, new CachedClientJwks(ClientAssertions::publishedKeys(), Fixtures::now()));
+        $item = $this->pool->getItem(self::keyOf(self::jwksUri()));
+        $item->set($this->pool->getItem(self::keyOf($other))->get());
+        $this->pool->save($item);
+
+        // When / Then
+        static::assertNull($this->cache->read(self::jwksUri()));
     }
 
     #[Test]
