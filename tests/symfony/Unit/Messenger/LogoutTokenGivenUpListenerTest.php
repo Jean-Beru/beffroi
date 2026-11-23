@@ -8,6 +8,7 @@ use App\Message\AdvanceKeyLifecycle;
 use App\Message\IssueLogoutToken;
 use App\Message\SendLogoutToken;
 use App\Messenger\LogoutTokenGivenUpListener;
+use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Oidc\Domain\Event\LogoutTokenGivenUp;
@@ -67,6 +68,27 @@ final class LogoutTokenGivenUpListenerTest extends TestCase
         static::assertSame('encrypted-app', $givenUp->clientId);
         static::assertSame(self::SESSION, $givenUp->sessionId->toRfc4122());
         static::assertSame('the client answered 503', $givenUp->reason);
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function aLogoutTokenOfASessionAnAdministratorEndedIsGivenUpInTheirName(): void
+    {
+        // When
+        ($this->listener)(self::failure(new IssueLogoutToken(
+            Fixtures::tenant(),
+            'encrypted-app',
+            Uuid::fromString(self::SESSION),
+            Fixtures::user()->subject,
+            Fixtures::context(),
+            new Subject('administrator-subject'),
+        ), willRetry: false));
+
+        // Then
+        [$givenUp] = $this->events->of(LogoutTokenGivenUp::class);
+        static::assertSame('administrator-subject', $givenUp->author()?->value);
     }
 
     #[Test]

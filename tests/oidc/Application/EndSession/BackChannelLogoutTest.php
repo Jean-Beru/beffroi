@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Oidc\Tests\Application\EndSession;
 
 use Beffroi\Core\Bridge\Uid\SymfonyUuidGenerator;
+use Beffroi\Core\Domain\Identity\Subject;
 use DateInterval;
 use function array_column;
 use function array_map;
@@ -186,6 +187,42 @@ final class BackChannelLogoutTest extends TestCase
         static::assertSame($this->session->id, $event->sessionId);
         static::assertSame(Fixtures::now()->getTimestamp(), $event->occurredAt->getTimestamp());
         static::assertStringStartsWith('eyJ', $event->token);
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function theLogoutTokenOfASessionAnAdministratorEndedNamesThem(): void
+    {
+        // Given
+        $this->signedIn(Clients::withBackChannelLogout($this->session->tenant, 'first', 'https://first.example/logout'));
+
+        // When
+        $this->logout->sessionEnded($this->ended(), Fixtures::context(), new Subject('administrator-subject'));
+
+        // Then
+        static::assertSame(['administrator-subject'], array_map(
+            static fn (LogoutTokenIssued $event): ?string => $event->author()?->value,
+            $this->events->of(LogoutTokenIssued::class),
+        ));
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function aClientLeftForLaterIsToldInTheNameOfTheAdministratorWhoEndedTheSession(): void
+    {
+        // Given
+        $this->signedIn(self::unreachable($this->session));
+        $administrator = new Subject('administrator-subject');
+
+        // When
+        $this->logout->sessionEnded($this->ended(), Fixtures::context(), $administrator);
+
+        // Then
+        static::assertSame([$administrator], array_column($this->retries->later, 'administrator'));
     }
 
     /**
