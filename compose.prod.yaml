@@ -24,8 +24,9 @@
 # https://doc.beffroi.tech/application/configuration/
 #
 # A secret may be a file instead of a variable, which "docker inspect" shows: each variable that carries one, APP_SECRET,
-# DATABASE_URL and BEFFROI_KMS_DSN above among them (the .env of the application lists them all), is read from the
-# file its name ending in _FILE gives, such as one a "secrets:" entry mounts under /run/secrets, readable by uid 33.
+# DATABASE_URL, BEFFROI_MIGRATIONS_DATABASE_URL and BEFFROI_KMS_DSN below among them (the .env of the application lists
+# them all), is read from the file its name ending in _FILE gives, such as one a "secrets:" entry mounts under
+# /run/secrets, readable by uid 33.
 # A deployment that does so replaces the line of the variable below with that of its _FILE, the image refusing both;
 # PostgreSQL reads POSTGRES_PASSWORD_FILE the same way.
 #

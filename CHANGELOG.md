@@ -43,10 +43,10 @@ only as pre-releases until Symfony 8.2.0 is out: until then, a project that requ
 - The administration API of an instance, served apart from its endpoints and its pages, and `beffroi/tui`, its terminal
   client. Each release carries the client as `beffroi-tui.phar` and as executables for Linux x86_64, Linux arm64 and
   macOS on Apple silicon, with `SHA256SUMS` and its signature.
-- Every secret the image reads, the secret of the kernel, the database, the key management service, the lanes, mail,
-  SMS and the licence of the address databases, may be given as a file, its path in the variable of the same name
-  ending in `_FILE`, where Swarm and Compose mount a secret; naming both is refused. gpg, the one program the provider
-  starts, gets none of its environment.
+- Every secret the image reads, the secret of the kernel, the database and the role that owns its tables, the key
+  management service, the lanes, mail, SMS and the licence of the address databases, may be given as a file, its path
+  in the variable of the same name ending in `_FILE`, where Swarm and Compose mount a secret; naming both is refused.
+  gpg, the one program the provider starts, gets none of its environment.
 
 ### Changed
 
