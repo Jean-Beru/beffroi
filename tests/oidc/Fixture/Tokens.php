@@ -245,6 +245,7 @@ final class Tokens
         ?Uuid $grantId = null,
         ?Actor $actor = null,
         ?MayAct $mayAct = null,
+        ?Subject $person = null,
     ): PresentedToken {
         return new PresentedToken(
             $subject,
@@ -255,7 +256,7 @@ final class Tokens
             $session === null ? null : new TokenSignIn($session->id, AuthenticationSnapshot::ofSession($session, $session->authenticationContextClass())),
             $actor,
             $mayAct,
-            $session?->user->subject,
+            $person ?? $session?->user->subject,
         );
     }
 

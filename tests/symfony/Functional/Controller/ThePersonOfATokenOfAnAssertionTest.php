@@ -36,6 +36,10 @@ final class ThePersonOfATokenOfAnAssertionTest extends BrowserTestCase
 
     private const string GATEWAY_SECRET = 'person-gateway-secret-of-at-least-32-chara';
 
+    private const string SERVICE_GATEWAY_ID = 'gateway-app';
+
+    private const string SERVICE_GATEWAY_SECRET = 'gateway-secret-of-at-least-32-characters-l';
+
     private User $alice;
 
     protected function setUp(): void
@@ -126,6 +130,33 @@ final class ThePersonOfATokenOfAnAssertionTest extends BrowserTestCase
             ],
             $described,
         );
+    }
+
+    /**
+     * RFC 8693 §2.1
+     */
+    #[Test]
+    public function aGatewayNotRegisteredToActForAUserIsRefusedATokenOfAnAssertion(): void
+    {
+        // Given
+        $token = $this->tokenOfAnAssertion('assertion-app', 'assertion-secret-of-at-least-32-character');
+
+        // When
+        $this->browser->request(
+            'POST',
+            '/token',
+            [
+                'grant_type' => 'urn:ietf:params:oauth:grant-type:token-exchange',
+                'subject_token' => $token,
+                'subject_token_type' => 'urn:ietf:params:oauth:token-type:access_token',
+                'resource' => self::CALENDAR,
+            ],
+            server: self::credentials(self::SERVICE_GATEWAY_ID, self::SERVICE_GATEWAY_SECRET),
+        );
+
+        // Then
+        static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
+        static::assertSame('invalid_request', self::json($this->browser->getResponse())['error'] ?? null);
     }
 
     /**
