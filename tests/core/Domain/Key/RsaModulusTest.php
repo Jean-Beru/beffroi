@@ -67,4 +67,48 @@ final class RsaModulusTest extends TestCase
         yield 'a character of neither alphabet' => ['AQ!B'];
         yield 'a length no octets have' => ['A'];
     }
+
+    /**
+     * RFC 7518 §3.3, §3.5, §4.3
+     */
+    #[Test]
+    #[DataProvider('provideLongEnoughModuli')]
+    public function aModulusOfTheMinimumLengthOrLongerIsLongEnough(string $n): void
+    {
+        // When / Then
+        static::assertTrue(RsaModulus::isLongEnough($n));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideLongEnoughModuli(): iterable
+    {
+        yield '2048 bits' => [RsaModuli::ofBits(2048)];
+        yield '4096 bits' => [RsaModuli::ofBits(4096)];
+        yield '2048 bits behind a zero octet' => [RsaModuli::ofBits(2048, 1)];
+    }
+
+    /**
+     * RFC 7518 §3.3, §3.5, §4.3
+     */
+    #[Test]
+    #[DataProvider('provideModuliThatAreNotLongEnough')]
+    public function aModulusShorterAbsentOrUnreadableIsNotLongEnough(mixed $n): void
+    {
+        // When / Then
+        static::assertFalse(RsaModulus::isLongEnough($n));
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function provideModuliThatAreNotLongEnough(): iterable
+    {
+        yield '2047 bits' => [RsaModuli::ofBits(2047)];
+        yield '1024 bits behind zero octets that would make 2048' => [RsaModuli::ofBits(1024, 128)];
+        yield 'absent' => [null];
+        yield 'not a string' => [2048];
+        yield 'not base64url' => ['AQ!B'];
+    }
 }

@@ -12,7 +12,13 @@ use Beffroi\Oidc\Domain\Dpop\DpopProof;
 use Beffroi\Oidc\Domain\Token\KeyConfirmation;
 use Beffroi\Oidc\Exception\InvalidJwtException;
 use Beffroi\Oidc\Tests\Fixture\Proofs;
+use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Core\JWK;
+use Jose\Component\KeyManagement\JWKFactory;
+use Jose\Component\Signature\JWSBuilder;
+use Jose\Component\Signature\Serializer\CompactSerializer;
+use function json_encode;
+use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -96,6 +102,60 @@ final class JwtLibraryProofKeyVerifierTest extends TestCase
 
         // When
         self::verifier()->keyThatSigned($proof, ['ES256']);
+    }
+
+    /**
+     * RFC 7518 §3.3
+     */
+    #[Test]
+    public function aProofSignedByAnRsaKeyOf2048BitsIsVerified(): void
+    {
+        // Given
+        $key = JWKFactory::createRSAKey(2048);
+        $proof = new JwtLibraryCompactJwtReader()->read(self::rs256Proof($key));
+
+        // When
+        $thumbprint = self::verifier()->keyThatSigned($proof, ['RS256']);
+
+        // Then
+        static::assertSame($key->toPublic()->thumbprint('sha256'), $thumbprint);
+    }
+
+    /**
+     * RFC 7518 §3.3, RFC 9449 §4.3
+     */
+    #[Test]
+    public function aProofSignedByAnRsaKeyOfLessThan2048BitsIsRefused(): void
+    {
+        // Given
+        $proof = new JwtLibraryCompactJwtReader()->read(self::rs256Proof(JWKFactory::createRSAKey(1024)));
+
+        // Then
+        $this->expectException(InvalidJwtException::class);
+        $this->expectExceptionMessageIs('The RSA key the proof carries has a modulus "n" of 2048 bits at least (RFC 7518 sections 3.3 and 3.5).');
+
+        // When
+        self::verifier()->keyThatSigned($proof, ['RS256']);
+    }
+
+    private static function rs256Proof(JWK $key): string
+    {
+        $jws = new JWSBuilder(new AlgorithmManager([Algorithms::rs256()->joseAlgorithm()]))
+            ->create()
+            ->withPayload(json_encode([
+                'jti' => 'proof',
+                'htm' => 'POST',
+                'htu' => self::ENDPOINT,
+                'iat' => new DateTimeImmutable(self::NOW)->getTimestamp(),
+            ], JSON_THROW_ON_ERROR))
+            ->addSignature($key, [
+                'alg' => 'RS256',
+                'typ' => DpopProof::TYPE,
+                DpopProof::KEY => $key->toPublic()->all(),
+            ])
+            ->build();
+
+        return new CompactSerializer()->serialize($jws, 0);
     }
 
     private static function verifier(): JwtLibraryProofKeyVerifier
