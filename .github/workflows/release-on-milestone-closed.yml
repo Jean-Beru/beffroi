@@ -32,7 +32,7 @@ on:
 jobs:
   version:
     name: "Is the milestone a version"
-    runs-on: [self-hosted, kloude-light]
+    runs-on: ubuntu-24.04
 
     permissions: {}
 
@@ -55,7 +55,7 @@ jobs:
 
   release:
     name: "Release"
-    runs-on: [self-hosted, kloude-light, X64]
+    runs-on: ubuntu-24.04
 
     needs: "version"
     if: "needs.version.outputs.release == 'true'"
