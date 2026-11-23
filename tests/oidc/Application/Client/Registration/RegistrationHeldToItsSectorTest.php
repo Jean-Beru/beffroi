@@ -40,7 +40,7 @@ final class RegistrationHeldToItsSectorTest extends TestCase
             Shapes::jwt(),
             sectorIdentifierUri: new ClientUri('https://rp.example/sector.json'),
         );
-        $sectors = $this->createStub(SectorIdentifiersInterface::class);
+        $sectors = static::createStub(SectorIdentifiersInterface::class);
         $sectors->method('publishedUris')->willReturn($uris);
         $held = new RegistrationHeldToItsSector(new FakeSectorIdentifierDocumentFetcher($uris), $sectors);
 
