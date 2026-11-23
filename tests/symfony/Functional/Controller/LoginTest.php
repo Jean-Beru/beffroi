@@ -8,6 +8,9 @@ use DateTimeImmutable;
 use App\Http\BrowserSession;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Bridge\Password\Algorithm\Bcrypt;
+use Beffroi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
+use Beffroi\Core\Bridge\Password\Algorithm\Pbkdf2Sha512;
+use Beffroi\Core\Domain\Credential\PasswordAlgorithmInterface;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
 use Beffroi\Core\Domain\Event\AuthenticationFailed;
 use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
@@ -646,6 +649,54 @@ final class LoginTest extends BrowserTestCase
         static::assertCount(1, $rehashes);
         static::assertTrue($rehashes[0]->credential->id->equals($this->credentialOf($user)->id));
         static::assertSame('127.0.0.1', $rehashes[0]->context->ipAddress);
+    }
+
+    /**
+     * RFC 8018 §5.2, Decision 0002
+     */
+    #[Test]
+    #[DataProvider('providePbkdf2Algorithms')]
+    public function aPbkdf2HashAnImportBroughtOpensTheSessionAndIsRehashed(PasswordAlgorithmInterface $algorithm): void
+    {
+        // Given
+        $user = self::userWithPassword('alice', self::PASSWORD, $algorithm);
+        $interaction = $this->authorize();
+
+        // When
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+
+        // Then
+        static::assertCount(1, self::sessionsOf('alice'));
+        static::assertSame(Argon2id::NAME, $this->credentialOf($user)->hash->algorithm->name());
+    }
+
+    /**
+     * @return iterable<string, array{PasswordAlgorithmInterface}>
+     */
+    public static function providePbkdf2Algorithms(): iterable
+    {
+        yield 'pbkdf2-sha256' => [new Pbkdf2Sha256()];
+
+        yield 'pbkdf2-sha512' => [new Pbkdf2Sha512()];
+    }
+
+    /**
+     * RFC 8018 §5.2, Decision 0006
+     */
+    #[Test]
+    public function aWrongPasswordAgainstAPbkdf2HashGoesBackToTheLoginPage(): void
+    {
+        // Given
+        self::userWithPassword('alice', self::PASSWORD, new Pbkdf2Sha256());
+        $interaction = $this->authorize();
+
+        // When
+        $this->submitLogin($interaction, 'alice', 'not the password');
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        static::assertSame('/login?interaction=' . $interaction, $response->headers->get('Location'));
     }
 
     #[Test]
