@@ -4,18 +4,25 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Interaction;
 
+use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Application\Claims\PairwiseSubjectIdentifierResolver;
+use Beffroi\Oidc\Application\Consent\SharedIdentity;
 use Beffroi\Oidc\Application\Interaction\ThirdPartyInitiatedLoginHandler;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryConsentRepository;
 use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Port\SubjectIdentifierResolverInterface;
 use Beffroi\Oidc\Tests\Fixture\Clients;
 use Beffroi\Oidc\Tests\Fixture\Subjects;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * OIDC Core §4
@@ -128,7 +135,7 @@ final class ThirdPartyInitiatedLoginHandlerTest extends TestCase
             $tenant,
             subjectType: PairwiseSubjectIdentifierResolver::SUBJECT_TYPE,
         );
-        $handler = self::handlerFor($tenant, $client, $subjects);
+        $handler = self::handlerFor($tenant, $client, $subjects, $user);
 
         // When
         $login = $handler->handle($tenant, self::CLIENT_ID, $user);
@@ -148,13 +155,31 @@ final class ThirdPartyInitiatedLoginHandlerTest extends TestCase
         // Given
         $tenant = Fixtures::tenant();
         $user = Fixtures::user($tenant);
-        $handler = self::handlerFor($tenant, Clients::withThirdPartyInitiatedLogin($tenant));
+        $handler = self::handlerFor($tenant, Clients::withThirdPartyInitiatedLogin($tenant), consenting: $user);
 
         // When
         $login = $handler->handle($tenant, self::CLIENT_ID, $user);
 
         // Then
         static::assertSame($user->subject, $login?->loginHint);
+    }
+
+    /**
+     * OIDC Core §8, decision 0006
+     */
+    #[Test]
+    public function aClientThePersonGaveNoConsentIsSentOnWithNoHint(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $user = Fixtures::user($tenant);
+        $handler = self::handlerFor($tenant, Clients::withThirdPartyInitiatedLogin($tenant));
+
+        // When
+        $login = $handler->handle($tenant, self::CLIENT_ID, $user) ?? static::fail('There is a login to begin.');
+
+        // Then
+        static::assertSame(self::INITIATE_LOGIN_URI . self::ISSUED_BY_THIS_PROVIDER, $login->location());
     }
 
     /**
@@ -210,12 +235,17 @@ final class ThirdPartyInitiatedLoginHandlerTest extends TestCase
         Tenant $tenant,
         Client $client,
         ?SubjectIdentifierResolverInterface $subjects = null,
+        ?User $consenting = null,
     ): ThirdPartyInitiatedLoginHandler {
         $clients = new InMemoryClientRepository();
         $clients->save($client);
         // Another client of the tenant, so that what one registered is never what another is given.
         $clients->save(Clients::public($tenant));
+        $consents = new InMemoryConsentRepository();
+        if ($consenting !== null) {
+            $consents->save(new Consent(Uuid::v7(), $consenting, $client, new Scopes([Scope::openid()]), Fixtures::now()));
+        }
 
-        return new ThirdPartyInitiatedLoginHandler($clients, $subjects ?? Subjects::ofAProvider());
+        return new ThirdPartyInitiatedLoginHandler($clients, $subjects ?? Subjects::ofAProvider(), new SharedIdentity($consents));
     }
 }

@@ -4,10 +4,17 @@ declare(strict_types=1);
 
 namespace App\Tests\Symfony\Functional\Controller;
 
+use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Port\ConsentRepositoryInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\Clock\Clock;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * OIDC Core §3.1.2.1, §4
@@ -21,6 +28,10 @@ final class LoginHintTest extends BrowserTestCase
     private const string PAIRWISE = 'launched-pairwise-app';
 
     private const string PAIRWISE_REDIRECT_URI = 'https://launched-pairwise.test/callback';
+
+    private const string ASKING = 'native-app';
+
+    private const string ASKING_REDIRECT_URI = 'http://127.0.0.1/callback';
 
     /**
      * OIDC Core §8 "public"
@@ -106,6 +117,39 @@ final class LoginHintTest extends BrowserTestCase
         yield 'the name the user signs in with, which this tenant does not read a hint as' => ['alice'];
     }
 
+    /**
+     * OIDC Core §8, decision 0006
+     */
+    #[Test]
+    public function aHintOfAPersonWhoGaveTheClientNoConsentOffersNothing(): void
+    {
+        // Given
+        $alice = self::user('alice');
+
+        // When
+        $offered = $this->nameOffered(self::ASKING, self::ASKING_REDIRECT_URI, $alice->subject->value);
+
+        // Then
+        static::assertSame('', $offered);
+    }
+
+    /**
+     * OIDC Core §3.1.2.1
+     */
+    #[Test]
+    public function aHintOfAPersonWhoGaveTheClientAConsentOffersHerName(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        self::agree($alice, self::ASKING);
+
+        // When
+        $offered = $this->nameOffered(self::ASKING, self::ASKING_REDIRECT_URI, $alice->subject->value);
+
+        // Then
+        static::assertSame('alice', $offered);
+    }
+
     #[Test]
     public function theValueTheClientSentIsNowhereOnThePage(): void
     {
@@ -118,6 +162,12 @@ final class LoginHintTest extends BrowserTestCase
 
         // Then
         static::assertStringNotContainsString($hint, self::string($this->browser->getResponse()->getContent()));
+    }
+
+    private static function agree(User $user, string $clientId): void
+    {
+        self::service('test.beffroi.consents', ConsentRepositoryInterface::class)
+            ->save(new Consent(Uuid::v7(), $user, self::client($clientId), new Scopes([Scope::openid()]), Clock::get()->now()));
     }
 
     private function nameOffered(string $clientId, string $redirectUri, ?string $hint): string

@@ -7,12 +7,17 @@ namespace Beffroi\Oidc\Tests\Application\Hint;
 use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Oidc\Application\Consent\SharedIdentity;
 use Beffroi\Oidc\Application\Hint\LoginHints;
 use Beffroi\Oidc\Application\Hint\SubjectLoginHint;
 use Beffroi\Oidc\Application\Hint\UserHintInterface;
 use Beffroi\Oidc\Application\Hint\UsernameLoginHint;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryConsentRepository;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryPairwiseSubjectRepository;
 use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Consent\Consent;
+use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Exception\InvalidRequestException;
 use Beffroi\Oidc\Exception\LogicException;
 use Beffroi\Oidc\Tests\Fixture\Clients;
@@ -21,6 +26,7 @@ use Beffroi\Oidc\Tests\Fixture\Subjects;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * OIDC Core §3.1.2.1, §4
@@ -33,6 +39,8 @@ final class LoginHintsTest extends TestCase
 
     private InMemoryUserRepository $users;
 
+    private InMemoryConsentRepository $consents;
+
     protected function setUp(): void
     {
         $tenant = Fixtures::tenant();
@@ -40,6 +48,8 @@ final class LoginHintsTest extends TestCase
         $this->alice = Fixtures::user($tenant);
         $this->users = new InMemoryUserRepository();
         $this->users->save($this->alice);
+        $this->consents = new InMemoryConsentRepository();
+        $this->consentTo($this->client);
     }
 
     /**
@@ -49,7 +59,7 @@ final class LoginHintsTest extends TestCase
     public function aHintReadAsASubjectNamesItsUser(): void
     {
         // Given
-        $hints = new LoginHints([new SubjectLoginHint(Subjects::ofAProvider($this->users))]);
+        $hints = $this->hints([new SubjectLoginHint(Subjects::ofAProvider($this->users))]);
 
         // When
         $user = $hints->userNamedBy(Requests::authorization($this->client, loginHint: 'alice-subject'));
@@ -65,7 +75,7 @@ final class LoginHintsTest extends TestCase
     public function aHintReadAsAUsernameNamesItsUser(): void
     {
         // Given
-        $hints = new LoginHints([new UsernameLoginHint($this->users)]);
+        $hints = $this->hints([new UsernameLoginHint($this->users)]);
 
         // When
         $user = $hints->userNamedBy(Requests::authorization($this->client, loginHint: 'alice'));
@@ -82,7 +92,7 @@ final class LoginHintsTest extends TestCase
     public function aHintThatNamesNobodyNamesNobody(?string $value): void
     {
         // Given
-        $hints = new LoginHints([new SubjectLoginHint(Subjects::ofAProvider($this->users))]);
+        $hints = $this->hints([new SubjectLoginHint(Subjects::ofAProvider($this->users))]);
 
         // When
         $user = $hints->userNamedBy(Requests::authorization($this->client, loginHint: $value));
@@ -106,7 +116,7 @@ final class LoginHintsTest extends TestCase
     public function aHintNothingIsWiredToReadNamesNobody(): void
     {
         // Given
-        $hints = new LoginHints([]);
+        $hints = $this->hints([]);
 
         // When
         $user = $hints->userNamedBy(Requests::authorization($this->client, loginHint: 'alice-subject'));
@@ -127,7 +137,7 @@ final class LoginHintsTest extends TestCase
         $refusing->method('userNamedBy')->willThrowException(new InvalidRequestException('Not of the shape I read.'));
 
         // When
-        $user = new LoginHints([$refusing])->userNamedBy(Requests::authorization($this->client, loginHint: 'alice-subject'));
+        $user = $this->hints([$refusing])->userNamedBy(Requests::authorization($this->client, loginHint: 'alice-subject'));
 
         // Then
         static::assertNull($user);
@@ -140,7 +150,7 @@ final class LoginHintsTest extends TestCase
     public function twoReadingsOfOneParameterAreRefused(): void
     {
         // Given
-        $hints = new LoginHints([
+        $hints = $this->hints([
             new SubjectLoginHint(Subjects::ofAProvider($this->users)),
             new UsernameLoginHint($this->users),
         ]);
@@ -163,7 +173,8 @@ final class LoginHintsTest extends TestCase
         $assigned = new InMemoryPairwiseSubjectRepository();
         $subjects = Subjects::bothKinds($this->users, assigned: $assigned);
         $sector = Clients::pairwise($this->alice->tenant, 'pairwise-app', 'https://rp.example/callback');
-        $hints = new LoginHints([new SubjectLoginHint($subjects)]);
+        $this->consentTo($sector);
+        $hints = $this->hints([new SubjectLoginHint($subjects)]);
 
         // When
         $user = $hints->userNamedBy(Requests::authorization($sector, loginHint: $subjects->resolve($this->alice, $sector)->value));
@@ -183,12 +194,60 @@ final class LoginHintsTest extends TestCase
         $subjects = Subjects::bothKinds($this->users, assigned: $assigned);
         $sector = Clients::pairwise($this->alice->tenant, 'pairwise-app', 'https://rp.example/callback');
         $other = Clients::pairwise($this->alice->tenant, 'pairwise-other-app', 'https://other.example/callback');
-        $hints = new LoginHints([new SubjectLoginHint($subjects)]);
+        $this->consentTo($other);
+        $hints = $this->hints([new SubjectLoginHint($subjects)]);
 
         // When
         $user = $hints->userNamedBy(Requests::authorization($other, loginHint: $subjects->resolve($this->alice, $sector)->value));
 
         // Then
         static::assertNull($user);
+    }
+
+    /**
+     * OIDC Core §8, decision 0006
+     *
+     * @param callable(InMemoryUserRepository): UserHintInterface $reading
+     */
+    #[Test]
+    #[DataProvider('provideHintsOfAPersonTheClientMayNotBeToldOf')]
+    public function aHintOfAPersonWhoGaveTheClientNoConsentNamesNobody(callable $reading, string $value): void
+    {
+        // Given
+        $hints = $this->hints([$reading($this->users)]);
+
+        // When
+        $user = $hints->userNamedBy(Requests::authorization(Clients::public($this->alice->tenant, 'another-spa'), loginHint: $value));
+
+        // Then
+        static::assertNull($user);
+    }
+
+    /**
+     * @return iterable<string, array{callable(InMemoryUserRepository): UserHintInterface, string}>
+     */
+    public static function provideHintsOfAPersonTheClientMayNotBeToldOf(): iterable
+    {
+        yield 'her subject' => [
+            static fn (InMemoryUserRepository $users): UserHintInterface => new SubjectLoginHint(Subjects::ofAProvider($users)),
+            'alice-subject',
+        ];
+        yield 'her username' => [
+            static fn (InMemoryUserRepository $users): UserHintInterface => new UsernameLoginHint($users),
+            'alice',
+        ];
+    }
+
+    /**
+     * @param list<UserHintInterface> $readings
+     */
+    private function hints(array $readings): LoginHints
+    {
+        return new LoginHints($readings, new SharedIdentity($this->consents));
+    }
+
+    private function consentTo(Client $client): void
+    {
+        $this->consents->save(new Consent(Uuid::v7(), $this->alice, $client, new Scopes([Scope::openid()]), Fixtures::now()));
     }
 }
