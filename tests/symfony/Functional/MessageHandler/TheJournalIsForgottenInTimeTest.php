@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Tests\Symfony\Functional\MessageHandler;
 
 use App\Configuration\JournalSection;
+use App\Key\FileJournalCheckpoints;
 use App\Message\ForgetTheActsPastTheirRetention;
 use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
+use Beffroi\Core\Application\Key\KeyTakeOver;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
 use Beffroi\Core\Domain\Journal\JournalEntry;
 use Beffroi\Core\Port\JournalInterface;
+use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Oidc\Domain\Disclosure\Disclosure;
 use Beffroi\Oidc\Domain\Event\TokensIssued;
 use Beffroi\Oidc\Domain\Scope\Scope;
@@ -19,16 +22,24 @@ use Doctrine\DBAL\Connection;
 use Psr\Clock\ClockInterface;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
 final class TheJournalIsForgottenInTimeTest extends DatabaseTestCase
 {
+    protected function tearDown(): void
+    {
+        new Filesystem()->remove(self::keyStorage() . '/default/' . FileJournalCheckpoints::DIRECTORY);
+        parent::tearDown();
+    }
+
     #[Test]
     public function anActPastTheRetentionIsForgotten(): void
     {
         // Given
         self::anAct(sprintf('-%d days', JournalSection::DEFAULT_RETENTION + 1));
+        self::aKeyToSignTheCutWith();
 
         // When
         self::tick();
@@ -92,7 +103,15 @@ final class TheJournalIsForgottenInTimeTest extends DatabaseTestCase
 
     private static function kept(): int
     {
-        return self::counted('SELECT COUNT(*) FROM beffroi_journal');
+        return self::counted(sprintf("SELECT COUNT(*) FROM beffroi_journal WHERE act = '%s'", UserAuthenticated::NAME));
+    }
+
+    /**
+     * Decision 0058: its activation is an act of the journal, written now.
+     */
+    private static function aKeyToSignTheCutWith(): void
+    {
+        self::service('test.beffroi.key_take_over', KeyTakeOver::class)->rotate(self::tenant(), Algorithms::rs256(), self::context());
     }
 
     private static function keptOfWhatWasGiven(): int
