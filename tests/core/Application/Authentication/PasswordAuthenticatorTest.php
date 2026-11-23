@@ -51,9 +51,16 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
+use Beffroi\Core\Tests\Fixture\FakeMonotonicClock;
+use Beffroi\Core\Tests\Fixture\TimedPasswordHasher;
 
 final class PasswordAuthenticatorTest extends TestCase
 {
+    /**
+     * @var array<string, int> nanoseconds a verification takes, by name of algorithm
+     */
+    private const array COSTS = [Argon2id::NAME => 117_800_000, Bcrypt::NAME => 87_700_000];
+
     private Tenant $tenant;
 
     private User $alice;
@@ -94,6 +101,7 @@ final class PasswordAuthenticatorTest extends TestCase
     private function authenticatorOn(
         PasswordHasherInterface $hasher,
         ?FakeAttemptLimiter $attempts = null,
+        FakeMonotonicClock $time = new FakeMonotonicClock(),
     ): PasswordAuthenticator {
         return new PasswordAuthenticator(
             new PasswordVerification(
@@ -101,7 +109,7 @@ final class PasswordAuthenticatorTest extends TestCase
                 $this->credentials,
                 new ActivePassword(new ActiveCredentials($this->credentials)),
                 $hasher,
-                new DecoyHash($hasher, new SymfonyUuidGenerator()),
+                new DecoyHash($hasher, new SymfonyUuidGenerator(), $time),
                 $attempts ?? $this->attempts,
                 new AuthenticationRefusal($this->clock, $this->events),
                 $this->clock,
@@ -553,6 +561,45 @@ final class PasswordAuthenticatorTest extends TestCase
     }
 
     /**
+     * Decision 0058
+     */
+    #[Test]
+    public function aWrongPasswordAgainstAHashTheHasherWouldReplaceTakesTheTimeOfTheDecoy(): void
+    {
+        // Given
+        $time = new FakeMonotonicClock();
+        $authenticator = $this->authenticatorOn(new TimedPasswordHasher($time, self::COSTS), null, $time);
+        $this->carolHolds(TimedPasswordHasher::hashOf(new Bcrypt(), 'carol pass'));
+        $this->failToAuthenticateWith($authenticator, 'mallory');
+        $start = $time->now();
+
+        // When
+        $this->failToAuthenticateWith($authenticator, 'carol');
+
+        // Then
+        static::assertSame(self::COSTS[Argon2id::NAME], $time->now() - $start);
+    }
+
+    /**
+     * Decision 0058
+     */
+    #[Test]
+    public function aWrongPasswordAgainstAHashOfTheDayWaitsNothing(): void
+    {
+        // Given
+        $time = new FakeMonotonicClock();
+        $authenticator = $this->authenticatorOn(new TimedPasswordHasher($time, self::COSTS), null, $time);
+        $this->carolHolds(TimedPasswordHasher::hashOf(new Argon2id(), 'carol pass'));
+        $this->failToAuthenticateWith($authenticator, 'mallory');
+
+        // When
+        $this->failToAuthenticateWith($authenticator, 'carol');
+
+        // Then
+        static::assertSame([], $time->waited);
+    }
+
+    /**
      * Decision 0006
      */
     #[Test]
@@ -744,6 +791,22 @@ final class PasswordAuthenticatorTest extends TestCase
         // Then
         static::assertInstanceOf(AuthenticationSession::class, $session);
         static::assertSame(['pwd'], $session->methodReferences());
+    }
+
+    private function carolHolds(PasswordHash $hash): void
+    {
+        $carol = Fixtures::user($this->tenant, 'carol', 'carol-subject');
+        $this->users->save($carol);
+        $this->credentials->save(new PasswordCredential(Uuid::v7(), $carol, $hash, Fixtures::now()));
+    }
+
+    private function failToAuthenticateWith(PasswordAuthenticator $authenticator, string $identifier): void
+    {
+        try {
+            $authenticator->authenticate($this->tenant, $identifier, 'not the password', Fixtures::context($this->clock->now()));
+            static::fail('Authentication should have failed.');
+        } catch (AuthenticationFailedException) {
+        }
     }
 
     private function failToAuthenticate(string $identifier, string $password): AuthenticationFailedException
