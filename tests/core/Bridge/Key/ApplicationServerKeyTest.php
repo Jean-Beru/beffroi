@@ -114,6 +114,24 @@ final class ApplicationServerKeyTest extends TestCase
     }
 
     #[Test]
+    public function aKeyThatHasRetiredLeavesTheProcessWhenItsSuccessorIsOpened(): void
+    {
+        // Given
+        $retired = $this->activeKey(Algorithms::vapid(), Keys::applicationServerPair());
+        $opened = $this->provider->applicationServerKey($this->tenant, $retired->kid);
+        $successor = $this->activeKey(Algorithms::vapid(), Keys::otherApplicationServerPair());
+        $retired->startRetiring(Fixtures::now(), Fixtures::now());
+        $retired->retire(Fixtures::now());
+        $this->keys->save($retired);
+
+        // When
+        $this->provider->applicationServerKey($this->tenant, $successor->kid);
+
+        // Then
+        static::assertNotSame($opened, $this->opened->open($this->tenant, $retired));
+    }
+
+    #[Test]
     public function aKeyOfTheJwkSetIsNotHandedOut(): void
     {
         // Given

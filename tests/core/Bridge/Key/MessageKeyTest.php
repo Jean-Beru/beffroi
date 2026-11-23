@@ -162,6 +162,24 @@ final class MessageKeyTest extends TestCase
     }
 
     #[Test]
+    public function aKeyThatHasRetiredLeavesTheProcessWhenItsSuccessorOpensAMessage(): void
+    {
+        // Given
+        $retired = $this->activeKey(Algorithms::messageSeal(), Keys::messagePair());
+        $opened = $this->provider->messageKey($this->tenant, $retired->kid);
+        $successor = $this->activeKey(Algorithms::messageSeal(), Keys::otherMessagePair());
+        $retired->startRetiring(Fixtures::now(), Fixtures::now());
+        $retired->retire(Fixtures::now());
+        $this->keys->save($retired);
+
+        // When
+        $this->provider->messageKey($this->tenant, $successor->kid);
+
+        // Then
+        static::assertNotSame($opened, $this->opened->open($this->tenant, $retired));
+    }
+
+    #[Test]
     public function aKeyOfTheJwkSetDoesNotOpenAMessage(): void
     {
         // Given

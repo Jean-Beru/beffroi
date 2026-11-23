@@ -29,7 +29,11 @@ final class Keys
 
     private static ?GeneratedKeyPair $encryptionPair = null;
 
+    private static ?GeneratedKeyPair $otherEncryptionPair = null;
+
     private static ?GeneratedKeyPair $applicationServerPair = null;
+
+    private static ?GeneratedKeyPair $otherApplicationServerPair = null;
 
     private static ?GeneratedKeyPair $messagePair = null;
 
@@ -54,12 +58,22 @@ final class Keys
         return self::$encryptionPair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate(Algorithms::ecdhEsA256Kw());
     }
 
+    public static function otherEncryptionPair(): GeneratedKeyPair
+    {
+        return self::$otherEncryptionPair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate(Algorithms::ecdhEsA256Kw());
+    }
+
     /**
      * RFC 8292 §2
      */
     public static function applicationServerPair(): GeneratedKeyPair
     {
         return self::$applicationServerPair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate(Algorithms::vapid());
+    }
+
+    public static function otherApplicationServerPair(): GeneratedKeyPair
+    {
+        return self::$otherApplicationServerPair ??= new JwtLibraryKeyPairGenerator(Algorithms::everyUse())->generate(Algorithms::vapid());
     }
 
     /**
