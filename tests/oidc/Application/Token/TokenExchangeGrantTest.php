@@ -489,6 +489,26 @@ final class TokenExchangeGrantTest extends TestCase
     }
 
     /**
+     * RFC 8693 §2.1, RFC 7523 §2.1
+     */
+    #[Test]
+    public function aClientNotRegisteredToActForAUserIsRefusedATokenThatNamesOneNobodySignedInFor(): void
+    {
+        // Given
+        $gateway = Clients::gateway($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET), mayActForAUser: false);
+        $grant = $this->grant([
+            self::SUBJECT_TOKEN => $this->tokenOfAnAssertion(),
+        ]);
+
+        // Then
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessageIsOrContains('not registered to act for a user');
+
+        // When
+        $grant->grant(new AuthenticatedClient($gateway), $this->request(), $this->context);
+    }
+
+    /**
      * RFC 8693 §4.4
      */
     #[Test]
@@ -801,6 +821,18 @@ final class TokenExchangeGrantTest extends TestCase
             $audience,
             actor: $actor,
             mayAct: $mayAct,
+        );
+    }
+
+    /**
+     * RFC 7523 §2.1
+     */
+    private function tokenOfAnAssertion(): PresentedToken
+    {
+        return Tokens::presented(
+            Clients::confidential($this->tenant, new FakePasswordHasher()->hash(Clients::SECRET), resources: Clients::resources()),
+            $this->session->user->subject,
+            person: $this->session->user->subject,
         );
     }
 
