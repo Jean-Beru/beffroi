@@ -15,6 +15,7 @@ parameters:
     env(BEFFROI_TEST_SAML_SERVICE_PROVIDERS): '{}'
     env(BEFFROI_TEST_SAML_IDENTITY_PROVIDERS): '{}'
     env(BEFFROI_TEST_TENANT_ADMINISTRATORS): '[]'
+    env(BEFFROI_TEST_LOCALES): '[]'
 
 beffroi:
     tenant:
@@ -23,6 +24,7 @@ beffroi:
         administrators: '%env(json:BEFFROI_TEST_TENANT_ADMINISTRATORS)%'
     keys:
         data_key_secrets: '%env(json:BEFFROI_TEST_DATA_KEY_SECRETS)%'
+    locales: '%env(json:BEFFROI_TEST_LOCALES)%'
     trusted_issuers: '%env(json:BEFFROI_TEST_TRUSTED_ISSUERS)%'
     client_registration:
         statement_issuers: '%env(json:BEFFROI_TEST_STATEMENT_ISSUERS)%'
@@ -55,4 +57,7 @@ services:
         public: true
     test.beffroi.environment_lists.identity_providers:
         alias: Beffroi\Saml\Bridge\Configuration\ConfigurationUpstreamIdentityProviders
+        public: true
+    test.beffroi.environment_lists.served_locales:
+        alias: App\Locale\ServedLocales
         public: true
