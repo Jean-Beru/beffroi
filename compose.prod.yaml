@@ -54,8 +54,8 @@ x-environment: &environment
 
 services:
   # The HTTP server, FrankenPHP in worker mode, with the entrypoint and the command of the image: it waits for
-  # the database and plays the migrations every time it starts, then Caddy serves SERVER_NAME and issues its
-  # certificate, which is why 80 and 443 reach it from the outside.
+  # the database, plays the migrations and writes the row of the tenant every time it starts, then Caddy serves
+  # SERVER_NAME and issues its certificate, which is why 80 and 443 reach it from the outside.
   op:
     image: ghcr.io/beffroi-auth/beffroi:${BEFFROI_VERSION:-0.1.x}
     restart: unless-stopped
