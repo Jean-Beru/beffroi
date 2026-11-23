@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Symfony\Unit\Http;
 
 use App\Doctrine\PersonalData\TenantScopedEncrypter;
-use App\Http\DatabaseSessions;
+use App\Http\SealedSessionRows;
 use App\Tests\Symfony\Fixture\AmbientTenant;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use function hash;
@@ -18,7 +18,7 @@ use Symfony\Component\KeyManagement\Test\InMemoryDataKeyStore;
 /**
  * Decision 0053
  */
-final class DatabaseSessionsTest extends TestCase
+final class SealedSessionRowsTest extends TestCase
 {
     private const string COOKIE = 'r8Kq2mZ7tVb1sNc4';
 
@@ -30,10 +30,10 @@ final class DatabaseSessionsTest extends TestCase
         // Given
         $database = self::database();
         $sealer = self::sealer();
-        self::write(new DatabaseSessions($database, $sealer), 'the data of the browser');
+        self::write(new SealedSessionRows($database, $sealer), 'the data of the browser');
 
         // When
-        $read = self::read(new DatabaseSessions($database, $sealer));
+        $read = self::read(new SealedSessionRows($database, $sealer));
 
         // Then
         static::assertSame('the data of the browser', $read);
@@ -46,7 +46,7 @@ final class DatabaseSessionsTest extends TestCase
         $database = self::database();
 
         // When
-        self::write(new DatabaseSessions($database, self::sealer()), 'the data of the browser');
+        self::write(new SealedSessionRows($database, self::sealer()), 'the data of the browser');
 
         // Then
         static::assertSame([hash('sha256', self::COOKIE)], self::column($database, 'SELECT sess_id FROM beffroi_session'));
@@ -62,7 +62,7 @@ final class DatabaseSessionsTest extends TestCase
         $database = self::database();
 
         // When
-        self::write(new DatabaseSessions($database, self::sealer()), 'the data of the browser');
+        self::write(new SealedSessionRows($database, self::sealer()), 'the data of the browser');
 
         // Then
         $stored = self::column($database, 'SELECT sess_data FROM beffroi_session');
@@ -75,10 +75,10 @@ final class DatabaseSessionsTest extends TestCase
     {
         // Given
         $database = self::database();
-        self::write(new DatabaseSessions($database, self::sealer()), 'the data of the browser');
+        self::write(new SealedSessionRows($database, self::sealer()), 'the data of the browser');
 
         // When
-        $read = self::read(new DatabaseSessions($database, self::sealer()));
+        $read = self::read(new SealedSessionRows($database, self::sealer()));
 
         // Then
         static::assertSame('', $read);
@@ -90,12 +90,12 @@ final class DatabaseSessionsTest extends TestCase
         // Given
         $database = self::database();
         $sealer = self::sealer();
-        self::write(new DatabaseSessions($database, $sealer), 'the data of the browser');
+        self::write(new SealedSessionRows($database, $sealer), 'the data of the browser');
         $moved = $database->prepare('UPDATE beffroi_session SET sess_id = :moved');
         $moved->execute(['moved' => hash('sha256', self::ANOTHER_COOKIE)]);
 
         // When
-        $read = self::read(new DatabaseSessions($database, $sealer), self::ANOTHER_COOKIE);
+        $read = self::read(new SealedSessionRows($database, $sealer), self::ANOTHER_COOKIE);
 
         // Then
         static::assertSame('', $read);
@@ -110,12 +110,12 @@ final class DatabaseSessionsTest extends TestCase
         // Given
         $database = self::database();
         $sealer = self::sealer();
-        self::write(new DatabaseSessions($database, $sealer), 'the data of the browser');
+        self::write(new SealedSessionRows($database, $sealer), 'the data of the browser');
         $replaced = $database->prepare('UPDATE beffroi_session SET sess_data = :sealed');
         $replaced->execute(['sealed' => (string) $sealer->encrypt('user', 'what a person wrote')]);
 
         // When
-        $read = self::read(new DatabaseSessions($database, $sealer));
+        $read = self::read(new SealedSessionRows($database, $sealer));
 
         // Then
         static::assertSame('', $read);
@@ -124,7 +124,7 @@ final class DatabaseSessionsTest extends TestCase
     private static function database(): PDO
     {
         $database = new PDO('sqlite::memory:');
-        new DatabaseSessions($database, self::sealer())->createTable();
+        new SealedSessionRows($database, self::sealer())->createTable();
 
         return $database;
     }
@@ -153,7 +153,7 @@ final class DatabaseSessionsTest extends TestCase
         return $values;
     }
 
-    private static function write(DatabaseSessions $sessions, string $data): void
+    private static function write(SealedSessionRows $sessions, string $data): void
     {
         $sessions->open('', 'beffroi');
         $sessions->read(self::COOKIE);
@@ -161,7 +161,7 @@ final class DatabaseSessionsTest extends TestCase
         $sessions->close();
     }
 
-    private static function read(DatabaseSessions $sessions, string $cookie = self::COOKIE): string
+    private static function read(SealedSessionRows $sessions, string $cookie = self::COOKIE): string
     {
         $sessions->open('', 'beffroi');
         $read = $sessions->read($cookie);
