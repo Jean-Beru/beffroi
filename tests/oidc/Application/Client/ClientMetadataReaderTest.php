@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Client;
 
-use function sprintf;
 use Beffroi\Core\Tests\Fixture\TextsThatAreNotPlain;
 use Beffroi\Core\Tests\Fixture\RsaModuli;
 use Beffroi\Oidc\Application\Client\ClientAuthenticationMethods;
