@@ -70,6 +70,34 @@ final class AccountNotificationChannelsTest extends BrowserTestCase
         );
     }
 
+    #[Test]
+    public function theBoxThatCustomisesAKindIsReadBesideItsName(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $page = $this->notificationsPage();
+
+        // Then
+        $label = $page->filter('tr[data-kind="pending_approval"] td')->first()->filter('label[data-apart]');
+        static::assertSame(['Customise', ['pending_approval']], [$label->text(), $label->filter('input[name="apart[]"]')->extract(['value'])]);
+    }
+
+    #[Test]
+    public function aKindThatFollowsTheDefaultSaysSoAcrossTheColumnsOfTheChannels(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $page = $this->notificationsPage();
+
+        // Then
+        $cell = $page->filter('tr[data-kind="pending_approval"] td[data-following]');
+        static::assertSame(['Default channels', '3'], [$cell->text(), $cell->attr('colspan')]);
+    }
+
     /**
      * NIST SP 800-63B-4 §4.6
      */
