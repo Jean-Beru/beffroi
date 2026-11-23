@@ -44,6 +44,7 @@ use Beffroi\Oidc\Domain\Event\SessionsReadByAnAdministrator;
 use Beffroi\Oidc\Domain\Event\ConsentsReadByAnAdministrator;
 use Beffroi\Oidc\Domain\Event\JournalReadByAnAdministrator;
 use Beffroi\Oidc\Domain\Event\MembershipReadByAnAdministrator;
+use Beffroi\Oidc\Domain\Event\ReadRefusedToAnAdministrator;
 use Beffroi\Oidc\Domain\Event\UserInfoAnswered;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Scope\Scopes;
@@ -192,6 +193,13 @@ final class EventsLeaveTheProcessTest extends TestCase
             $client->tenant,
             $clientId,
             $subject,
+            new Subject('administrator-subject'),
+            $context,
+        )];
+        yield 'a read refused to an administrator past the budget of their reads' => [new ReadRefusedToAnAdministrator(
+            $now,
+            $client->tenant,
+            $clientId,
             new Subject('administrator-subject'),
             $context,
         )];

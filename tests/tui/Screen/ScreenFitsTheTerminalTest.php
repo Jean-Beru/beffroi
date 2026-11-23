@@ -338,7 +338,7 @@ final class ScreenFitsTheTerminalTest extends TestCase
                 ],
                 range(1, 30),
             )],
-            '/groups/group-1/members' => ['members' => array_map(
+            '/groups/group-1/members?page=1' => ['members' => array_map(
                 static fn (int $number): array => [
                     'person' => ['id' => sprintf('person-%d', $number), 'username' => sprintf('member.number.%d@a-long-domain.example', $number)],
                     'source' => 'local',

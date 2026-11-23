@@ -9,11 +9,13 @@ use Beffroi\Core\Domain\Group\Group;
 use Beffroi\Core\Domain\Group\GroupMapping;
 use Beffroi\Core\Domain\Group\GroupMembership;
 use Beffroi\Core\Domain\Group\GroupSource;
+use Beffroi\Core\Domain\Listing\Pagination;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\GroupMembershipRepositoryInterface;
 use Beffroi\Core\Port\GroupsOfAPersonInterface;
 use Beffroi\Core\Port\MembersOfAGroupInterface;
 use PHPUnit\Framework\Attributes\Test;
+use function sprintf;
 use function array_map;
 use Symfony\Component\Uid\Uuid;
 
@@ -104,10 +106,55 @@ final class GroupMembershipsTest extends DatabaseTestCase
         self::reload();
 
         // When
-        $members = self::members()->membersOf($admins);
+        $members = self::members()->membersOf($admins, new Pagination(1, 10));
 
         // Then
-        static::assertSame(['bob', 'alice'], array_map(static fn (GroupMembership $membership): string => $membership->user->username, $members));
+        static::assertSame(['bob', 'alice'], array_map(static fn (GroupMembership $membership): string => $membership->user->username, $members->rows));
+    }
+
+    #[Test]
+    public function aPageOfTheMembersHoldsTheMembersOfThatPageAndHowManyTheGroupHolds(): void
+    {
+        // Given
+        $admins = self::group('admins');
+        foreach (['bob', 'alice', 'carol'] as $minutes => $username) {
+            self::memberships()
+                ->save(new GroupMembership(
+                    Uuid::v7(),
+                    $admins,
+                    self::user($username, $username . '-subject'),
+                    GroupSource::Local,
+                    self::now()->modify(sprintf('+%d minutes', $minutes)),
+                ));
+        }
+        self::reload();
+
+        // When
+        $members = self::members()->membersOf($admins, new Pagination(2, 2));
+
+        // Then
+        static::assertSame(
+            [['carol'], 3],
+            [array_map(static fn (GroupMembership $membership): string => $membership->user->username, $members->rows), $members->total],
+        );
+    }
+
+    #[Test]
+    public function membersAddedAtTheSameMomentComeInTheOrderOfTheirIdentifiers(): void
+    {
+        // Given
+        $admins = self::group('admins');
+        $first = Uuid::fromString('01890000-0000-7000-8000-000000000001');
+        $second = Uuid::fromString('01890000-0000-7000-8000-000000000002');
+        self::memberships()->save(new GroupMembership($second, $admins, self::user('bob', 'bob-subject'), GroupSource::Local, self::now()));
+        self::memberships()->save(new GroupMembership($first, $admins, self::user('alice', 'alice-subject'), GroupSource::Local, self::now()));
+        self::reload();
+
+        // When
+        $members = self::members()->membersOf($admins, new Pagination(1, 1));
+
+        // Then
+        static::assertSame(['alice'], array_map(static fn (GroupMembership $membership): string => $membership->user->username, $members->rows));
     }
 
     #[Test]
