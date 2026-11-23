@@ -57,7 +57,7 @@ final class LocalizedPagesTest extends BrowserTestCase
         static::assertSame('fr', $crawler->filter('html')->attr('lang'));
         static::assertSame('Connexion', $crawler->filter('title')->text());
         static::assertSame('Connexion', $crawler->filter('h1')->text());
-        static::assertSame('Nom d’utilisateur', $crawler->filter('label[for="username"]')->text());
+        static::assertSame('Nom d\'utilisateur', $crawler->filter('label[for="username"]')->text());
         static::assertCount(1, $crawler->selectButton('Se connecter'));
     }
 
@@ -76,7 +76,7 @@ final class LocalizedPagesTest extends BrowserTestCase
 
         // Then
         static::assertSame('fr', $crawler->filter('html')->attr('lang'));
-        static::assertStringStartsWith('La connexion a échoué.', $crawler->filter('p[data-error]')->text());
+        static::assertSame('Nom d\'utilisateur ou mot de passe incorrect.', $crawler->filter('p[data-error]')->text());
     }
 
     #[Test]
@@ -106,7 +106,7 @@ final class LocalizedPagesTest extends BrowserTestCase
         static::assertSame('Autoriser native-app', $crawler->filter('h1')->text());
         static::assertSame('Session ouverte pour alice.', $crawler->filter('main > p')->first()->text());
         static::assertSame(
-            ['Qui vous êtes : votre identifiant chez ce fournisseur', 'Votre profil : nom, photo, langue'],
+            ['Votre identifiant', 'Votre profil : nom, photo, langue'],
             $crawler->filter('li[data-scope]')->each(static fn (Crawler $scope): string => $scope->text()),
         );
         static::assertCount(1, $crawler->selectButton('Autoriser'));
@@ -153,7 +153,7 @@ final class LocalizedPagesTest extends BrowserTestCase
         $crawler = $this->page('/login', $interaction, 'de-DE,de;q=0.9');
         static::assertSame('en', $crawler->filter('html')->attr('lang'));
         static::assertSame('Sign in', $crawler->filter('h1')->text());
-        static::assertSame('native-app asks you to sign in.', $crawler->filter('main > p')->first()->text());
+        static::assertSame('Sign in to continue to native-app.', $crawler->filter('main > p')->first()->text());
     }
 
     #[Test]
@@ -174,9 +174,9 @@ final class LocalizedPagesTest extends BrowserTestCase
         // Then
         static::assertSame(Response::HTTP_BAD_REQUEST, $this->browser->getResponse()->getStatusCode());
         static::assertSame('fr', $crawler->filter('html')->attr('lang'));
-        static::assertSame('Requête refusée', $crawler->filter('h1')->text());
+        static::assertSame('Impossible de continuer', $crawler->filter('h1')->text());
         static::assertSame(AuthorizationResponder::UNKNOWN_INTERACTION, $crawler->filter('p[data-error]')->attr('data-error'));
-        static::assertSame('Aucune requête n’attend cette page. Recommencez depuis l’application.', $crawler->filter('p[data-error]')->text());
+        static::assertSame('Cette demande est introuvable. Recommencez depuis l\'application.', $crawler->filter('p[data-error]')->text());
         static::assertCount(0, $crawler->filter('p[data-description]'));
     }
 
@@ -203,7 +203,7 @@ final class LocalizedPagesTest extends BrowserTestCase
         static::assertSame('fr', $crawler->filter('html')->attr('lang'));
         static::assertSame('invalid_request', $crawler->filter('p[data-error]')->attr('data-error'));
         static::assertSame(
-            'L’application a envoyé une requête que ce fournisseur ne peut pas servir. Recommencez depuis l’application.',
+            'L\'application a envoyé une demande invalide. Recommencez depuis l\'application.',
             $crawler->filter('p[data-error]')->text(),
         );
         static::assertSame('invalid_request: The client is unknown.', $crawler->filter('p[data-description]')->text());
@@ -257,7 +257,7 @@ final class LocalizedPagesTest extends BrowserTestCase
         // Then
         static::assertSame('fr', $crawler->filter('html')->attr('lang'));
         static::assertSame(
-            'Votre déconnexion est demandée. Session ouverte pour alice. Voulez-vous vous déconnecter ?',
+            'Une application demande à vous déconnecter. Session ouverte pour alice. Voulez-vous vous déconnecter ?',
             $crawler->filter('p[data-reason]')->text(normalizeWhitespace: true),
         );
     }

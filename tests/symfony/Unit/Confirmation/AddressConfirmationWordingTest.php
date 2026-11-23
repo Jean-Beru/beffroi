@@ -59,7 +59,7 @@ final class AddressConfirmationWordingTest extends TestCase
 
         // Then
         static::assertSame(
-            "Votre code de confirmation est 042917, valable jusqu'au 22 nov. 2026, 15:15 UTC+1. Saisissez-le sur la page de votre compte, ou confirmez par le lien ci-dessous. Si vous ne l'avez pas demandé, ignorez ce message.",
+            "Votre code de confirmation : 042917, valable jusqu'au 22 nov. 2026, 15:15 UTC+1. Saisissez-le dans votre compte ou ouvrez le lien ci-dessous. Si vous n'avez rien demandé, ignorez ce message.",
             $body,
         );
     }

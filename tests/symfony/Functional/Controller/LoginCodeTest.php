@@ -44,7 +44,7 @@ final class LoginCodeTest extends PasskeyTestCase
 {
     private const string PASSWORD = 'correct horse battery staple';
 
-    private const string BACKUP_CODE_REFUSED = 'This backup code is not valid, or it has already been used. Each backup code works only once.';
+    private const string BACKUP_CODE_REFUSED = 'This backup code is wrong or already used.';
 
     private TotpSecret $secret;
 
@@ -410,7 +410,7 @@ final class LoginCodeTest extends PasskeyTestCase
         // Then
         $refusal = $this->refusalShown($interaction);
         static::assertSame('code_refused', $refusal->attr('data-error'));
-        static::assertSame('The code was refused. Try again with the code the app shows now.', $refusal->text());
+        static::assertSame('Wrong code. Enter the code shown now.', $refusal->text());
     }
 
     #[Test]
@@ -495,7 +495,7 @@ final class LoginCodeTest extends PasskeyTestCase
         // Then
         $refusal = $this->refusalShown($interaction);
         static::assertSame('too_many_attempts', $refusal->attr('data-error'));
-        static::assertSame('Too many codes have been tried. Wait a moment, then try again.', $refusal->text());
+        static::assertSame('Too many attempts. Wait a moment, then try again.', $refusal->text());
     }
 
     #[Test]

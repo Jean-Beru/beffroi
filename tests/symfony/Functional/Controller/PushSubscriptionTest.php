@@ -59,7 +59,7 @@ final class PushSubscriptionTest extends BrowserTestCase
         // Then
         static::assertSame('', $crawler->filter('form[data-push="subscribe"]')->attr('data-application-server-key'));
         static::assertStringContainsString(
-            'This provider does not tell browsers.',
+            'Browser notifications are not available.',
             $crawler->filter('p[data-push-unsupported]')->text(),
         );
     }

@@ -175,7 +175,7 @@ final class AccountNotificationChannelsTest extends BrowserTestCase
         $page = $this->browser->request('GET', '/account/acts');
 
         // Then
-        static::assertSame(['Notification channels chosen'], $page->filter('tr[data-act="notification_channels.chosen"] td')->first()->extract(['_text']));
+        static::assertSame(['Notification channels changed'], $page->filter('tr[data-act="notification_channels.chosen"] td')->first()->extract(['_text']));
     }
 
     #[Test]
@@ -190,7 +190,7 @@ final class AccountNotificationChannelsTest extends BrowserTestCase
 
         // Then
         $row = $page->filter('tbody tr[data-change="notification_channels"] td');
-        static::assertSame(['Not chosen', 'Mail, Browsers'], [$row->eq(1)->text(), $row->eq(2)->text()]);
+        static::assertSame(['Not chosen', 'Email, Browsers'], [$row->eq(1)->text(), $row->eq(2)->text()]);
     }
 
     #[Test]

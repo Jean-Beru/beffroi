@@ -139,9 +139,9 @@ final class PasskeyAuthenticatorsTest extends PasskeyTestCase
      */
     public static function provideBackupStates(): iterable
     {
-        yield 'a single-device credential' => [false, false, 'single_device', 'Device-bound passkey'];
-        yield 'a multi-device credential backed up' => [true, true, 'backed_up', 'Synced passkey, backed up'];
-        yield 'a multi-device credential not backed up' => [true, false, 'not_backed_up', 'Synced passkey, not currently backed up'];
+        yield 'a single-device credential' => [false, false, 'single_device', 'Device-bound'];
+        yield 'a multi-device credential backed up' => [true, true, 'backed_up', 'Synced'];
+        yield 'a multi-device credential not backed up' => [true, false, 'not_backed_up', 'Syncable, not backed up'];
     }
 
     /**
@@ -167,41 +167,25 @@ final class PasskeyAuthenticatorsTest extends PasskeyTestCase
      */
     public static function provideTransports(): iterable
     {
-        yield 'a roaming authenticator over USB' => [false, 'usb', 'Reached through a security key over USB'];
-        yield 'a platform authenticator' => [true, 'internal', 'Reached through its device'];
+        yield 'a roaming authenticator over USB' => [false, 'usb', 'Via USB'];
+        yield 'a platform authenticator' => [true, 'internal', 'Via the device'];
     }
 
     /**
      * WebAuthn Level 3 §6
      */
     #[Test]
-    public function thePageSaysNothingVerifiesTheAuthenticatorItNames(): void
+    public function aModelTheAuthenticatorDeclaredIsSaidToBeUnverified(): void
     {
         // Given
         $alice = self::user('alice');
-        $this->enrol($alice, self::device());
+        $passkey = $this->enrol($alice, self::device());
 
         // When
-        $crawler = $this->passkeysPage();
+        $cell = $this->authenticatorOf($passkey->id);
 
         // Then
-        static::assertSame(
-            'An authenticator whose model is declared is named after what it said when the passkey was added: nothing verified it.',
-            $crawler->filter('p[data-authenticators-declared]')->text(),
-        );
-    }
-
-    #[Test]
-    public function aPageWithoutPasskeySaysNothingOfAuthenticators(): void
-    {
-        // Given
-        $this->signIn(self::user('alice'));
-
-        // When
-        $crawler = $this->passkeysPage();
-
-        // Then
-        static::assertCount(0, $crawler->filter('p[data-authenticators-declared]'));
+        static::assertSame('Declared model, not verified', $cell->filter('span[data-model-proof="declared"]')->text());
     }
 
     #[Test]
@@ -219,16 +203,12 @@ final class PasskeyAuthenticatorsTest extends PasskeyTestCase
 
         // Then
         $cell = $crawler->filter('tr[data-passkey="' . $passkey->id . '"] td[data-authenticator]');
-        static::assertSame('Conservée par', $crawler->filter('thead th')->eq(1)->text());
+        static::assertSame('Authentificateur', $crawler->filter('thead th')->eq(1)->text());
         static::assertSame('YubiKey 5 Series', $cell->filter('span[data-model]')->text());
         static::assertSame('Certifié FIDO, niveau 1', $cell->filter('span[data-certification]')->text());
-        static::assertSame('Passkey liée à son appareil', $cell->filter('span[data-backup]')->text());
-        static::assertSame('Atteinte par une clé de sécurité en USB', $cell->filter('span[data-transports]')->text());
-        static::assertSame('Modèle déclaré par l’authentificateur', $cell->filter('span[data-model-proof]')->text());
-        static::assertSame(
-            'Un authentificateur dont le modèle est déclaré est nommé d’après ce qu’il a dit à l’ajout de la passkey : rien ne l’a vérifié.',
-            $crawler->filter('p[data-authenticators-declared]')->text(),
-        );
+        static::assertSame('Liée à un appareil', $cell->filter('span[data-backup]')->text());
+        static::assertSame('Via USB', $cell->filter('span[data-transports]')->text());
+        static::assertSame('Modèle déclaré, non vérifié', $cell->filter('span[data-model-proof]')->text());
     }
 
     private function authenticatorOf(Uuid $passkey): Crawler

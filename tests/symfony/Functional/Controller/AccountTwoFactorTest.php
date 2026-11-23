@@ -494,7 +494,7 @@ final class AccountTwoFactorTest extends PasskeyTestCase
 
     private function renewBackupCodes(): Crawler
     {
-        return $this->browser->submit($this->twoFactorPage()->selectButton('Draw new backup codes')->form());
+        return $this->browser->submit($this->twoFactorPage()->selectButton('Generate new backup codes')->form());
     }
 
     /**

@@ -57,7 +57,6 @@ final class EnterprisePasskeyAttestationTest extends PasskeyAttestationTestCase
         static::assertSame('0ada', $passkey->serialNumber);
         static::assertSame('0ada', $page->filter('[data-serial-number]')->attr('data-serial-number'));
         static::assertSame('enterprise', $page->filter('[data-model-proof]')->attr('data-model-proof'));
-        static::assertCount(0, $page->filter('p[data-authenticators-declared]'));
     }
 
     #[Test]
@@ -72,7 +71,7 @@ final class EnterprisePasskeyAttestationTest extends PasskeyAttestationTestCase
         // Then
         static::assertSame([], self::passkeysOf($alice));
         static::assertSame('organisation_keys_only', $page->filter('p[data-error]')->attr('data-error'));
-        static::assertStringContainsString('Your organisation accepts only the keys it gave you', $page->filter('p[data-error]')->text());
+        static::assertSame('Only the keys your organisation gave you are accepted.', $page->filter('p[data-error]')->text());
     }
 
     #[Test]

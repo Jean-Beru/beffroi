@@ -30,7 +30,6 @@ final class CrossSitePostTest extends BrowserTestCase
     private const array FRENCH_PAGE = [
         'fr',
         'Connexion en cours',
-        "Votre navigateur arrive d\u{2019}un autre site sans votre session. Utilisez le bouton ci-dessous pour continuer.",
         'Continuer',
     ];
 
@@ -461,7 +460,7 @@ final class CrossSitePostTest extends BrowserTestCase
     }
 
     /**
-     * @return array{string, string, string, string}
+     * @return array{string, string, string}
      */
     private function words(): array
     {
@@ -472,7 +471,6 @@ final class CrossSitePostTest extends BrowserTestCase
         return [
             (string) $crawler->filter('html')->attr('lang'),
             $crawler->filter('title')->text(),
-            $crawler->filter('noscript p')->text(),
             $crawler->filter('noscript button')->text(),
         ];
     }

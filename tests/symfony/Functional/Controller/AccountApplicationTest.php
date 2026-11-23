@@ -70,7 +70,7 @@ final class AccountApplicationTest extends BrowserTestCase
         $consent = $this->consentOf($alice);
 
         // When
-        $this->browser->submit($this->applicationPage(self::CONFIDENTIAL)->selectButton('Take it all back')->form());
+        $this->browser->submit($this->applicationPage(self::CONFIDENTIAL)->selectButton('Revoke access')->form());
 
         // Then
         static::assertSame(Response::HTTP_SEE_OTHER, $this->browser->getResponse()->getStatusCode());
