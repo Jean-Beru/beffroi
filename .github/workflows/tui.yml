@@ -7,9 +7,11 @@ name: TUI
 #
 # It is built at every release published and on demand, from the Actions tab or with
 # "gh workflow run tui.yml --ref <ref>". From a release tag A.B.C, by the release or by a dispatch on the tag, the four
-# files are uploaded to that release with SHA256SUMS, their digests, and SHA256SUMS.asc, the detached signature of
-# that file by the key that signs the release tags, SIGNING_KEY_FINGERPRINT, the one the client carries in
-# apps/tui/resources/release-signing-key.gpg;
+# files are uploaded to that release with "release", the tag followed by a line feed, SHA256SUMS, the digests of those
+# five files, and SHA256SUMS.asc, the detached signature of that file by the key that signs the release tags,
+# SIGNING_KEY_FINGERPRINT, the one the client carries in apps/tui/resources/release-signing-key.gpg. The digest of
+# "release" is what ties the signature to that release: "beffroi-tui self-update" refuses signed sums that name
+# another tag, as those of an older release published again under a newer tag would;
 # a SIGNING_SECRET_KEY that holds another key signs nothing and fails the run. A file the release carries already is
 # replaced. From any other
 # ref the four files are built, each one is run once, and they are kept as artifacts of the run for three days;
@@ -296,7 +298,9 @@ jobs:
           merge-multiple: true
       - name: "SHA256SUMS"
         working-directory: dist
-        run: sha256sum beffroi-tui.phar beffroi-tui-linux-x86_64 beffroi-tui-linux-aarch64 beffroi-tui-macos-aarch64 > SHA256SUMS
+        run: |
+          printf '%s\n' "${TAG}" > release
+          sha256sum beffroi-tui.phar beffroi-tui-linux-x86_64 beffroi-tui-linux-aarch64 beffroi-tui-macos-aarch64 release > SHA256SUMS
       - name: "Docker Hub, under the account of the repository"
         uses: docker/login-action@v4
         with:
@@ -329,7 +333,7 @@ jobs:
         run: |
           gh release upload "${TAG}" -R "${GITHUB_REPOSITORY}" --clobber \
             dist/beffroi-tui.phar dist/beffroi-tui-linux-x86_64 dist/beffroi-tui-linux-aarch64 dist/beffroi-tui-macos-aarch64 \
-            dist/SHA256SUMS dist/SHA256SUMS.asc
+            dist/release dist/SHA256SUMS dist/SHA256SUMS.asc
           {
             echo ""
             echo '```'
