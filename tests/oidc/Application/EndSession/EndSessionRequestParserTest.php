@@ -47,10 +47,14 @@ final class EndSessionRequestParserTest extends TestCase
         $jws->knows(
             $this->tenant,
             self::ALICE_HINT,
-            '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"oidc-demo","exp":1,"sid":"' . self::SID . '"}',
+            '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"oidc-demo","exp":1,"iat":1,"auth_time":1,"sid":"' . self::SID . '"}',
         );
-        $jws->knows($this->tenant, self::LISTED_HINT, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":["ghost","oidc-demo","spa"]}');
-        $jws->knows($this->tenant, self::GHOST_HINT, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"ghost"}');
+        $jws->knows(
+            $this->tenant,
+            self::LISTED_HINT,
+            '{"iss":"https://id.acme.example","sub":"alice-subject","aud":["ghost","oidc-demo","spa"],"exp":1,"iat":1,"auth_time":1}',
+        );
+        $jws->knows($this->tenant, self::GHOST_HINT, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"ghost","exp":1,"iat":1,"auth_time":1}');
         $this->parser = new EndSessionRequestParser($clients, new IdTokenHintVerifier($jws));
     }
 
