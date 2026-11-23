@@ -117,6 +117,33 @@ final class GeoLite2ArchiveTest extends TestCase
         ];
     }
 
+    #[Test]
+    #[DataProvider('provideWhatHoldsMoreThanTheLimit')]
+    public function whatHoldsMoreThanTheLimitIsRefused(string $archive): void
+    {
+        // Given
+        $file = $this->file($archive);
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('what the archive holds is larger than 256 octets');
+
+        // When
+        GeoLite2Archive::unpack($file, $this->directory . '/taken.mmdb', 256);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideWhatHoldsMoreThanTheLimit(): iterable
+    {
+        yield 'a database as it stands' => [MaxMindDatabase::city()];
+        yield 'an archived database' => [MaxMindDatabase::archived(MaxMindDatabase::city())];
+        yield 'a member before the database' => [
+            MaxMindDatabase::archived(MaxMindDatabase::asn(), licence: str_repeat('The terms of the licence. ', 16)),
+        ];
+    }
+
     /**
      * RFC 1952 §2.3.1
      */

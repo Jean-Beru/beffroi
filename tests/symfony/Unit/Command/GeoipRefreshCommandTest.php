@@ -270,6 +270,26 @@ final class GeoipRefreshCommandTest extends TestCase
         );
     }
 
+    #[Test]
+    public function anArchiveLargerThanTheLimitIsRefusedAndNothingIsStored(): void
+    {
+        // Given
+        $tester = $this->refresh(
+            new MockHttpClient(static fn (): MockResponse => new MockResponse(MaxMindDatabase::archived(MaxMindDatabase::city()))),
+            limit: 64,
+        );
+
+        // When
+        $tester->execute([
+            '--url' => ['https://mirror.example/GeoLite2-City.tar.gz'],
+        ]);
+
+        // Then
+        static::assertSame(Command::FAILURE, $tester->getStatusCode(), $tester->getDisplay());
+        static::assertNull($this->databases->path(GeoLite2Databases::CITY));
+        static::assertStringContainsString('is refused, nothing of it is kept: the archive is larger than 64 octets', self::flattened($tester));
+    }
+
     /**
      * Decision 0006
      */
@@ -442,10 +462,10 @@ final class GeoipRefreshCommandTest extends TestCase
         static::assertStringContainsString('GEOIP_LICENSE_KEY', self::flattened($tester));
     }
 
-    private function refresh(MockHttpClient $http, string $licenseKey = self::LICENSE_KEY): CommandTester
+    private function refresh(MockHttpClient $http, string $licenseKey = self::LICENSE_KEY, int $limit = GeoLite2Refresh::LIMIT): CommandTester
     {
         return new CommandTester(new Command('beffroi:geoip:refresh')->setCode(
-            new GeoipRefreshCommand(new GeoLite2Refresh($http, $this->databases, $licenseKey)),
+            new GeoipRefreshCommand(new GeoLite2Refresh($http, $this->databases, $licenseKey, $limit)),
         ));
     }
 
