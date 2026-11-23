@@ -12,6 +12,7 @@ use Beffroi\Oidc\Domain\Client\ClientJwks;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Beffroi\Oidc\Tests\Fixture\Certificates;
 use PHPUnit\Framework\Attributes\DataProvider;
+use function sprintf;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -134,6 +135,42 @@ final class ClientJwksTest extends TestCase
         yield 'past a key of another algorithm' => [[self::key('one', algorithm: 'ECDH-ES+A128KW'), self::key('two')], 'two'];
         yield 'past a key reserved for signing' => [[self::key('one', use: 'sig'), self::key('two')], 'two'];
         yield 'the signing key of a client that publishes only that' => [[self::key('one', use: 'sig'), self::key('two', algorithm: 'ES256')], null];
+    }
+
+    /**
+     * OpenID Connect Dynamic Client Registration §2, RFC 7518 §6.2.2, §6.3.2, RFC 8037 §2
+     *
+     * @param array<string, mixed> $key
+     */
+    #[Test]
+    #[DataProvider('providePrivateKeys')]
+    public function itRefusesAKeyThatCarriesItsPrivateHalf(array $key, string $member): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs(sprintf(
+            'A client publishes public keys; a key carrying the private member "%s" is refused (OpenID Connect Dynamic Client Registration section 2).',
+            $member,
+        ));
+
+        // When
+        new ClientJwks([self::key('public'), $key]);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, string}>
+     */
+    public static function providePrivateKeys(): iterable
+    {
+        yield 'an EC key with d' => [[...self::key('one'), 'd' => 'jpsQnnGQmL-YBIffH1136cspYG6-0iY7X1fCE9-E9LI'], 'd'];
+        yield 'an OKP key with d' => [
+            ['kty' => 'OKP', 'crv' => 'Ed25519', 'x' => '11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo', 'd' => 'nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxyuf2A'],
+            'd',
+        ];
+        yield 'an RSA key with its exponent' => [['kty' => 'RSA', 'n' => 'sXch', 'e' => 'AQAB', 'd' => 'VFCW'], 'd'];
+        yield 'an RSA key with its primes alone' => [['kty' => 'RSA', 'n' => 'sXch', 'e' => 'AQAB', 'p' => '83i-', 'q' => '3dfO'], 'p'];
+        yield 'an RSA key with its CRT values alone' => [['kty' => 'RSA', 'n' => 'sXch', 'e' => 'AQAB', 'dp' => 'G4sP', 'dq' => 's9lA', 'qi' => 'GyM_'], 'dp'];
+        yield 'an RSA key with other primes' => [['kty' => 'RSA', 'n' => 'sXch', 'e' => 'AQAB', 'oth' => []], 'oth'];
     }
 
     /**
