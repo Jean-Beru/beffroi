@@ -54,6 +54,33 @@ final class ConfigurationClientRegistrationPolicyTest extends TestCase
     }
 
     #[Test]
+    public function aTenantThatRegistersNobodyKeepsTheClientsItRegisteredForTheDurationsTheDeploymentNamed(): void
+    {
+        // Given
+        $policies = new ConfigurationClientRegistrationPolicy('acme', null, false, new DateInterval('PT86400S'), new DateInterval('PT3600S'));
+
+        // When
+        $retention = $policies->retentionFor(Fixtures::tenant(), Fixtures::now());
+
+        // Then
+        static::assertEquals(Fixtures::now()->modify('-86400 seconds'), $retention?->usedSince);
+        static::assertEquals(Fixtures::now()->modify('-3600 seconds'), $retention?->registeredSince);
+    }
+
+    #[Test]
+    public function aTenantThisDeploymentSaysNothingAboutHasNoRetention(): void
+    {
+        // Given
+        $policies = new ConfigurationClientRegistrationPolicy('acme');
+
+        // When
+        $retention = $policies->retentionFor(Fixtures::tenant('another'), Fixtures::now());
+
+        // Then
+        static::assertNull($retention);
+    }
+
+    #[Test]
     #[DataProvider('provideNamesThatAreNoMode')]
     public function aDeploymentThatNamedNoModeRegistersNobody(?string $mode): void
     {
