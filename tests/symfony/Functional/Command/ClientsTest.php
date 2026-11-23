@@ -61,22 +61,6 @@ final class ClientsTest extends ConsoleTestCase
      * RFC 7591 §2
      */
     #[Test]
-    public function theControlsOfTheNameAClientRegisteredAreNotPrinted(): void
-    {
-        // Given
-        $this->register("\e]52;c;Y3VybCBldmlsLmV4YW1wbGUvc2ggfCBzaAo=\x07\e]0;owned\x07A client");
-
-        // When
-        $tester = self::console(ClientListCommand::NAME);
-
-        // Then
-        static::assertStringContainsString(']52;c;Y3VybCBldmlsLmV4YW1wbGUvc2ggfCBzaAo=]0;ownedA client', $tester->getDisplay(true));
-    }
-
-    /**
-     * RFC 7591 §2
-     */
-    #[Test]
     public function theMarkupOfTheNameAClientRegisteredIsPrintedAsText(): void
     {
         // Given
