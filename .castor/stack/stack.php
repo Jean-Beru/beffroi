@@ -133,7 +133,8 @@ function start(
     } else {
         // The worker cannot boot before "castor provision" names its KMS: "up --wait" would wait on it forever.
         run([...$command, ...$up, ...compose_services_but_the_worker($command, $context)], context: $context);
-        run([...$command, 'create', ...($build ? ['--build'] : []), 'worker'], context: $context);
+        // Building the worker builds op, its dependency, again: a new digest would recreate op without starting it.
+        run([...$command, 'create', ...($build ? ['--build'] : []), '--no-recreate', 'worker'], context: $context);
     }
     // Every page refuses to serve a tenant whose row differs from apps/beffroi/.env*, which a pull can change.
     $tenant = op_console(['beffroi:tenant:synchronize', '--no-ansi'], context()->withAllowFailure()->withQuiet());

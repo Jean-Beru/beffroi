@@ -88,6 +88,11 @@ jobs:
           else
             echo "::warning title=Docker Hub, anonymously::This run is given no DOCKERHUB_USERNAME and DOCKERHUB_TOKEN, so its pulls of Docker Hub are counted against the address of the runner, which is shared and may be spent."
           fi
+      # The stack is written for the Compose of the workstations, and the runner image carries an older one, which does
+      # not know the "start --wait" that "castor provision" waits on the worker with.
+      - uses: docker/setup-compose-action@v2
+        with:
+          version: latest
       - name: "Start the OP and the conformance suite"
         run: castor start --conformance --build
       - name: "Provision the OP"
