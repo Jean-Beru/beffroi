@@ -99,6 +99,19 @@ final class AnAuthenticatorAppFromATicketTest extends BrowserTestCase
     }
 
     #[Test]
+    public function thePageOfTheBackupCodesCarriesTheButtonThatCopiesThem(): void
+    {
+        // Given
+        $issued = $this->issue();
+
+        // When
+        $page = $this->enrol($issued);
+
+        // Then
+        static::assertCount(1, $page->filter('main button[data-copy="backup-codes"]'));
+    }
+
+    #[Test]
     public function theSecretIsForgottenOnceTheAppIsEnrolled(): void
     {
         // Given

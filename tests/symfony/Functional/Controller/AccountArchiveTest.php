@@ -526,6 +526,22 @@ final class AccountArchiveTest extends BrowserTestCase
     }
 
     #[Test]
+    public function droppingAFileAskedForAgainLeavesNoneOfTheFilesBefore(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        $this->ask();
+        $this->ask();
+
+        // When
+        $this->drop();
+
+        // Then
+        static::assertNull(self::archives()->latestOf(self::reread($alice)));
+    }
+
+    #[Test]
     public function thePageOfAPersonWhoDroppedTheirFileSaysTheyHaveNone(): void
     {
         // Given

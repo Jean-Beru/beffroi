@@ -257,7 +257,7 @@ final class LocalizedPagesTest extends BrowserTestCase
         // Then
         static::assertSame('fr', $crawler->filter('html')->attr('lang'));
         static::assertSame(
-            'Une application demande à vous déconnecter. Session ouverte pour alice. Voulez-vous vous déconnecter ?',
+            'Session ouverte pour alice. Voulez-vous vous déconnecter ?',
             $crawler->filter('p[data-reason]')->text(normalizeWhitespace: true),
         );
     }

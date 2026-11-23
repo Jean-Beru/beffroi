@@ -68,6 +68,22 @@ final class EndSessionControllerTest extends BrowserTestCase
     }
 
     /**
+     * RP-Initiated Logout 1.0 §2
+     */
+    #[Test]
+    public function aRequestThatNamesNoClientIsAttributedToNoApplication(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $crawler = $this->browser->request('GET', '/logout');
+
+        // Then
+        static::assertSame('You are signed in as alice. Do you want to sign out?', $crawler->filter('[data-reason]')->text());
+    }
+
+    /**
      * RP-Initiated Logout 1.0 §2, §3
      */
     #[Test]

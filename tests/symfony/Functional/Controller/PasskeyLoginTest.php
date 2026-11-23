@@ -269,6 +269,25 @@ final class PasskeyLoginTest extends PasskeyTestCase
         static::assertTrue($failures[0]->user?->id->equals($alice->id));
     }
 
+    #[Test]
+    public function aRefusedPasskeyIsToldAsAPasskeyAndNotAsAPassword(): void
+    {
+        // Given
+        $device = self::device();
+        $passkey = $this->enrol(self::user('alice'), $device);
+        $passkey->revoke(self::now());
+        self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->save($passkey);
+        $this->forgetTheBrowser();
+        $interaction = $this->authorize();
+        $this->loginWithPasskey($interaction, $device);
+
+        // When
+        $page = $this->loginPage($interaction);
+
+        // Then
+        static::assertSame('The passkey did not work. Try again.', $page->filter('p[data-error]')->text());
+    }
+
     /**
      * WebAuthn Level 3 §6.1.3
      */
@@ -560,7 +579,7 @@ final class PasskeyLoginTest extends PasskeyTestCase
         static::assertSame(Response::HTTP_FOUND, $response->getStatusCode(), self::string($response->getContent()));
         static::assertSame('/login?interaction=' . $interaction, $response->headers->get('Location'));
         static::assertFalse($this->isBoundToASession());
-        static::assertCount(1, $this->loginPage($interaction)->filter('p[data-error="authentication_failed"]'));
+        static::assertCount(1, $this->loginPage($interaction)->filter('p[data-error="authentication_failed"][data-failed="passkey"]'));
     }
 
     private function creationOptionsOfAnotherProvider(): string
