@@ -18,6 +18,7 @@ use Beffroi\Core\Application\Authentication\SessionOpener;
 use Beffroi\Core\Application\Passkey\PasskeyAuthentication;
 use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Bridge\InMemory\InMemoryPasskeyUses;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Event\AuthenticationFailed;
 use Beffroi\Core\Domain\Event\AuthenticationFailureReason;
@@ -25,8 +26,10 @@ use Beffroi\Core\Domain\Event\PasskeyUsed;
 use Beffroi\Core\Domain\Event\UserAuthenticated;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Tenant\Tenant;
+use Beffroi\Core\Port\PasskeyUsesInterface;
 use Beffroi\Core\Tests\Fixture\FakePasskeyAuthenticator;
 use Beffroi\Core\Tests\Fixture\Fixtures;
+use Beffroi\Core\Tests\Fixture\PasskeyUsesRacedByAnotherRequest;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -72,23 +75,7 @@ final class PasskeyAuthenticationTest extends TestCase
         $this->events = new RecordingEventDispatcher();
         $this->clock = new MockClock('2026-09-19T12:00:00+00:00');
         $this->upstreamProviders = new InMemoryUpstreamProviders();
-        $this->authentication = new PasskeyAuthentication(
-            $this->credentials,
-            new ActiveCredentials($this->credentials),
-            $this->ceremony,
-            new SessionOpener(
-                $this->sessions,
-                new SymfonyUuidGenerator(),
-                $this->clock,
-                $this->events,
-                new AuthenticationRefusal($this->clock, $this->events),
-                new DateInterval('PT8H'),
-            ),
-            new AuthenticationRefusal($this->clock, $this->events),
-            $this->clock,
-            $this->events,
-            new FederatedDomains($this->upstreamProviders),
-        );
+        $this->authentication = $this->authenticationWith(new InMemoryPasskeyUses());
         $this->options = $this->authentication->requestOptions($this->tenant);
     }
 
@@ -153,17 +140,74 @@ final class PasskeyAuthenticationTest extends TestCase
     }
 
     #[Test]
-    public function aVerifiedAssertionSavesThePasskey(): void
+    public function aVerifiedAssertionIsWrittenAsAUseOfThePasskey(): void
     {
         // Given
-        $passkey = Fixtures::passkey($this->alice, credentialId: 'unsaved-key');
-        $this->ceremony->verifies($passkey, Fixtures::authenticatorData(signCount: 3));
-
-        // When
-        $this->authentication->authenticate($this->tenant, $this->options, '{}', Fixtures::context($this->clock->now()));
+        $data = Fixtures::authenticatorData(signCount: 3);
+        $this->ceremony->verifies($this->passkey, $data);
+        $uses = $this->createMock(PasskeyUsesInterface::class);
+        $authentication = $this->authenticationWith($uses);
 
         // Then
-        static::assertSame($passkey, $this->credentials->find($passkey->id));
+        $uses->expects(static::once())->method('recordUse')->with($this->passkey, $data)->willReturn(true);
+
+        // When
+        $authentication->authenticate($this->tenant, $this->options, '{}', Fixtures::context($this->clock->now()));
+    }
+
+    /**
+     * WebAuthn Level 3 §6.1.1, Decision 0034
+     */
+    #[Test]
+    public function ofTwoAssertionsCarryingTheSameCounterAtOnceTheOneThatWritesSecondIsRefused(): void
+    {
+        // Given
+        $this->racedByAnotherAssertionCarrying(6);
+
+        // When
+        try {
+            $this->authentication->authenticate($this->tenant, $this->options, '{}', Fixtures::context($this->clock->now()));
+            static::fail('Authentication should have failed.');
+        } catch (AuthenticationFailedException $exception) {
+            // Then
+            static::assertSame(AuthenticationFailureReason::InvalidCredential, $exception->reason);
+            static::assertSame($this->alice, $this->events->of(AuthenticationFailed::class)[0]->user);
+        }
+    }
+
+    /**
+     * WebAuthn Level 3 §6.1.1, Decision 0034
+     */
+    #[Test]
+    public function ofTwoAssertionsCarryingTheSameCounterAtOnceOneUseIsAnnounced(): void
+    {
+        // Given
+        $this->racedByAnotherAssertionCarrying(6);
+
+        // When
+        try {
+            $this->authentication->authenticate($this->tenant, $this->options, '{}', Fixtures::context($this->clock->now()));
+        } catch (AuthenticationFailedException) {
+        }
+
+        // Then
+        static::assertCount(1, $this->events->of(PasskeyUsed::class));
+    }
+
+    /**
+     * WebAuthn Level 3 §6.1.1, Decision 0034
+     */
+    #[Test]
+    public function twoAssertionsOfAPasskeyThatKeepsItsCountAtZeroSignInAtOnce(): void
+    {
+        // Given
+        $this->racedByAnotherAssertionCarrying(0);
+
+        // When
+        $session = $this->authentication->authenticate($this->tenant, $this->options, '{}', Fixtures::context($this->clock->now()));
+
+        // Then
+        static::assertSame($this->alice, $session->user);
     }
 
     #[Test]
@@ -358,5 +402,36 @@ final class PasskeyAuthenticationTest extends TestCase
             static::assertSame('hwk', $failed->method?->value);
             static::assertNull($failed->user);
         }
+    }
+
+    private function authenticationWith(PasskeyUsesInterface $uses): PasskeyAuthentication
+    {
+        return new PasskeyAuthentication(
+            $uses,
+            new ActiveCredentials($this->credentials),
+            $this->ceremony,
+            new SessionOpener(
+                $this->sessions,
+                new SymfonyUuidGenerator(),
+                $this->clock,
+                $this->events,
+                new AuthenticationRefusal($this->clock, $this->events),
+                new DateInterval('PT8H'),
+            ),
+            new AuthenticationRefusal($this->clock, $this->events),
+            $this->clock,
+            $this->events,
+            new FederatedDomains($this->upstreamProviders),
+        );
+    }
+
+    private function racedByAnotherAssertionCarrying(int $counter): void
+    {
+        $uses = new PasskeyUsesRacedByAnotherRequest(new InMemoryPasskeyUses());
+        $this->authentication = $this->authenticationWith($uses);
+        $this->ceremony->verifies($this->passkey, Fixtures::authenticatorData(signCount: $counter));
+        $uses->anotherRequest = function (): void {
+            $this->authentication->authenticate($this->tenant, $this->options, '{}', Fixtures::context($this->clock->now()));
+        };
     }
 }

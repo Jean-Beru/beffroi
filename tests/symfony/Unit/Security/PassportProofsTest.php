@@ -9,7 +9,6 @@ use App\Security\PasskeyCredentials;
 use App\Security\PasskeyLogin;
 use App\Security\PassportProofs;
 use App\Security\PasswordLogin;
-use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use App\Security\ProvingLoginInterface;
 use App\Security\TotpCredentials;
@@ -39,7 +38,7 @@ final class PassportProofsTest extends TestCase
     {
         $this->proofs = self::proofsOf([
             new PasswordLogin(),
-            new PasskeyLogin(new InMemoryCredentialRepository(), new RecordingEventDispatcher()),
+            new PasskeyLogin(new RecordingEventDispatcher()),
             new TotpLogin(),
         ]);
     }
