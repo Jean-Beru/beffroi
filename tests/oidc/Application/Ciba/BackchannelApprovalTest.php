@@ -126,6 +126,42 @@ final class BackchannelApprovalTest extends TestCase
         static::assertSame([], $waiting);
     }
 
+    /**
+     * Architecture §4.3
+     */
+    #[Test]
+    public function aRequestTakenBackWithItsConsentIsNotShown(): void
+    {
+        // Given
+        $record = $this->record();
+        $this->records->save($record);
+        $record->revoke($this->clock->now());
+
+        // When
+        $waiting = $this->approval->awaitingAnAnswerBy($this->alice);
+
+        // Then
+        static::assertSame([], $waiting);
+    }
+
+    /**
+     * Architecture §4.3
+     */
+    #[Test]
+    public function aHandleNamesNoRequestTakenBackWithItsConsent(): void
+    {
+        // Given
+        $record = $this->record();
+        $this->records->save($record);
+        $record->revoke($this->clock->now());
+
+        // When
+        $found = $this->approval->awaitingAnAnswerFrom($this->alice, DrawnSecret::digestOf(self::AUTH_REQUEST_ID));
+
+        // Then
+        static::assertNull($found);
+    }
+
     #[Test]
     public function aHandleNamesOnlyARequestThatUserMayAnswer(): void
     {

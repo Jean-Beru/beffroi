@@ -182,6 +182,26 @@ final class DoctrineBackchannelAuthenticationRecordRepositoryTest extends Databa
     }
 
     /**
+     * Architecture §4.3
+     */
+    #[Test]
+    public function aRequestTakenBackWithItsConsentIsNotRead(): void
+    {
+        // Given
+        $alice = self::user();
+        $revoked = self::record(Secrets::draw(), self::client('terminal-app'), $alice);
+        $revoked->revoke(self::now());
+        self::records()->save($revoked);
+        self::reload();
+
+        // When
+        $waiting = self::records()->awaitingAnAnswerBy($alice, self::now());
+
+        // Then
+        static::assertSame([], $waiting);
+    }
+
+    /**
      * CIBA Core §10.1
      */
     #[Test]
