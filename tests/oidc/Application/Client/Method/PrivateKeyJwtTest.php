@@ -414,6 +414,28 @@ final class PrivateKeyJwtTest extends TestCase
         $this->assertRefused(ClientAuthenticationFailureReason::InvalidAssertion);
     }
 
+    /**
+     * RFC 7515 §4.1.11
+     */
+    #[Test]
+    public function itRefusesAnAssertionThatMarksAParameterCritical(): void
+    {
+        // Given
+        $assertion = ClientAssertions::signedWithKey(
+            ClientAssertions::claims($this->client->registration->clientId, $this->tenant->issuer->value, $this->context->receivedAt),
+            [
+                'crit' => ['urn:example:must-understand'],
+                'urn:example:must-understand' => true,
+            ],
+        );
+
+        // When
+        $this->failToAuthenticate($assertion);
+
+        // Then
+        static::assertSame(ClientAuthenticationFailureReason::MalformedCredentials, $this->lastRefusal()->reason);
+    }
+
     #[Test]
     public function itAuthenticatesAClientThatPublishesItsKeysBehindAJwksUri(): void
     {

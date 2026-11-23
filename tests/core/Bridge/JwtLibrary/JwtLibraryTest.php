@@ -11,6 +11,7 @@ use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsSigner;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryJwsVerifier;
 use Beffroi\Core\Bridge\Key\OpenedKeys;
 use Beffroi\Core\Bridge\Key\SealedKeyProvider;
+use Beffroi\Core\Domain\Encoding\Base64Url;
 use Beffroi\Core\Domain\Key\TenantKey;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidJwsException;
@@ -27,6 +28,8 @@ use Jose\Component\Signature\JWSBuilder;
 use Jose\Component\Signature\JWSVerifier;
 use Jose\Component\Signature\Serializer\CompactSerializer;
 use function json_decode;
+use function json_encode;
+use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function strtr;
@@ -377,6 +380,69 @@ final class JwtLibraryTest extends TestCase
 
         // When
         new JwtLibraryJwsVerifier($this->provider, Algorithms::all())->verify($this->tenant, 'not.a.jws.at.all');
+    }
+
+    /**
+     * RFC 7515 §4.1.11
+     */
+    #[Test]
+    public function itRefusesATokenThatMarksAParameterCritical(): void
+    {
+        // Given
+        $jws = new JwtLibraryJwsSigner($this->provider, Algorithms::all())->sign($this->tenant, Algorithms::rs256(), '{"sub":"alice"}', [
+            'crit' => ['urn:example:must-understand'],
+            'urn:example:must-understand' => true,
+        ]);
+
+        // Then
+        $this->expectException(InvalidJwsException::class);
+        $this->expectExceptionMessageIs('The token uses an extension of JOSE this provider does not understand (RFC 7515 section 4.1.11).');
+
+        // When
+        new JwtLibraryJwsVerifier($this->provider, Algorithms::all())->verify($this->tenant, $jws);
+    }
+
+    /**
+     * RFC 7797 §6
+     */
+    #[Test]
+    public function itRefusesATokenWhosePayloadIsNotEncoded(): void
+    {
+        // Given
+        $header = Base64Url::encode(json_encode([
+            'alg' => 'RS256',
+            'kid' => $this->active->kid,
+            'b64' => false,
+        ], JSON_THROW_ON_ERROR));
+        $payload = '{"sub":"alice"}';
+        $signature = new RS256()->sign(new JWK(Keys::pair()->privateJwk), $header . '.' . $payload);
+
+        // Then
+        $this->expectException(InvalidJwsException::class);
+        $this->expectExceptionMessageIs('The token uses an extension of JOSE this provider does not understand (RFC 7515 section 4.1.11).');
+
+        // When
+        new JwtLibraryJwsVerifier($this->provider, Algorithms::all())->verify($this->tenant, $header . '.' . $payload . '.' . Base64Url::encode($signature));
+    }
+
+    /**
+     * RFC 7515 §7.1
+     */
+    #[Test]
+    public function itRefusesATokenWithoutPayload(): void
+    {
+        // Given
+        $header = Base64Url::encode(json_encode([
+            'alg' => 'RS256',
+            'kid' => $this->active->kid,
+        ], JSON_THROW_ON_ERROR));
+
+        // Then
+        $this->expectException(InvalidJwsException::class);
+        $this->expectExceptionMessageIs('The signature of the token cannot be checked.');
+
+        // When
+        new JwtLibraryJwsVerifier($this->provider, Algorithms::all())->verify($this->tenant, $header . '..' . Base64Url::encode('signature'));
     }
 
     #[Test]

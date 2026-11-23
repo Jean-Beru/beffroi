@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
 use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryProofKeyVerifier;
+use Beffroi\Oidc\Domain\Dpop\DpopProof;
 use Beffroi\Oidc\Domain\Token\KeyConfirmation;
 use Beffroi\Oidc\Exception\InvalidJwtException;
 use Beffroi\Oidc\Tests\Fixture\Proofs;
@@ -74,6 +75,27 @@ final class JwtLibraryProofKeyVerifierTest extends TestCase
 
         // When
         self::verifier()->keyThatSigned($proof, ['RS256']);
+    }
+
+    /**
+     * RFC 7517 §4.1
+     */
+    #[Test]
+    public function aProofWhoseKeyNamesNoKeyTypeIsRefused(): void
+    {
+        // Given
+        $key = Proofs::key()->toPublic()->all();
+        unset($key['kty']);
+        $proof = new JwtLibraryCompactJwtReader()->read(Proofs::proof('POST', self::ENDPOINT, new DateTimeImmutable(self::NOW), header: [
+            DpopProof::KEY => $key,
+        ]));
+
+        // Then
+        $this->expectException(InvalidJwtException::class);
+        $this->expectExceptionMessageIs('The signature of the token cannot be checked under the key.');
+
+        // When
+        self::verifier()->keyThatSigned($proof, ['ES256']);
     }
 
     private static function verifier(): JwtLibraryProofKeyVerifier

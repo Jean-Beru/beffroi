@@ -78,13 +78,15 @@ final readonly class MetadataSigner
 
     /**
      * @param list<mixed>|null $chain
+     * @param array<string, mixed> $header
      */
-    public function sign(string $payload, ?array $chain = null): string
+    public function sign(string $payload, ?array $chain = null, array $header = []): string
     {
         $jws = new JWSBuilder(new AlgorithmManager([new ES256()]))
             ->create()
             ->withPayload($payload)
             ->addSignature(JWKFactory::createFromKey($this->signerKey->toPEM()->string()), [
+                ...$header,
                 'alg' => 'ES256',
                 'x5c' => $chain ?? $this->chain(),
             ])

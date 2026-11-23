@@ -11,6 +11,7 @@ use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryKeyPairGenerator;
 use Beffroi\Core\Bridge\Key\OpenedKeys;
 use Beffroi\Core\Bridge\Key\SealedKeyProvider;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
+use Beffroi\Core\Domain\Encoding\Base64Url;
 use Beffroi\Core\Domain\Key\GeneratedKeyPair;
 use Beffroi\Core\Domain\Key\KeyAlgorithmInterface;
 use Beffroi\Core\Domain\Key\KeyUse;
@@ -24,6 +25,8 @@ use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\EnvelopesThatThrow;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
+use function explode;
+use function implode;
 use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Core\JWK;
 use Jose\Component\Encryption\Algorithm\ContentEncryption\A128GCM;
@@ -37,6 +40,7 @@ use Jose\Component\Signature\JWSBuilder;
 use Jose\Component\Signature\Serializer\CompactSerializer as JwsCompactSerializer;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function random_bytes;
 use Symfony\Component\KeyManagement\Exception\RuntimeException as KeyManagementFailure;
 
 /**
@@ -248,6 +252,44 @@ final class JweDecryptionTest extends TestCase
         $this->decrypter()->decrypt($this->tenant, $jwe);
     }
 
+    /**
+     * RFC 7516 §4.1.13
+     */
+    #[Test]
+    public function aJweThatMarksAParameterCriticalIsRefused(): void
+    {
+        // Given
+        $jwe = self::encryptedTo($this->encryption, '{}', header: [
+            'crit' => ['urn:example:must-understand'],
+            'urn:example:must-understand' => true,
+        ]);
+
+        // Then
+        $this->expectException(InvalidJweException::class);
+        $this->expectExceptionMessageIs('The token uses an extension of JOSE this provider does not understand (RFC 7516 section 4.1.13).');
+
+        // When
+        $this->decrypter()->decrypt($this->tenant, $jwe);
+    }
+
+    /**
+     * RFC 7518 §5.3
+     */
+    #[Test]
+    public function aJweWhoseInitializationVectorIsNotTheSizeOfItsContentEncryptionIsRefused(): void
+    {
+        // Given
+        $parts = explode('.', self::encryptedTo($this->encryption, '{}'));
+        $parts[2] = Base64Url::encode(random_bytes(16));
+
+        // Then
+        $this->expectException(InvalidJweException::class);
+        $this->expectExceptionMessageIs('The token cannot be opened as a JWE (RFC 7516 section 5.2).');
+
+        // When
+        $this->decrypter()->decrypt($this->tenant, implode('.', $parts));
+    }
+
     #[Test]
     public function aKmsThatDoesNotAnswerIsAnOutageAndNotARefusal(): void
     {
@@ -306,9 +348,13 @@ final class JweDecryptionTest extends TestCase
         return $key;
     }
 
-    private static function encryptedTo(TenantKey $key, string $payload, bool $named = true): string
+    /**
+     * @param array<string, mixed> $header
+     */
+    private static function encryptedTo(TenantKey $key, string $payload, bool $named = true, array $header = []): string
     {
         $header = [
+            ...$header,
             'alg' => $key->algorithm->name(),
             'enc' => 'A256GCM',
         ];
