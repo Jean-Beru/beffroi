@@ -52,6 +52,36 @@ final class MutualTlsFlowTest extends BrowserTestCase
     }
 
     /**
+     * RFC 8705 §2.1, §7.4
+     */
+    #[Test]
+    #[DataProvider('provideCertificatesNoTrustedAuthorityIssued')]
+    public function aCertificateCarryingTheRegisteredNameThatNoTrustedAuthorityIssuedIsRefused(ClientCertificate $certificate): void
+    {
+        // Given
+        self::signingKey();
+        $this->signIn(self::user('alice'));
+
+        // When
+        $this->exchangeTheCode('mtls-app', 'https://mtls.test/callback', $certificate);
+
+        // Then
+        $response = $this->browser->getResponse();
+        static::assertSame(Response::HTTP_UNAUTHORIZED, $response->getStatusCode());
+        static::assertSame('invalid_client', self::json($response)['error']);
+    }
+
+    /**
+     * @return iterable<string, array{ClientCertificate}>
+     */
+    public static function provideCertificatesNoTrustedAuthorityIssued(): iterable
+    {
+        yield 'self-signed' => [Certificates::selfSigned()];
+
+        yield 'issued by another authority' => [Certificates::ofAnotherAuthority()];
+    }
+
+    /**
      * Decision 0006
      */
     #[Test]

@@ -407,6 +407,8 @@ beffroi:
         # The host whose listener asks for a client certificate (RFC 8705 §5): the same application, the
         # aliases of the discovery document pointing at it.
         origin: 'https://mtls.op.test'
+        # The authority of the certificates of mtls-app and mtls-opaque-app (RFC 8705 §2.1).
+        certificate_authorities: [!php/const Beffroi\Oidc\Tests\Fixture\Certificates::AUTHORITY_PEM]
     # The application of this kernel, a client of the provider it serves (issue #282): the callback of its
     # firewall, which the route loader of Symfony declares, and its page to come back to after a logout.
     self_client:

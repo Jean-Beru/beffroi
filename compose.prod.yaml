@@ -68,6 +68,9 @@ services:
       # CADDY_EXTRA_CONFIG: import mtls.Caddyfile
       # MTLS_SERVER_NAME: mtls.${SERVER_NAME}
       # BEFFROI_MTLS_ORIGIN: https://mtls.${SERVER_NAME}
+      # And for tls_client_auth, the authorities that sign the certificates of its clients, which the provider
+      # validates them against, the listener judging none (a JSON list of PEM certificates):
+      # BEFFROI_MTLS_CERTIFICATE_AUTHORITIES: '["-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n"]'
       # Behind a proxy that terminates TLS (issue #908), the site of SERVER_NAME is served on plain HTTP, as
       # http://<SERVER_NAME> on port 80, to the proxy, which asks for that host; Symfony reads the scheme and the
       # address of the client the proxy forwards from where SYMFONY_TRUSTED_PROXIES says it connects

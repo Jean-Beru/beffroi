@@ -25,7 +25,9 @@ only as pre-releases until Symfony 8.2.0 is out: until then, a project that requ
   responses (JARM), `form_post`, resource indicators (RFC 8707) and rich authorization requests (RFC 9396).
 - Client authentication by `private_key_jwt` and `client_secret_jwt`, and tokens bound to a key by DPoP (RFC 9449).
   Mutual TLS client authentication and certificate-bound tokens (RFC 8705) are announced and served only when
-  `BEFFROI_MTLS_ORIGIN` names the host that asks for the certificate.
+  `BEFFROI_MTLS_ORIGIN` names the host that asks for the certificate, and `tls_client_auth` only when
+  `BEFFROI_MTLS_CERTIFICATE_AUTHORITIES` names the authorities whose certificates it accepts, which the provider
+  validates the certificate against when it is presented.
 - RP-Initiated, Back-Channel and Front-Channel Logout.
 - Dynamic client registration (RFC 7591, RFC 7592), controlled by initial access tokens; pairwise subjects and a login
   the provider begins at the client.
