@@ -15,8 +15,18 @@ const REQUEST_LIMITS_CA_FILE = 'var/caddy-root.crt';
  */
 const REQUEST_LIMITS_HTTP1_HEADER_SLACK = 4096;
 
+/**
+ * Sizes of each variable that Caddy reads as no bound: zero bytes in a unit or another, a fraction of a byte, and a size
+ * that wraps below zero.
+ */
+const REQUEST_LIMITS_NO_BOUND = [
+    'CADDY_MAX_HEADER_SIZE' => ['0', '0KiB', '0.4B', '8EiB'],
+    'CADDY_REQUEST_BODY_MAX_SIZE' => ['0', '0.0MB', '.5', '9223372036854775808'],
+    'CADDY_ADMINISTRATION_REQUEST_BODY_MAX_SIZE' => ['0', '0B', '0,0', '18446744073709551615'],
+];
+
 #[AsTask(
-    description: 'Measure the bounds of the size of a request at the edge (issue #1191), as the configuration Caddy runs states them: a request head of exactly the header bound served and one just over it answered 431, a body of exactly the bound of each site served and one byte more answered 413, announced or chunked, PHP never running for a refused one',
+    description: 'Measure the bounds of the size of a request at the edge (issue #1191), as the configuration Caddy runs states them: a request head of exactly the header bound served and one just over it answered 431, a body of exactly the bound of each site served and one byte more answered 413, announced or chunked, PHP never running for a refused one; and the entrypoint of the image stopping on a size of each variable that bounds nothing (issue #1198)',
 )]
 function request_limits(
     #[AsOption(description: 'The host of SERVER_NAME, with its port when it is not 443')]
@@ -81,7 +91,24 @@ function request_limits(
     }
 
     io()->table(['Site', 'Bound', 'Served', 'Refused'], $measured);
-    io()->success('Every site serves a request up to its bounds and refuses one beyond them before PHP runs.');
+
+    io()->section('A size that bounds nothing');
+    $running = run(['docker', 'compose', 'exec', '-T', 'op', 'docker-request-bounds'], context: context()->withQuiet()->withAllowFailure());
+    request_limits_expect($running->isSuccessful(), 'the sizes the stack runs with are bounds');
+    foreach (REQUEST_LIMITS_NO_BOUND as $variable => $sizes) {
+        foreach ($sizes as $size) {
+            $start = run(
+                ['docker', 'compose', 'exec', '-T', '-e', $variable . '=' . $size, 'op', 'docker-entrypoint', 'frankenphp', 'version'],
+                context: context()->withQuiet()->withAllowFailure(),
+            );
+            request_limits_expect(
+                ! $start->isSuccessful() && str_contains($start->getErrorOutput(), sprintf('%s=%s is not a bound', $variable, $size)),
+                sprintf('%s=%s stops the entrypoint before FrankenPHP starts', $variable, $size),
+            );
+        }
+    }
+
+    io()->success('Every site serves a request up to its bounds and refuses one beyond them before PHP runs, and the image refuses to start on a size that bounds nothing.');
 }
 
 /**
