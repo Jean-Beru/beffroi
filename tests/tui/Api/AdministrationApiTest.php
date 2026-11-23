@@ -149,6 +149,30 @@ final class AdministrationApiTest extends TestCase
     }
 
     /**
+     * RFC 9110 §9.3.4, RFC 9449 §4.2: a resource is set to the JSON object sent, under a proof made for its method.
+     */
+    #[Test]
+    public function aStateIsSetToTheDocumentSentAsJson(): void
+    {
+        // Given
+        $http = RecordedRequests::answering([new MockResponse('{"format":"smime","current":true}')]);
+
+        // When
+        Sessions::of($http->client)->api()->put('/tenant/mail-signing-keys/smime', ['private_key' => 'KEY', 'certificates' => 'CHAIN']);
+
+        // Then
+        static::assertSame(
+            ['PUT', 'PUT', 'application/json', '{"private_key":"KEY","certificates":"CHAIN"}'],
+            [
+                $http->last()['method'],
+                Jwt::claims($http->last()['headers']['dpop'] ?? '')->nullableString('htm'),
+                $http->last()['headers']['content-type'] ?? null,
+                $http->last()['body'],
+            ],
+        );
+    }
+
+    /**
      * RFC 7396 §2, RFC 9449 §4.2: a change is a merge patch of the resource, under a proof made for its method.
      */
     #[Test]
