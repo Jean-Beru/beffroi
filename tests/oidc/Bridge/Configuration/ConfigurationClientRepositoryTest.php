@@ -28,6 +28,7 @@ use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Beffroi\Oidc\Exception\LogicException;
 use Beffroi\Oidc\Port\ServedGrantsInterface;
 use Beffroi\Oidc\Tests\Fixture\AuthorizationDetailTypes;
+use Beffroi\Oidc\Tests\Fixture\ClientEncryption;
 use Beffroi\Oidc\Tests\Fixture\Clients;
 use Beffroi\Oidc\Tests\Fixture\FakeGrant;
 use Beffroi\Oidc\Tests\Fixture\Grants;
@@ -973,6 +974,18 @@ final class ConfigurationClientRepositoryTest extends TestCase
                 'userinfo_encrypted_response_enc' => 'A256GCM',
             ],
             'publishes no key it can be addressed to',
+        ];
+        yield 'an encrypted response to a key off its curve (RFC 7518 §4.6)' => [
+            [
+                'redirect_uris' => ['https://key.example/callback'],
+                'token_endpoint_auth_method' => 'private_key_jwt',
+                'jwks' => [
+                    'keys' => [ClientEncryption::keyOffItsCurve()],
+                ],
+                'id_token_encrypted_response_alg' => 'ECDH-ES+A256KW',
+                'id_token_encrypted_response_enc' => 'A256GCM',
+            ],
+            'to a key of its "jwks" that cannot receive one',
         ];
         yield 'secret not a string' => [
             [

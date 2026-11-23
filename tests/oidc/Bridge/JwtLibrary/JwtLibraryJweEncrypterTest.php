@@ -59,6 +59,40 @@ final class JwtLibraryJweEncrypterTest extends TestCase
     }
 
     /**
+     * RFC 7518 §4.6, §6.2.1
+     *
+     * @param array<string, mixed> $recipient
+     */
+    #[Test]
+    #[DataProvider('provideKeysThatReceiveNoJwe')]
+    public function aKeyThatReceivesNoJweIsToldSoBeforeAnyDocumentIsEncrypted(array $recipient): void
+    {
+        // Then
+        $this->expectException(ClientKeysUnavailableException::class);
+        $this->expectExceptionMessageIs('The document could not be encrypted under "ECDH-ES+A256KW": the key it is addressed to does not receive one.');
+
+        // When
+        $this->encrypter->assertReceives($recipient, ClientEncryption::registration());
+    }
+
+    /**
+     * RFC 7518 §4.6
+     */
+    #[Test]
+    public function aKeyThatReceivesAJweIsTakenAsItIs(): void
+    {
+        // Given
+        /** @var array<string, mixed> $recipient */
+        $recipient = ClientEncryption::privateKey()->toPublic()->all();
+
+        // Then
+        $this->expectNotToPerformAssertions();
+
+        // When
+        $this->encrypter->assertReceives($recipient, ClientEncryption::registration());
+    }
+
+    /**
      * @return iterable<string, array{array<string, mixed>}>
      */
     public static function provideKeysThatReceiveNoJwe(): iterable
