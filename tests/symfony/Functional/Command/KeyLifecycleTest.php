@@ -11,6 +11,9 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use App\Message\AdvanceKeyLifecycle;
 use App\Message\RemoveUnusedClients;
+use App\Messenger\MessengerContract;
+use App\Tests\Symfony\Fixture\QueuedBodies;
+use Beffroi\Core\Bridge\JwtLibrary\SealedMessageBody;
 use Beffroi\Core\Bridge\KeyManagement\EnvelopeKeySealer;
 use Beffroi\Core\Domain\Event\TenantKeyRetired;
 use Beffroi\Core\Domain\Event\TenantKeyRotated;
@@ -25,6 +28,11 @@ use Beffroi\Core\Port\KeySealerInterface;
 use Beffroi\Core\Port\TenantKeyRepositoryInterface;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Oidc\Application\Discovery\JwksHandler;
+use Doctrine\DBAL\Connection;
+use Jose\Component\Core\AlgorithmManager;
+use Jose\Component\Core\JWK;
+use Jose\Component\Encryption\JWEBuilder;
+use Jose\Component\Encryption\Serializer\CompactSerializer;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function preg_match;
@@ -636,6 +644,23 @@ final class KeyLifecycleTest extends ConsoleTestCase
         static::assertSame(KeyStatus::Active, self::key($active)->status);
     }
 
+    /**
+     * Decision 0020
+     */
+    #[Test]
+    public function theScheduledStepLeavesADueMessageKeyThatAFailedMessageIsSealedTo(): void
+    {
+        // Given
+        $key = self::keyPastItsRetirementDate(Algorithms::messageSeal());
+        self::failedMessageSealedTo($key);
+
+        // When
+        self::tick();
+
+        // Then
+        static::assertSame(KeyStatus::Retiring, self::key($key->kid)->status);
+    }
+
     #[Test]
     public function theScheduledStepRetiresTheDueKeys(): void
     {
@@ -825,10 +850,10 @@ final class KeyLifecycleTest extends ConsoleTestCase
         return $kid;
     }
 
-    private static function keyPastItsRetirementDate(): TenantKey
+    private static function keyPastItsRetirementDate(?KeyAlgorithmInterface $algorithm = null): TenantKey
     {
         $yesterday = self::currentSecond()->modify('-1 day');
-        $key = self::stagedKeyDated($yesterday->modify('-1 hour'), $yesterday->modify('-1 hour'));
+        $key = self::stagedKeyDated($yesterday->modify('-1 hour'), $yesterday->modify('-1 hour'), $algorithm);
         $key->activate($yesterday->modify('-1 hour'));
         $key->startRetiring($yesterday, $yesterday->modify('+10 minutes'));
         self::keys()->save($key);
@@ -857,14 +882,40 @@ final class KeyLifecycleTest extends ConsoleTestCase
         return $key;
     }
 
-    private static function stagedKeyDated(DateTimeImmutable $createdAt, DateTimeImmutable $activationDueAt): TenantKey
-    {
-        $pair = self::service('test.beffroi.key_pair_generator', KeyPairGeneratorInterface::class)->generate(Algorithms::rs256());
+    private static function stagedKeyDated(
+        DateTimeImmutable $createdAt,
+        DateTimeImmutable $activationDueAt,
+        ?KeyAlgorithmInterface $algorithm = null,
+    ): TenantKey {
+        $algorithm ??= Algorithms::rs256();
+        $pair = self::service('test.beffroi.key_pair_generator', KeyPairGeneratorInterface::class)->generate($algorithm);
         $sealed = self::service('test.beffroi.key_sealer', KeySealerInterface::class)->seal(self::tenant(), $pair->privateJwk);
-        $key = new TenantKey($pair->kid, self::tenant(), Algorithms::rs256(), $pair->publicJwk, $sealed, $createdAt, $activationDueAt);
+        $key = new TenantKey($pair->kid, self::tenant(), $algorithm, $pair->publicJwk, $sealed, $createdAt, $activationDueAt);
         self::keys()->save($key);
 
         return $key;
+    }
+
+    private static function failedMessageSealedTo(TenantKey $key): void
+    {
+        $seal = Algorithms::messageSeal();
+        $body = new CompactSerializer()->serialize(
+            new JWEBuilder(new AlgorithmManager([$seal->keyEncryption()->joseAlgorithm(), $seal->contentEncryption()->joseAlgorithm()]))
+                ->create()
+                ->withPayload('a:0:{}')
+                ->withSharedProtectedHeader([
+                    'alg' => $seal->keyEncryption()->name(),
+                    'enc' => $seal->contentEncryption()->name(),
+                    'kid' => $key->kid,
+                    SealedMessageBody::TENANT_HEADER => self::tenant()->slug,
+                ])
+                ->addRecipient(new JWK([
+                    ...$key->publicJwk,
+                    'alg' => $seal->keyEncryption()->name(),
+                ]))
+                ->build(),
+        );
+        QueuedBodies::send(self::service('doctrine.dbal.default_connection', Connection::class), MessengerContract::FAILURE_DSN, $body);
     }
 
     private static function keyPastItsAge(): TenantKey
