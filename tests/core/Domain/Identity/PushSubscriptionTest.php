@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Core\Tests\Domain\Identity;
 
+use Beffroi\Core\Tests\Fixture\TextsThatAreNotPlain;
 use Beffroi\Core\Domain\Identity\PushSubscription;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Exception\InvalidArgumentException;
@@ -275,5 +276,53 @@ final class PushSubscriptionTest extends TestCase
             'Alice at the counter',
             Fixtures::now(),
         );
+    }
+
+    #[Test]
+    #[DataProvider('provideLabelsThatAreNotPlainText')]
+    public function aNameThatIsNotPlainTextIsRefused(string $label): void
+    {
+        // Given
+        $subscription = $this->subscription();
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The name of a browser is plain text, with no control, format or line separator character.');
+
+        // When
+        $subscription->rename($label);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideLabelsThatAreNotPlainText(): iterable
+    {
+        yield from TextsThatAreNotPlain::around('Alice');
+    }
+
+    #[Test]
+    public function aBrowserThatSubscribesUnderANameThatIsNotPlainTextIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The name of a browser is plain text, with no control, format or line separator character.');
+
+        // When
+        new PushSubscription(Uuid::v7(), $this->alice, self::ENDPOINT, self::PUBLIC_KEY, self::AUTH_SECRET, 'the-key', "Alice\e[2K", Fixtures::now());
+    }
+
+    #[Test]
+    public function aBrowserThatSubscribesAgainUnderANameThatIsNotPlainTextIsRefused(): void
+    {
+        // Given
+        $subscription = $this->subscription();
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The name of a browser is plain text, with no control, format or line separator character.');
+
+        // When
+        $subscription->resubscribedWith(self::PUBLIC_KEY, self::AUTH_SECRET, 'the-key', "Alice\e[2K");
     }
 }

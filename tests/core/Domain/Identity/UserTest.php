@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Core\Tests\Domain\Identity;
 
+use Beffroi\Core\Tests\Fixture\TextsThatAreNotPlain;
 use DateTimeImmutable;
 use Beffroi\Core\Domain\Identity\Address;
 use Beffroi\Core\Domain\Identity\EmailAddress;
@@ -537,5 +538,39 @@ final class UserTest extends TestCase
         yield 'another provider' => [UserSource::upstream('workforce', ['email']), UserSource::upstream('partners', ['email'])];
         yield 'a local person given a provider' => [UserSource::local(), UserSource::upstream('workforce', ['email'])];
         yield 'a person of a provider made local' => [UserSource::upstream('workforce', ['email']), UserSource::local()];
+    }
+
+    #[Test]
+    #[DataProvider('provideUsernamesThatAreNotPlainText')]
+    public function aUsernameThatIsNotPlainTextIsRefused(string $username): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A username is plain text, with no control, format or line separator character.');
+
+        // When
+        Fixtures::user(username: $username);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideUsernamesThatAreNotPlainText(): iterable
+    {
+        yield from TextsThatAreNotPlain::around('mallory');
+    }
+
+    #[Test]
+    public function aUsernameThatIsNotPlainTextIsRefusedOnARename(): void
+    {
+        // Given
+        $user = Fixtures::user();
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A username is plain text, with no control, format or line separator character.');
+
+        // When
+        $user->rename("alice\e[2K\e[1Aadmin", Fixtures::now());
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Core\Tests\Domain\Credential;
 
+use Beffroi\Core\Tests\Fixture\TextsThatAreNotPlain;
 use function array_filter;
 use function array_map;
 use DateTimeImmutable;
@@ -470,5 +471,25 @@ final class PasskeyCredentialTest extends TestCase
         static::assertSame(9, $record->counter);
         static::assertTrue($record->backupEligible);
         static::assertFalse($record->backupStatus);
+    }
+
+    #[Test]
+    #[DataProvider('provideNamesThatAreNotPlainText')]
+    public function aNameThatIsNotPlainTextIsRefused(string $name): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A passkey name is plain text, with no control, format or line separator character.');
+
+        // When
+        Fixtures::passkey(name: $name);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideNamesThatAreNotPlainText(): iterable
+    {
+        yield from TextsThatAreNotPlain::around('Pixel');
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Core\Tests\Domain\Tenant;
 
+use Beffroi\Core\Tests\Fixture\TextsThatAreNotPlain;
 use Beffroi\Core\Domain\Tenant\Issuer;
 use Beffroi\Core\Domain\Tenant\LogoUri;
 use Beffroi\Core\Domain\Tenant\Tenant;
@@ -158,5 +159,29 @@ final class TenantTest extends TestCase
 
         // When / Then
         static::assertFalse($tenant->equals(Fixtures::tenant()));
+    }
+
+    #[Test]
+    #[DataProvider('provideNamesThatAreNotPlainText')]
+    public function itCannotBeRenamedToWhatIsNotPlainText(string $name): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The tenant name must be plain text of at most 255 characters, with no control, format or line separator character.');
+
+        // When
+        $tenant->rename($name);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideNamesThatAreNotPlainText(): iterable
+    {
+        yield from TextsThatAreNotPlain::around('Acme');
+        yield 'longer than a line may be' => [str_repeat('a', 256)];
     }
 }

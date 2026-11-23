@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Beffroi\Core\Tests\Domain\Identity;
+namespace Beffroi\Core\Tests\Domain\Encoding;
 
-use Beffroi\Core\Domain\Identity\PlainText;
+use Beffroi\Core\Domain\Encoding\PlainText;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -57,5 +57,50 @@ final class PlainTextTest extends TestCase
         yield 'a line separator' => ["Ada\u{2028}Lovelace"];
         yield 'a byte that is not UTF-8' => ["Ada\xFF"];
         yield 'one character too long' => [str_repeat('a', 256)];
+    }
+
+    /**
+     * OIDC Core §5.1.1
+     */
+    #[Test]
+    #[DataProvider('provideLines')]
+    public function linesSeparatedByLineFeedsArePlain(string $value): void
+    {
+        // When / Then
+        static::assertTrue(PlainText::holdsLines($value, 64));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideLines(): iterable
+    {
+        yield 'one line' => ['1 Main Street'];
+        yield 'lines separated by a line feed' => ["1 Main Street\nOxford OX1 1AA"];
+        yield 'lines separated by a carriage return and a line feed' => ["1 Main Street\r\nOxford OX1 1AA"];
+        yield 'as long as they may be, each separator counted' => [str_repeat('a', 30) . "\r\n" . str_repeat('a', 32)];
+    }
+
+    /**
+     * OIDC Core §5.1.1
+     */
+    #[Test]
+    #[DataProvider('provideLinesThatAreNotPlain')]
+    public function linesThatHoldAnythingElseAreNotPlain(string $value): void
+    {
+        // When / Then
+        static::assertFalse(PlainText::holdsLines($value, 64));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideLinesThatAreNotPlain(): iterable
+    {
+        yield 'a carriage return alone' => ["1 Main Street\rOxford"];
+        yield 'an escape sequence' => ["1 Main Street\e[2K\nOxford"];
+        yield 'a line separator' => ["1 Main Street\u{2028}Oxford"];
+        yield 'a paragraph separator' => ["1 Main Street\u{2029}Oxford"];
+        yield 'one character too long, each separator counted' => [str_repeat('a', 31) . "\r\n" . str_repeat('a', 32)];
     }
 }

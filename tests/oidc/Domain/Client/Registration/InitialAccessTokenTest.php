@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Domain\Client\Registration;
 
+use function str_repeat;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Beffroi\Core\Tests\Fixture\TextsThatAreNotPlain;
 use DateTimeImmutable;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Domain\Client\Registration\InitialAccessToken;
@@ -187,5 +190,29 @@ final class InitialAccessTokenTest extends TestCase
             Fixtures::now(),
             $expiresAt ?? Fixtures::now()->modify('+1 day'),
         );
+    }
+
+    /**
+     * RFC 7591 §1.2
+     */
+    #[Test]
+    #[DataProvider('provideNamesThatAreNotPlainText')]
+    public function aTokenIsNamedInPlainText(string $name): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('The name of an initial access token is plain text of at most 255 characters, with no control, format or line separator character.');
+
+        // When
+        self::token(name: $name);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideNamesThatAreNotPlainText(): iterable
+    {
+        yield from TextsThatAreNotPlain::around('partners');
+        yield 'longer than a line may be' => [str_repeat('a', 256)];
     }
 }

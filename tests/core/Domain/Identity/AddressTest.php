@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Beffroi\Core\Tests\Domain\Identity;
 
+use function str_repeat;
+use function sprintf;
 use Beffroi\Core\Domain\Identity\Address;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -130,5 +132,64 @@ final class AddressTest extends TestCase
             ],
             'The member "formatted" must be a string or absent.',
         ];
+    }
+
+    /**
+     * OIDC Core §5.1.1
+     */
+    #[Test]
+    #[DataProvider('provideMembersThatAreNotPlainText')]
+    public function aMemberThatIsNotPlainTextIsRefused(string $member, string $value, string $message): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs($message);
+
+        // When
+        new Address(...[$member => $value]);
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string}>
+     */
+    public static function provideMembersThatAreNotPlainText(): iterable
+    {
+        $lines = 'The %s of an address must be plain text of at most 1024 characters, its lines separated by line feeds, with no other control, format or separator character.';
+        $line = 'The %s of an address must be plain text of at most 255 characters, with no control, format or line separator character.';
+        $escape = "1 Main Street\e[2K\e[1A\e[2KNothing to see";
+        yield 'an escape sequence in the formatted address' => ['formatted', $escape, sprintf($lines, 'formatted')];
+        yield 'an escape sequence in the street' => ['streetAddress', $escape, sprintf($lines, 'street_address')];
+        yield 'an escape sequence in the locality' => ['locality', $escape, sprintf($line, 'locality')];
+        yield 'an escape sequence in the region' => ['region', $escape, sprintf($line, 'region')];
+        yield 'an escape sequence in the postal code' => ['postalCode', $escape, sprintf($line, 'postal_code')];
+        yield 'an escape sequence in the country' => ['country', $escape, sprintf($line, 'country')];
+        yield 'a carriage return alone in the street' => ['streetAddress', "1 Main Street\rFlat 2", sprintf($lines, 'street_address')];
+        yield 'a line feed in the locality' => ['locality', "Oxford\nYour account is locked", sprintf($line, 'locality')];
+        yield 'a right-to-left override in the country' => ['country', "United Kingdom\u{202E}", sprintf($line, 'country')];
+        yield 'a street longer than its lines may be' => ['streetAddress', str_repeat('a', 1025), sprintf($lines, 'street_address')];
+        yield 'a locality longer than a line may be' => ['locality', str_repeat('a', 256), sprintf($line, 'locality')];
+    }
+
+    /**
+     * OIDC Core §5.1.1
+     */
+    #[Test]
+    #[DataProvider('provideAddressesOnSeveralLines')]
+    public function theFormattedAddressAndTheStreetHoldSeveralLines(string $member, string $claim, string $value): void
+    {
+        // When
+        $address = new Address(...[$member => $value]);
+
+        // Then
+        static::assertSame($value, $address->toDocument()[$claim]);
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string}>
+     */
+    public static function provideAddressesOnSeveralLines(): iterable
+    {
+        yield 'a formatted address separated by line feeds' => ['formatted', 'formatted', "1 Wonderland Road\nOxford OX1 1AA\nUnited Kingdom"];
+        yield 'a street separated by a carriage return and a line feed' => ['streetAddress', 'street_address', "1 Wonderland Road\r\nFlat 2"];
     }
 }

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Symfony\Functional\Command;
 
+use App\Doctrine\PersonalData\EncryptedColumnTypes;
 use Beffroi\Core\Domain\Group\Group;
 use Beffroi\Core\Domain\Group\GroupMembership;
 use Beffroi\Core\Domain\Group\GroupSource;
-use Beffroi\Core\Domain\Identity\Address;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Identity\UserSource;
@@ -17,6 +17,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -58,16 +59,28 @@ final class UserShowTest extends ConsoleTestCase
         ];
     }
 
-    /**
-     * OIDC Core §5.1.1
-     */
     #[Test]
-    public function theControlsOfTheAddressAPersonWroteAreNotPrinted(): void
+    public function theControlsOfARowWrittenWithoutTheModelAreNotPrinted(): void
     {
         // Given
         $user = User::create(Uuid::v7(), self::tenant(), new Subject('mallory-subject'), 'mallory', self::now());
-        $user->changeAddress(new Address(streetAddress: "1 Main Street\e[2K\e[1A\e[2KNothing to see"), self::now());
         self::service('test.beffroi.users', UserRepositoryInterface::class)->save($user);
+        self::entityManager()
+            ->getConnection()
+            ->update(
+                'beffroi_user',
+                [
+                    'phone_number' => "+44 1865 000000\e[2K\e[1A\e[2KNothing to see",
+                ],
+                [
+                    'id' => $user->id,
+                ],
+                [
+                    'phone_number' => EncryptedColumnTypes::name('user', 'string'),
+                    'id' => UuidType::NAME,
+                ],
+            );
+        self::entityManager()->clear();
 
         // When
         $tester = self::console('beffroi:user:show', [
@@ -75,7 +88,7 @@ final class UserShowTest extends ConsoleTestCase
         ]);
 
         // Then
-        static::assertSame('1 Main Street[2K[1A[2KNothing to see', self::displayed($tester, 'Address'));
+        static::assertSame('+44 1865 000000[2K[1A[2KNothing to see (unverified)', self::displayed($tester, 'Phone number'));
     }
 
     #[Test]
