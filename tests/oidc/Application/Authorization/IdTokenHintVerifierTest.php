@@ -145,6 +145,9 @@ final class IdTokenHintVerifierTest extends TestCase
         yield 'other audience' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"other"}'];
         yield 'other audiences' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":["other","another"]}'];
         yield 'audience map' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":{"a":"spa"}}'];
+        yield 'audience under the key 0 of an object' => [
+            '{"iss":"https://id.acme.example","sub":"alice-subject","aud":{"0":"spa"},"exp":1,"iat":1,"auth_time":1}',
+        ];
         yield 'audience not a string' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":42}'];
     }
 

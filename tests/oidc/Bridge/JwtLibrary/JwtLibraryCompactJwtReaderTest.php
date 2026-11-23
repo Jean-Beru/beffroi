@@ -54,6 +54,22 @@ final class JwtLibraryCompactJwtReaderTest extends TestCase
     }
 
     /**
+     * RFC 7519 §7.2
+     */
+    #[Test]
+    public function aTokenWhoseClaimsAreNoJsonObjectIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidJwtException::class);
+        $this->expectExceptionMessageIs('The claims of a token are a JSON object (RFC 7519 section 7.2).');
+
+        // When
+        new JwtLibraryCompactJwtReader()->read(self::compact([
+            'alg' => 'ES256',
+        ], Base64Url::encode('["a-client"]')));
+    }
+
+    /**
      * @param array<string, mixed> $header
      */
     private static function compact(array $header, string $payload): string

@@ -288,6 +288,13 @@ final class IssuerAssertionValidatorTest extends TestCase
                 ],
             ]),
         ];
+        yield 'this provider under the key 0 of an object' => [
+            static fn (Tenant $tenant): string => TrustedIssuers::assertion('employee-42', (string) $tenant->issuer, Fixtures::now(), [
+                'aud' => (object) [
+                    '0' => (string) $tenant->issuer,
+                ],
+            ]),
+        ];
         yield 'no jti' => [
             static fn (Tenant $tenant): string => TrustedIssuers::assertion('employee-42', (string) $tenant->issuer, Fixtures::now(), [
                 'jti' => null,

@@ -776,6 +776,15 @@ final class AccessTokenVerifierTest extends TestCase
             null,
             InvalidArgumentException::class,
         ];
+        yield 'aud as an object holding the client under the key 0' => [
+            self::with([
+                'aud' => (object) [
+                    '0' => 'spa',
+                ],
+            ]),
+            null,
+            InvalidArgumentException::class,
+        ];
         yield 'no sub' => [self::without('sub'), null, null];
         yield 'no iat' => [self::without('iat'), null, null];
         yield 'iat as a string' => [
