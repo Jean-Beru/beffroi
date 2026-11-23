@@ -1291,6 +1291,18 @@ services:
     test.beffroi.journal:
         alias: Beffroi\Core\Port\JournalInterface
         public: true
+    test.beffroi.chain_of_acts:
+        alias: Beffroi\Core\Port\ChainOfActsInterface
+        public: true
+    test.beffroi.journal_signature:
+        alias: Beffroi\Core\Application\Journal\JournalSignature
+        public: true
+    test.beffroi.journal_verification:
+        alias: Beffroi\Core\Application\Journal\JournalVerification
+        public: true
+    test.beffroi.journal_holds_together:
+        alias: App\Doctor\JournalHoldsTogether
+        public: true
     test.beffroi.acts:
         alias: Beffroi\Core\Port\ActsOfAPersonInterface
         public: true

@@ -16,7 +16,6 @@ use Beffroi\Core\Application\Journal\JournalRetention;
 use Beffroi\Core\Domain\Credential\CredentialChange;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
 use Beffroi\Core\Domain\Listing\RetentionWindow;
-use Beffroi\Core\Port\JournalInterface;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Routing\Generator\UrlGenerator;
@@ -88,7 +87,7 @@ final class WebPushCredentialChangeChannelTest extends TestCase
                 new UrlGenerator($routes, new RequestContext()),
             ),
             $this->browsers->broadcast(),
-            new JournalRetention(self::createStub(JournalInterface::class), $this->browsers->clock, new RetentionWindow($retentionDays)),
+            new JournalRetention($this->browsers->clock, new RetentionWindow($retentionDays)),
         );
     }
 
