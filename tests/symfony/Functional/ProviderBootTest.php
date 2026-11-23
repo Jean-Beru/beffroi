@@ -27,6 +27,7 @@ use Beffroi\Oidc\Exception\InvalidClientException;
 use Beffroi\Oidc\Port\ClientRepositoryInterface;
 use function array_fill;
 use function array_map;
+use function array_slice;
 use function count;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;
@@ -138,6 +139,26 @@ final class ProviderBootTest extends DatabaseTestCase
 
         // Then
         static::assertSame(array_fill(0, count($algorithms), false), $verified);
+    }
+
+    /**
+     * Decision 0058
+     */
+    #[Test]
+    public function aHashOfAnAlgorithmTheProviderReadsWithoutMakingItIsOneItWouldReplace(): void
+    {
+        // Given
+        $hasher = self::service('test.beffroi.password_hasher', PasswordHasherInterface::class);
+        $algorithms = array_slice(self::service('beffroi.password_algorithms', PasswordAlgorithmsInterface::class)->all(), 1);
+
+        // When
+        $replaced = array_map(
+            static fn (PasswordAlgorithmInterface $algorithm): bool => $hasher->needsRehash(new PasswordHash($algorithm, 'no hash of it')),
+            $algorithms,
+        );
+
+        // Then
+        static::assertSame(array_fill(0, count($algorithms), true), $replaced);
     }
 
     #[Test]
