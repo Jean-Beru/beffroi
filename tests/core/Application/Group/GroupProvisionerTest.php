@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Core\Tests\Application\Group;
 
+use Beffroi\Core\Tests\Fixture\TextsThatAreNotPlain;
 use Beffroi\Core\Exception\GroupAlreadyExistsException;
 use Beffroi\Core\Application\Group\GroupProvisioner;
 use Beffroi\Core\Bridge\InMemory\InMemoryGroupRepository;
@@ -241,5 +242,25 @@ final class GroupProvisionerTest extends TestCase
 
         // Then
         static::assertSame(str_repeat('é', 255), $group->name);
+    }
+
+    #[Test]
+    #[DataProvider('provideNamesThatAreNotPlainText')]
+    public function aNameThatIsNotPlainTextIsRefused(string $name): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A group name must be plain text, with no control, format or line separator character.');
+
+        // When
+        $this->provisioner->create($this->tenant, $name, Fixtures::context());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideNamesThatAreNotPlainText(): iterable
+    {
+        yield from TextsThatAreNotPlain::around('admins');
     }
 }

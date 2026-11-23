@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Client;
 
+use function sprintf;
+use Beffroi\Core\Tests\Fixture\TextsThatAreNotPlain;
 use Beffroi\Core\Tests\Fixture\RsaModuli;
 use Beffroi\Oidc\Application\Client\ClientAuthenticationMethods;
 use Beffroi\Oidc\Application\Client\ClientMetadataReader;
@@ -812,5 +814,80 @@ final class ClientMetadataReaderTest extends TestCase
     private static function declared(array $members): ClientMetadata
     {
         return Registrations::declared($members);
+    }
+
+    /**
+     * RFC 7591 §2
+     */
+    #[Test]
+    #[DataProvider('provideSoftwareThatIsNotPlainText')]
+    public function aSoftwareMemberThatIsNotPlainTextIsRefused(string $member, string $value): void
+    {
+        // Then
+        $this->expectException(InvalidClientMetadataException::class);
+        $this->expectExceptionMessageIsOrContains(sprintf('The %s option of the client', $member));
+
+        // When
+        self::read([
+            'redirect_uris' => ['https://rp.example/cb'],
+            $member => $value,
+        ]);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideSoftwareThatIsNotPlainText(): iterable
+    {
+        foreach (['software_id', 'software_version'] as $member) {
+            foreach (TextsThatAreNotPlain::around('4.2') as $case => [$value]) {
+                yield $member . ', ' . $case => [$member, $value];
+            }
+            yield $member . ', longer than a line may be' => [$member, str_repeat('a', 256)];
+        }
+    }
+
+    /**
+     * RFC 7591 §2
+     */
+    #[Test]
+    #[DataProvider('provideContactsThatAreNotPlainText')]
+    public function aContactThatIsNotPlainTextIsRefused(string $contact): void
+    {
+        // Then
+        $this->expectException(InvalidClientMetadataException::class);
+        $this->expectExceptionMessageIsOrContains('must list plain texts of at most 255 characters');
+
+        // When
+        self::read([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'contacts' => ['support@rp.example', $contact],
+        ]);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideContactsThatAreNotPlainText(): iterable
+    {
+        yield from TextsThatAreNotPlain::around('ops@rp.example');
+    }
+
+    /**
+     * RFC 7591 §2
+     */
+    #[Test]
+    public function theSoftwareOfAClientIsReadAsItWrote(): void
+    {
+        // When
+        $registration = self::read([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'software_id' => '4NRB1-0XZABZI9E6-5SM3R',
+            'software_version' => '2.1 (build 2026-11-23)',
+        ]);
+
+        // Then
+        static::assertSame('4NRB1-0XZABZI9E6-5SM3R', $registration->softwareId);
+        static::assertSame('2.1 (build 2026-11-23)', $registration->softwareVersion);
     }
 }
