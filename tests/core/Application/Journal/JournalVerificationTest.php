@@ -12,7 +12,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Decision 0058
+ * Decision 0060
  */
 final class JournalVerificationTest extends TestCase
 {

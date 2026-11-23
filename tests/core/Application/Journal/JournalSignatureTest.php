@@ -19,7 +19,7 @@ use PHPUnit\Framework\TestCase;
 use function strtr;
 
 /**
- * Decision 0058, RFC 8725 §3.11
+ * Decision 0060, RFC 8725 §3.11
  */
 final class JournalSignatureTest extends TestCase
 {

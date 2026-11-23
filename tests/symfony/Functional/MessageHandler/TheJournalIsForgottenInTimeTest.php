@@ -107,7 +107,7 @@ final class TheJournalIsForgottenInTimeTest extends DatabaseTestCase
     }
 
     /**
-     * Decision 0058: its activation is an act of the journal, written now.
+     * Decision 0060: its activation is an act of the journal, written now.
      */
     private static function aKeyToSignTheCutWith(): void
     {

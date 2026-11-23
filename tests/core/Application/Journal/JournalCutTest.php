@@ -15,7 +15,7 @@ use PHPUnit\Framework\TestCase;
 use function sprintf;
 
 /**
- * Decision 0058
+ * Decision 0060
  */
 final class JournalCutTest extends TestCase
 {
@@ -110,6 +110,24 @@ final class JournalCutTest extends TestCase
         // Then
         $this->expectException(BrokenJournalException::class);
         $this->expectExceptionMessageIs('The act at position 1 of the journal is not the one written there.');
+
+        // When
+        $this->journal->cut()->forgetPastTheWindow($this->journal->tenant);
+    }
+
+    #[Test]
+    public function anActMovedBackWithItsLinksComputedAgainUpToTheSignedHeadIsNotForgotten(): void
+    {
+        // Given
+        $this->journal->chain->write();
+        $this->journal->chain->write();
+        $this->journal->chain->write();
+        $this->journal->signature()->sign($this->journal->tenant);
+        $this->journal->chain->rewriteAndRelink(1, ChainOfWrittenActs::act('user.authenticated', self::past()));
+
+        // Then
+        $this->expectException(BrokenJournalException::class);
+        $this->expectExceptionMessageIs('The acts up to position 3 of the journal are not the ones signed.');
 
         // When
         $this->journal->cut()->forgetPastTheWindow($this->journal->tenant);

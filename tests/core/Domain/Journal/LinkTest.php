@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 use function str_repeat;
 
 /**
- * Decision 0058
+ * Decision 0060
  */
 final class LinkTest extends TestCase
 {

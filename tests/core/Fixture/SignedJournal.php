@@ -74,6 +74,7 @@ final readonly class SignedJournal
             new WritesAsTheyCome(),
             $this->clock,
             new JournalRetention($this->clock, new RetentionWindow(self::RETENTION)),
+            $this->verification(),
         );
     }
 
