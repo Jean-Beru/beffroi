@@ -459,6 +459,27 @@ final class ConfigurationClientRepositoryTest extends TestCase
     }
 
     /**
+     * RFC 8707 §2, OIDC Core §5.3
+     */
+    #[Test]
+    public function aClientThatNamesItselfAmongItsResourcesFailsAtBoot(): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('names itself among its resources');
+
+        // When
+        $this->repository([
+            'https://batch.example/' => [
+                'secret' => Clients::SECRET,
+                'token_endpoint_auth_method' => 'client_secret_basic',
+                'grant_types' => ['client_credentials'],
+                'resources' => [Clients::CALENDAR, 'https://batch.example/'],
+            ],
+        ], grants: Grants::servedWithClientCredentials());
+    }
+
+    /**
      * OIDC Core §2, RFC 6749 appendix A.1
      */
     #[Test]

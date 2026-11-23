@@ -607,6 +607,18 @@ final class ClientRegistrationTest extends TestCase
             ),
             'at least one scope',
         ];
+        yield 'a resource that is the client itself (RFC 8707 §2, OIDC Core §5.3)' => [
+            static fn (): ClientRegistration => new ClientRegistration(
+                'https://app.example/',
+                new ClientPresentation('Name'),
+                Methods::none(),
+                false,
+                $uris,
+                Shapes::jwt(),
+                resources: [new ResourceIndicator(Clients::CALENDAR), new ResourceIndicator('https://app.example/')],
+            ),
+            'names itself among its resources',
+        ];
     }
 
     /**
