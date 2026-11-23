@@ -306,6 +306,30 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
      * CIBA Core §7.1
      */
     #[Test]
+    public function aPublicClientIsRefused(): void
+    {
+        // Given
+        $this->clients->save(Clients::publicBackchannel($this->tenant));
+
+        // Then
+        $this->expectException(InvalidClientException::class);
+        $this->expectExceptionMessageIs('invalid_client: The backchannel authentication endpoint requires client authentication (CIBA Core section 7.1); a public client has none.');
+
+        // When
+        $this->handler->handle(
+            $this->tenant,
+            null,
+            self::parameters([
+                'client_id' => 'public-terminal',
+            ]),
+            $this->context,
+        );
+    }
+
+    /**
+     * CIBA Core §7.1
+     */
+    #[Test]
     public function aRequestThatDoesNotAskForOpenidIsRefused(): void
     {
         // Then

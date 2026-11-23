@@ -289,6 +289,29 @@ final class Clients
     }
 
     /**
+     * CIBA Core §7.1
+     */
+    public static function publicBackchannel(Tenant $tenant, string $clientId = 'public-terminal'): Client
+    {
+        return new Client(
+            $tenant,
+            new ClientRegistration(
+                $clientId,
+                new ClientPresentation('Payment terminal without a secret'),
+                Methods::none(),
+                false,
+                [],
+                Shapes::jwt(),
+                [],
+                [Grants::ciba()],
+                new Scopes([new Scope('openid'), new Scope('profile')]),
+                requiresConsent: false,
+                backchannelTokenDeliveryMode: new PollDelivery(),
+            ),
+        );
+    }
+
+    /**
      * RFC 8705 §3.4, FAPI 1.0 Advanced Final §5.2.2
      */
     public static function boundToItsCertificate(Tenant $tenant, string $clientId = 'bound-terminal'): Client

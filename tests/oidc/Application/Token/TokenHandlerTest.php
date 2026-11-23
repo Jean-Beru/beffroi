@@ -55,6 +55,7 @@ use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
 use Beffroi\Oidc\Tests\Fixture\Clients;
 use Beffroi\Oidc\Tests\Fixture\Endpoints;
 use Beffroi\Oidc\Tests\Fixture\FakeAccessTokenIssuer;
+use Beffroi\Oidc\Tests\Fixture\FakeBackchannelGrant;
 use Beffroi\Oidc\Tests\Fixture\FakeClientActingGrant;
 use Beffroi\Oidc\Tests\Fixture\FakeClientAuthenticatingGrant;
 use Beffroi\Oidc\Tests\Fixture\FakeClientLoadBudget;
@@ -483,6 +484,7 @@ final class TokenHandlerTest extends TestCase
         yield 'a grant a client uses for itself (RFC 6749 §4.4)' => [new FakeClientActingGrant(Grants::clientCredentials())];
         yield 'a grant that exchanges a token (RFC 8693 §2.1)' => [new FakeExchangingGrant(Grants::tokenExchange())];
         yield 'a grant that declares nothing else (RFC 7523 §2.1)' => [new FakeClientAuthenticatingGrant(Grants::jwtBearer())];
+        yield 'a grant that asks the user through a backchannel (CIBA Core §10.1)' => [new FakeBackchannelGrant(Grants::ciba())];
     }
 
     /**
