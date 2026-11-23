@@ -17,7 +17,7 @@ use function array_map;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Decision 0059, the budget of the persons an administrator reads; decision 0022.
+ * Decision 0014, the budget of the persons an administrator reads; decision 0022.
  */
 final class PersonsDeliveredTest extends TestCase
 {
@@ -66,7 +66,7 @@ final class PersonsDeliveredTest extends TestCase
     }
 
     #[Test]
-    public function theRefusalIsAnActOfTheAdministratorThatNamesThem(): void
+    public function theRefusalIsAnActOfTheAdministratorInTheirOwnJournal(): void
     {
         // Given
         $events = new RecordingEventDispatcher();
@@ -82,11 +82,10 @@ final class PersonsDeliveredTest extends TestCase
         // Then
         $refusals = $events->of(ReadRefusedToAnAdministrator::class);
         static::assertSame(
-            [['administration.read_refused', 'administrator-subject', 'administrator-subject', 'beffroi-tui', $administrator->tenant]],
+            [['administration.read_refused', 'administrator-subject', 'beffroi-tui', $administrator->tenant]],
             array_map(static fn (ReadRefusedToAnAdministrator $refusal): array => [
                 $refusal->name(),
                 $refusal->subject()->value,
-                $refusal->author()->value,
                 $refusal->clientId,
                 $refusal->tenant,
             ], $refusals),

@@ -200,7 +200,7 @@ final class EventsLeaveTheProcessTest extends TestCase
             $now,
             $client->tenant,
             $clientId,
-            new Subject('administrator-subject'),
+            $subject,
             $context,
         )];
         yield 'a registered client deleted' => [new RegisteredClientDeleted($now, $client->tenant, $clientId, $context)];

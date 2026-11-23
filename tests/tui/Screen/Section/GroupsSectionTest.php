@@ -343,7 +343,7 @@ final class GroupsSectionTest extends TestCase
     }
 
     /**
-     * Decision 0059: a read past the budget of the administrator delivers nobody, and says when to read again.
+     * Decision 0014: a read past the budget of the administrator delivers nobody, and says when to read again.
      */
     #[Test]
     public function aReadPastTheBudgetOfTheAdministratorSaysWhenToReadAgain(): void

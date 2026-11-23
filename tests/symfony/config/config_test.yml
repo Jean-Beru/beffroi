@@ -166,7 +166,7 @@ parameters:
     # PlaneTest names BEFFROI_PLANE. Left alone, they are far above what the suite sends.
     env(BEFFROI_TEST_ORIGIN_BUDGET): 100000
     env(BEFFROI_TEST_CLIENT_BUDGET): 100000
-    # The persons one administrator reads (decision 0059): far above what the suite reads, a test of a refusal spending
+    # The persons one administrator reads (decision 0014): far above what the suite reads, a test of a refusal spending
     # the budget itself before its request.
     env(BEFFROI_TEST_ADMINISTRATOR_PERSONS): 100000
     # Settings the application reads from the environment (issues #911 and #913), read the same way here: what

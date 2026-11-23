@@ -10,12 +10,14 @@ use Beffroi\Core\Domain\Group\Group;
 use Beffroi\Core\Domain\Group\GroupMembership;
 use Beffroi\Core\Domain\Group\GroupSource;
 use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Domain\Journal\JournalEntry;
 use Beffroi\Core\Port\GroupMembershipRepositoryInterface;
 use Beffroi\Core\Port\GroupRepositoryInterface;
 use Beffroi\Oidc\Domain\Administration\ActingAdministrator;
 use Beffroi\Oidc\Domain\Event\PersonReadByAnAdministrator;
 use Beffroi\Oidc\Domain\Event\ReadRefusedToAnAdministrator;
 use Beffroi\Oidc\Port\PersonsBudgetInterface;
+use function array_map;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
@@ -24,7 +26,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Decision 0059, the budget of the persons one administrator reads through the administration API; decisions 0022 and
+ * Decision 0014, the budget of the persons one administrator reads through the administration API; decisions 0022 and
  * 0038.
  */
 final class AdministrationApiPersonsBudgetTest extends AdministrationTestCase
@@ -94,7 +96,7 @@ final class AdministrationApiPersonsBudgetTest extends AdministrationTestCase
     }
 
     #[Test]
-    public function theRefusalIsAnActOfTheAdministratorThatNamesThem(): void
+    public function theRefusalIsAnActInTheJournalOfTheAdministrator(): void
     {
         // Given
         self::user('bob', 'bob-subject');
@@ -106,7 +108,13 @@ final class AdministrationApiPersonsBudgetTest extends AdministrationTestCase
         $this->api('/users', $token, query: ['username' => 'bob']);
 
         // Then
-        static::assertSame([['alice-subject', 'alice-subject']], self::authored(ReadRefusedToAnAdministrator::NAME));
+        static::assertSame(
+            [['alice-subject', null, self::CLIENT]],
+            array_map(
+                static fn (JournalEntry $act): array => [$act->subject?->value, $act->author?->value, $act->client],
+                self::entityManager()->getRepository(JournalEntry::class)->findBy(['act' => ReadRefusedToAnAdministrator::NAME]),
+            ),
+        );
     }
 
     #[Test]

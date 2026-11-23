@@ -19,7 +19,7 @@ use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Decision 0059, the budget of the persons an administrator reads.
+ * Decision 0014, the budget of the persons an administrator reads.
  */
 final class RateLimitedPersonsBudgetTest extends TestCase
 {

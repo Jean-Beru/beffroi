@@ -28,7 +28,7 @@ use function sprintf;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Decisions 0022 and 0038, the members of a group read a page at a time; decision 0059, the budget of the persons an
+ * Decisions 0022 and 0038, the members of a group read a page at a time; decision 0014, the budget of the persons an
  * administrator reads.
  */
 final class AdministeredGroupsTest extends TestCase
