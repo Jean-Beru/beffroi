@@ -493,6 +493,23 @@ final class DeviceCodeGrantTest extends TestCase
     }
 
     /**
+     * Architecture §4.3
+     */
+    #[Test]
+    public function aRequestWhoseGrantWasRevokedGrantsNothing(): void
+    {
+        // Given
+        $this->approved()->revoke($this->clock->now());
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs('invalid_grant: The device code is invalid.');
+
+        // When
+        $this->poll();
+    }
+
+    /**
      * RFC 6749 §4.1.4, OIDC Core §11
      */
     #[Test]
