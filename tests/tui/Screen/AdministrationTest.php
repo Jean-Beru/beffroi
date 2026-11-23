@@ -11,9 +11,12 @@ use Beffroi\Tui\Key\SigningKey;
 use Beffroi\Tui\Provider\ProviderMetadataReader;
 use Beffroi\Tui\Screen\Administration;
 use Beffroi\Tui\Screen\Shell;
+use Beffroi\Tui\Screen\ThisProgram;
 use Beffroi\Tui\SignIn\BrowserInterface;
 use Beffroi\Tui\SignIn\SignIn;
+use Beffroi\Tui\Tests\Fixture\FakeGitHub;
 use Beffroi\Tui\Tests\Fixture\FakeProvider;
+use Beffroi\Tui\Tests\Fixture\Programs;
 use Beffroi\Tui\Tests\Fixture\RecordedRequests;
 use Beffroi\Tui\Text\Catalogue;
 use Beffroi\Tui\Wiring;
@@ -27,6 +30,7 @@ use PHPUnit\Framework\TestCase;
 use Revolt\EventLoop;
 use function str_contains;
 use function str_ends_with;
+use function str_repeat;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Component\Tui\Terminal\ScreenBuffer;
@@ -136,6 +140,24 @@ final class AdministrationTest extends TestCase
         );
     }
 
+    #[Test]
+    public function theHomePageNamesANewerReleaseOnceTheScreenHasStarted(): void
+    {
+        // Given
+        $seen = new ArrayObject();
+        $this->whenTheScreenShows('0.1.1', function () use ($seen): null {
+            $seen[] = true;
+
+            return $this->press('q');
+        });
+
+        // When
+        $this->administer(Programs::release('0.1.0', FakeGitHub::serving('0.1.1', str_repeat('0', 64))));
+
+        // Then
+        static::assertCount(1, $seen);
+    }
+
     private static function pushed(): MockResponse
     {
         return new MockResponse('{"request_uri":"urn:ietf:params:oauth:request_uri:r","expires_in":60}', ['http_code' => 201]);
@@ -145,7 +167,7 @@ final class AdministrationTest extends TestCase
      * Runs the screen until it is quit: the browser quits it once it was opened, and it is quit after five seconds
      * whatever happened, so that a test that fails does not hold the suite.
      */
-    private function administer(): void
+    private function administer(?ThisProgram $program = null): void
     {
         $quit = fn (): null => $this->press('q');
         $browser = new readonly class($this->opened, $quit) implements BrowserInterface {
@@ -169,7 +191,7 @@ final class AdministrationTest extends TestCase
         $this->watchers[] = EventLoop::delay(5, $quit);
         new Administration(
             new SignIn(new ProviderMetadataReader($this->http->client), $this->http->client, $clock, $browser, '<p>back</p>'),
-            new Shell(Catalogue::translator('en'), $clock, Wiring::sections(), false),
+            new Shell(Catalogue::translator('en'), $clock, Wiring::sections(), false, $program ?? Programs::fromItsSources()),
             'en',
         )->run(new Tui(Shell::styleSheet(), $this->terminal), FakeProvider::profile(SigningKey::generate()), 'default');
     }

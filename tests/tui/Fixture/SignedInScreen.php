@@ -8,6 +8,7 @@ use function Amp\delay;
 use function array_filter;
 use Beffroi\Tui\Screen\SectionInterface;
 use Beffroi\Tui\Screen\Shell;
+use Beffroi\Tui\Screen\ThisProgram;
 use Beffroi\Tui\Text\Catalogue;
 use Beffroi\Tui\Wiring;
 use Closure;
@@ -65,6 +66,7 @@ final readonly class SignedInScreen
         array $tokens = [],
         private int $columns = self::COLUMNS,
         private int $rows = self::ROWS,
+        ?ThisProgram $program = null,
     ) {
         $this->http = RecordedRequests::routed(static function (string $method, string $url) use ($answers): MockResponse {
             $path = substr($url, strlen(FakeProvider::ADMINISTRATION));
@@ -81,7 +83,13 @@ final readonly class SignedInScreen
         $this->terminal = new VirtualTerminal($this->columns, $this->rows);
         $this->tui = new Tui(Shell::styleSheet($colours), $this->terminal);
         $this->sections = Wiring::sections();
-        $this->shell = new Shell(Catalogue::translator('en'), new MockClock(new DateTimeImmutable('@' . (FakeProvider::NOW + 60))), $this->sections, $colours);
+        $this->shell = new Shell(
+            Catalogue::translator('en'),
+            new MockClock(new DateTimeImmutable('@' . (FakeProvider::NOW + 60))),
+            $this->sections,
+            $colours,
+            $program ?? Programs::fromItsSources(),
+        );
         $this->shell->attachTo($this->tui);
         $this->tui->start();
         $this->shell->signedIn(Sessions::of($this->http->client, $tokens), $this->tui);

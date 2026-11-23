@@ -11,7 +11,10 @@ use Beffroi\Tui\Screen\Colourway;
 use Beffroi\Tui\Screen\TerminalBackground;
 use Beffroi\Tui\Screen\Shell;
 use Beffroi\Tui\Screen\Symbol;
+use Beffroi\Tui\Tests\Fixture\FakeGitHub;
 use Beffroi\Tui\Tests\Fixture\FakeProvider;
+use Beffroi\Tui\Tests\Fixture\Programs;
+use Beffroi\Tui\Tests\Fixture\RecordedRequests;
 use Beffroi\Tui\Tests\Fixture\Sessions;
 use Beffroi\Tui\Tests\Fixture\SignedInScreen;
 use Beffroi\Tui\Text\Catalogue;
@@ -48,7 +51,13 @@ final class ShellTest extends TestCase
     {
         $this->terminal = new VirtualTerminal(self::COLUMNS, self::ROWS);
         $this->tui = new Tui(Shell::styleSheet(), $this->terminal);
-        $this->shell = new Shell(Catalogue::translator('en'), new MockClock(new DateTimeImmutable('@' . (FakeProvider::NOW + 60))), Wiring::sections(), true);
+        $this->shell = new Shell(
+            Catalogue::translator('en'),
+            new MockClock(new DateTimeImmutable('@' . (FakeProvider::NOW + 60))),
+            Wiring::sections(),
+            true,
+            Programs::fromItsSources(),
+        );
         $this->shell->attachTo($this->tui);
     }
 
@@ -78,6 +87,44 @@ final class ShellTest extends TestCase
                 str_contains($screen, '⏎  sign in'),
             ],
         );
+    }
+
+    #[Test]
+    public function theHomePageNamesTheBuildOfThisProgram(): void
+    {
+        // When
+        $this->shell->home(FakeProvider::profile(SigningKey::generate()), 'default');
+
+        // Then
+        static::assertStringContainsString('beffroi-tui, from its sources', $this->screen());
+    }
+
+    #[Test]
+    public function aReleaseSaysOnTheHomePageThatItLooksForANewerOne(): void
+    {
+        // Given
+        $shell = $this->releaseShell(FakeGitHub::serving('0.1.1', str_repeat('0', 64)));
+
+        // When
+        $shell->home(FakeProvider::profile(SigningKey::generate()), 'default');
+
+        // Then
+        static::assertStringContainsString('beffroi-tui 0.1.0 · looking for a newer release', $this->screen());
+    }
+
+    #[Test]
+    public function theHomePageNamesTheNewerReleaseOnceTheReleasesAnswered(): void
+    {
+        // Given
+        $shell = $this->releaseShell(FakeGitHub::serving('0.1.1', str_repeat('0', 64)));
+        $shell->home(FakeProvider::profile(SigningKey::generate()), 'default');
+        $this->tui->start();
+
+        // When
+        $shell->lookForANewerRelease($this->tui);
+
+        // Then
+        static::assertMatchesRegularExpression('/0\.1\.1 is out: beffroi-tui self-update/', $this->screen());
     }
 
     /**
@@ -134,7 +181,7 @@ final class ShellTest extends TestCase
         // Given
         $terminal = new VirtualTerminal(self::COLUMNS, self::ROWS);
         $tui = new Tui(Shell::styleSheet(), $terminal);
-        $shell = new Shell(Catalogue::translator('en'), new MockClock(), Wiring::sections(), false);
+        $shell = new Shell(Catalogue::translator('en'), new MockClock(), Wiring::sections(), false, Programs::fromItsSources());
         $shell->attachTo($tui);
         $tui->start();
 
@@ -144,6 +191,19 @@ final class ShellTest extends TestCase
         // Then
         $tui->stop();
         static::assertStringNotContainsString(TerminalBackground::QUERY, $terminal->getOutput());
+    }
+
+    /**
+     * A screen of its own in the terminal of the test, this program a release 0.1.0 whose releases GitHub answers.
+     */
+    private function releaseShell(RecordedRequests $github): Shell
+    {
+        $this->terminal = new VirtualTerminal(self::COLUMNS, self::ROWS);
+        $this->tui = new Tui(Shell::styleSheet(), $this->terminal);
+        $shell = new Shell(Catalogue::translator('en'), new MockClock(), Wiring::sections(), false, Programs::release('0.1.0', $github));
+        $shell->attachTo($this->tui);
+
+        return $shell;
     }
 
     /**

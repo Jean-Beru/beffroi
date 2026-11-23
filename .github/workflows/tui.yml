@@ -23,8 +23,10 @@ name: TUI
 # PHP that lacks an extension the client or one of its dependencies requires, before a line of the client runs.
 #
 # From a release tag, the tag is written to apps/tui/resources/release before the PHAR is compiled: it is the version
-# "beffroi-tui --version" prints and the one "beffroi-tui self-update" stays in the line of. A build from any other
-# ref carries no version, and refuses to replace itself.
+# "beffroi-tui --version" prints and the screen says, the one "beffroi-tui self-update" stays in the line of and the
+# screen looks for a newer release of. From any other ref, the name of the build, "<ref>-<commit>" as image.yml names
+# the build of a branch, is written to apps/tui/resources/build: "--version" prints it and the screen says it, and
+# the build, which is no release, refuses to replace itself.
 #
 # An executable is that same PHAR behind the "micro" SAPI of static-php-cli: a PHP linked statically with the
 # extensions of MICRO_EXTENSIONS and nothing else, read from the code of the client and of its dependencies, whose
@@ -83,6 +85,7 @@ jobs:
     runs-on: [self-hosted, kloude-light]
     outputs:
       tag: ${{ steps.release.outputs.tag }}
+      build: ${{ steps.release.outputs.build }}
       retention: ${{ steps.release.outputs.retention }}
       php: ${{ steps.php.outputs.version }}
     steps:
@@ -94,10 +97,12 @@ jobs:
           if [[ "${GITHUB_REF}" =~ ^refs/tags/([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
             tag="${BASH_REMATCH[1]}"
             echo "The files are uploaded to the release ${tag}." >> "${GITHUB_STEP_SUMMARY}"
-            { echo "tag=${tag}"; echo "retention=1"; } >> "${GITHUB_OUTPUT}"
+            { echo "tag=${tag}"; echo "build="; echo "retention=1"; } >> "${GITHUB_OUTPUT}"
           else
-            echo "${GITHUB_REF} is not a release tag: the files are built and kept as artifacts of this run, and nothing is published." >> "${GITHUB_STEP_SUMMARY}"
-            { echo "tag="; echo "retention=3"; } >> "${GITHUB_OUTPUT}"
+            ref=$(printf '%s' "${GITHUB_REF_NAME}" | tr -c 'A-Za-z0-9._/-' '-')
+            build="${ref:0:190}-${GITHUB_SHA::7}"
+            echo "${GITHUB_REF} is not a release tag: the files of the build ${build} are kept as artifacts of this run, and nothing is published." >> "${GITHUB_STEP_SUMMARY}"
+            { echo "tag="; echo "build=${build}"; echo "retention=3"; } >> "${GITHUB_OUTPUT}"
           fi
       - name: "The patch version of PHP"
         id: php
@@ -129,25 +134,30 @@ jobs:
         run: |
           curl -fsSL --retry 3 -o "${RUNNER_TEMP}/box.phar" "https://github.com/box-project/box/releases/download/${BOX_VERSION}/box.phar"
           echo "${BOX_SHA256}  ${RUNNER_TEMP}/box.phar" | sha256sum --check --strict
-      - name: "The version of the release"
-        if: needs.prepare.outputs.tag != ''
+      - name: "The version of the build"
         working-directory: apps/tui
         env:
           TAG: ${{ needs.prepare.outputs.tag }}
-        run: printf '%s\n' "${TAG}" > resources/release
+          BUILD: ${{ needs.prepare.outputs.build }}
+        run: |
+          if [ -n "${TAG}" ]; then
+            printf '%s\n' "${TAG}" > resources/release
+          else
+            printf '%s\n' "${BUILD}" > resources/build
+          fi
       - name: "Compile"
         working-directory: apps/tui
         run: php -d phar.readonly=0 "${RUNNER_TEMP}/box.phar" compile --no-interaction
       - name: "Run it once"
         working-directory: apps/tui
         env:
-          TAG: ${{ needs.prepare.outputs.tag }}
+          VERSION: ${{ needs.prepare.outputs.tag || needs.prepare.outputs.build }}
         run: |
           php beffroi-tui.phar --help
           version=$(php beffroi-tui.phar --version)
           echo "${version}" >> "${GITHUB_STEP_SUMMARY}"
-          if [ -n "${TAG}" ] && [ "${version}" != "beffroi-tui ${TAG}" ]; then
-            echo "::error title=Not the version of the release::The PHAR says \"${version}\", and the release is ${TAG}."
+          if [ "${version}" != "beffroi-tui ${VERSION}" ]; then
+            echo "::error title=Not the version of the build::The PHAR says \"${version}\", and the build is ${VERSION}."
             exit 1
           fi
       - uses: actions/upload-artifact@v7
