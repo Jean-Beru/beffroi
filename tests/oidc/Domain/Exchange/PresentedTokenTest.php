@@ -57,4 +57,53 @@ final class PresentedTokenTest extends TestCase
         // When / Then
         static::assertFalse($token->isAboutAUser());
     }
+
+    /**
+     * RFC 8693 §2.1, RFC 6749 §4.4
+     */
+    #[Test]
+    public function aTokenItsClientHoldsUnderItsOwnNameForNobodyIsHeldForItself(): void
+    {
+        // Given
+        $gateway = Clients::gateway(Fixtures::tenant(), new FakePasswordHasher()->hash(Clients::SECRET));
+        $token = Tokens::presented($gateway, new Subject('gateway'));
+
+        // When / Then
+        static::assertTrue($token->isHeldForItselfBy($gateway));
+    }
+
+    /**
+     * RFC 8693 §2.1, §4.1
+     */
+    #[Test]
+    #[DataProvider('provideTokensAClientDoesNotHoldForItself')]
+    public function aTokenOfAnotherClientOrAboutSomebodyElseIsNotHeldForItself(PresentedToken $token): void
+    {
+        // Given
+        $gateway = Clients::gateway(Fixtures::tenant(), new FakePasswordHasher()->hash(Clients::SECRET));
+
+        // When / Then
+        static::assertFalse($token->isHeldForItselfBy($gateway));
+    }
+
+    /**
+     * @return iterable<string, array{PresentedToken}>
+     */
+    public static function provideTokensAClientDoesNotHoldForItself(): iterable
+    {
+        $tenant = Fixtures::tenant();
+        $hash = new FakePasswordHasher()->hash(Clients::SECRET);
+        $gateway = Clients::gateway($tenant, $hash);
+        $batch = Clients::service($tenant, $hash, 'batch');
+        $session = Fixtures::session(Fixtures::user($tenant));
+
+        yield 'held by another client, under the name of that client' => [Tokens::presented($batch, new Subject('batch'))];
+        yield 'held by another client, under the name of the client' => [Tokens::presented($batch, new Subject('gateway'))];
+        yield 'held by the client, under the name of another client' => [Tokens::presented($gateway, new Subject('batch'))];
+        yield 'held by the client for a person somebody signed in for' => [Tokens::presented($gateway, $session->user->subject, $session)];
+        yield 'held by the client for a person a client named (RFC 7523 §2.1)' => [
+            Tokens::presented($gateway, $session->user->subject, person: $session->user->subject),
+        ];
+        yield 'held by the client under its own name, for a person' => [Tokens::presented($gateway, new Subject('gateway'), person: $session->user->subject)];
+    }
 }
