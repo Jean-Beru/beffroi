@@ -12,6 +12,7 @@ use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryMessageBodyOpener;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryMessageBodySealer;
 use Beffroi\Core\Bridge\JwtLibrary\SealedMessageBody;
 use Beffroi\Core\Bridge\Key\SealedKeyProvider;
+use Beffroi\Core\Domain\Encoding\Base64Url;
 use Beffroi\Core\Domain\Key\GeneratedKeyPair;
 use Beffroi\Core\Domain\Key\KeyAlgorithmInterface;
 use Beffroi\Core\Domain\Key\TenantKey;
@@ -22,6 +23,7 @@ use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\Keys;
 use function explode;
+use function implode;
 use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Core\JWK;
 use Jose\Component\Encryption\Algorithm\ContentEncryption\A128GCM as JoseA128Gcm;
@@ -32,6 +34,7 @@ use function json_decode;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function random_bytes;
 use function strtr;
 
 /**
@@ -210,6 +213,48 @@ final class MessageBodySealingTest extends TestCase
         $this->opener->open($this->tenant, $sealed);
     }
 
+    /**
+     * RFC 7516 §4.1.13
+     */
+    #[Test]
+    public function aBodyThatMarksAParameterCriticalIsNotOpened(): void
+    {
+        // Given
+        $sealed = $this->sealedWith([
+            'alg' => 'ECDH-ES+A256KW',
+            'enc' => 'A256GCM',
+            'kid' => $this->provider->sealingKey($this->tenant, Algorithms::messageSeal())->kid,
+            SealedMessageBody::TENANT_HEADER => $this->tenant->slug,
+            'crit' => ['urn:example:must-understand'],
+            'urn:example:must-understand' => true,
+        ]);
+
+        // Then
+        $this->expectException(InvalidJweException::class);
+        $this->expectExceptionMessageIs('The body of the message uses an extension of JOSE this provider does not understand (RFC 7516 section 4.1.13).');
+
+        // When
+        $this->opener->open($this->tenant, $sealed);
+    }
+
+    /**
+     * RFC 7518 §5.3
+     */
+    #[Test]
+    public function aBodyWhoseInitializationVectorIsNotTheSizeOfItsContentEncryptionIsNotOpened(): void
+    {
+        // Given
+        $parts = explode('.', $this->sealer->seal($this->tenant, self::BODY));
+        $parts[2] = Base64Url::encode(random_bytes(16));
+
+        // Then
+        $this->expectException(InvalidJweException::class);
+        $this->expectExceptionMessageIs('The body of the message cannot be opened as a JWE (RFC 7516 section 5.2).');
+
+        // When
+        $this->opener->open($this->tenant, implode('.', $parts));
+    }
+
     #[Test]
     public function aBodyThatIsNotACompactJweIsNotOpened(): void
     {
@@ -233,7 +278,7 @@ final class MessageBodySealingTest extends TestCase
     }
 
     /**
-     * @param array<string, string> $header
+     * @param array<string, mixed> $header
      */
     private function sealedWith(array $header, ?ContentEncryptionAlgorithm $contentEncryption = null): string
     {

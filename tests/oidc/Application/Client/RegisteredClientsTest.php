@@ -16,8 +16,10 @@ use Beffroi\Oidc\Domain\Client\RequestObject\UnsignedRequestObjects;
 use Beffroi\Oidc\Domain\Resource\ResourceIndicator;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Scope\Scopes;
+use Beffroi\Oidc\Port\ClientSourceInterface;
 use Beffroi\Oidc\Tests\Fixture\Clients;
 use Beffroi\Oidc\Tests\Fixture\Shapes;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -62,6 +64,35 @@ final class RegisteredClientsTest extends TestCase
 
         // When / Then
         static::assertNull($clients->findByClientId($this->tenant, 'nobody'));
+    }
+
+    /**
+     * RFC 6749 appendix A.1
+     */
+    #[Test]
+    #[DataProvider('provideStringsThatAreNoClientIdentifier')]
+    public function aStringThatIsNoClientIdentifierIsAskedOfNoSource(string $clientId): void
+    {
+        // Given
+        $source = $this->createMock(ClientSourceInterface::class);
+        $source->expects(static::never())->method('findByClientId');
+
+        // When
+        $client = new RegisteredClients([$source])->findByClientId($this->tenant, $clientId);
+
+        // Then
+        static::assertNull($client);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideStringsThatAreNoClientIdentifier(): iterable
+    {
+        yield 'bytes that are not UTF-8' => ["\xff\xfe"];
+        yield 'a letter beyond ASCII' => ['clïent'];
+        yield 'a line feed' => ["client\n"];
+        yield 'empty' => [''];
     }
 
     #[Test]

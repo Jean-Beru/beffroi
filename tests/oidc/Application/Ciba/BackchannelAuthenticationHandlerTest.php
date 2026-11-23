@@ -452,6 +452,8 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
         yield 'shorter than the default' => ['60', 60];
         yield 'longer than the default' => ['900', 900];
         yield 'longer than the maximum' => ['99999', 1800];
+        yield 'more seconds than an interval holds' => ['1000000000000', 1800];
+        yield 'more seconds than an integer holds' => ['99999999999999999999999', 1800];
     }
 
     /**

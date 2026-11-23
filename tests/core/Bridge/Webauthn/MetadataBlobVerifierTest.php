@@ -218,6 +218,26 @@ final class MetadataBlobVerifierTest extends TestCase
         $this->verifier->verify($token, $this->service->rootCertificate());
     }
 
+    /**
+     * RFC 7515 §4.1.11
+     */
+    #[Test]
+    public function aBlobThatMarksAParameterCriticalIsRefused(): void
+    {
+        // Given
+        $token = $this->service->sign(MetadataBlobs::payload([MetadataBlobs::entry(self::AAGUID)]), header: [
+            'crit' => ['urn:example:must-understand'],
+            'urn:example:must-understand' => true,
+        ]);
+
+        // Then
+        $this->expectException(MetadataBlobRefusedException::class);
+        $this->expectExceptionMessageIs('The blob uses an extension of JOSE this provider does not understand (RFC 7515 section 4.1.11).');
+
+        // When
+        $this->verifier->verify($token, $this->service->rootCertificate());
+    }
+
     #[Test]
     public function whatIsNotACompactJwsIsRefused(): void
     {
