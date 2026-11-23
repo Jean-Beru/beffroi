@@ -119,7 +119,39 @@ final class ChainSignatureTest extends TestCase
 
         // Then
         $this->expectException(BrokenChainException::class);
+        $this->expectExceptionMessageIs('The rows up to position 2 of the chain "journal" are not the ones signed.');
+
+        // When
+        $this->chain->sign();
+    }
+
+    #[Test]
+    public function aRowWrittenSinceTheLastSignatureThenRewrittenIsNotSigned(): void
+    {
+        // Given
+        $this->chain->sign();
+        $this->chain->rows->write();
+        $this->chain->rows->rewrite(3, ChainOfWrittenRows::row(Fixtures::now(), 'user.signed_out'));
+
+        // Then
+        $this->expectException(BrokenChainException::class);
         $this->expectExceptionMessageIs('The row at position 3 of the chain "journal" is not the one written there.');
+
+        // When
+        $this->chain->sign();
+    }
+
+    #[Test]
+    public function aChainWhoseSignedRowWasRewrittenIsNotSignedPastIt(): void
+    {
+        // Given
+        $this->chain->sign();
+        $this->chain->rows->rewrite(2, ChainOfWrittenRows::row(Fixtures::now(), 'user.signed_out'));
+        $this->chain->rows->write();
+
+        // Then
+        $this->expectException(BrokenChainException::class);
+        $this->expectExceptionMessageIs('The rows up to position 2 of the chain "journal" are not the ones signed.');
 
         // When
         $this->chain->sign();
