@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Oidc\Tests\Domain\Client;
 
 use function array_column;
+use function array_fill;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Core\Tests\Fixture\RsaModuli;
 use Beffroi\Oidc\Domain\Client\ClientJwks;
@@ -29,6 +30,22 @@ final class ClientJwksTest extends TestCase
 
         // Then
         static::assertSame(['one', 'two'], array_column($keys->keys, 'kid'));
+    }
+
+    /**
+     * RFC 7517 §5
+     */
+    #[Test]
+    public function aSetOfAHundredKeysIsRead(): void
+    {
+        // When
+        $jwks = new ClientJwks(array_fill(0, ClientJwks::MOST_KEYS, [
+            'kty' => 'EC',
+            'crv' => 'P-256',
+        ]));
+
+        // Then
+        static::assertCount(ClientJwks::MOST_KEYS, $jwks->keys);
     }
 
     #[Test]
@@ -157,6 +174,15 @@ final class ClientJwksTest extends TestCase
                 'keys' => [],
             ],
             'holds at least one key',
+        ];
+        yield 'a hundred and one keys' => [
+            [
+                'keys' => array_fill(0, ClientJwks::MOST_KEYS + 1, [
+                    'kty' => 'EC',
+                    'crv' => 'P-256',
+                ]),
+            ],
+            'holds 100 keys at most',
         ];
         yield 'a key without a type' => [
             [

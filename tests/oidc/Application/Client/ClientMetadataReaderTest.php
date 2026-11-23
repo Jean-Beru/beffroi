@@ -22,6 +22,9 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function array_map;
+use function implode;
+use function range;
+use function sprintf;
 use function str_repeat;
 
 /**
@@ -668,6 +671,91 @@ final class ClientMetadataReaderTest extends TestCase
         static::assertSame($name, $registration->presentation->name);
     }
 
+    /**
+     * RFC 7591 §2
+     */
+    #[Test]
+    public function aRegisteredListOfMoreThanAHundredValuesIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidClientMetadataException::class);
+        $this->expectExceptionMessageIs('The redirect_uris option of the client "drawn" lists 100 values at most.');
+
+        // When
+        self::read([
+            'redirect_uris' => self::uris(ClientMetadataReader::MOST_VALUES + 1),
+        ]);
+    }
+
+    /**
+     * RFC 7591 §2
+     */
+    #[Test]
+    #[DataProvider('provideLists')]
+    public function aDeclaredListOfMoreThanAHundredValuesIsRefused(string $member): void
+    {
+        // Then
+        $this->expectException(InvalidClientMetadataException::class);
+        $this->expectExceptionMessageIs(sprintf('The %s option of the client "drawn" lists 100 values at most.', $member));
+
+        // When
+        Registrations::reader()->read(
+            'drawn',
+            self::declared([
+                'redirect_uris' => ['https://rp.example/cb'],
+                $member => self::uris(ClientMetadataReader::MOST_VALUES + 1),
+            ]),
+            true,
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideLists(): iterable
+    {
+        yield 'redirect_uris' => ['redirect_uris'];
+        yield 'post_logout_redirect_uris' => ['post_logout_redirect_uris'];
+        yield 'request_uris' => ['request_uris'];
+        yield 'contacts' => ['contacts'];
+        yield 'grant_types' => ['grant_types'];
+        yield 'response_types' => ['response_types'];
+        yield 'resources' => ['resources'];
+        yield 'authorization_details_types' => ['authorization_details_types'];
+    }
+
+    /**
+     * RFC 7591 §2
+     */
+    #[Test]
+    public function aListOfAHundredValuesIsRead(): void
+    {
+        // When
+        $registration = self::read([
+            'redirect_uris' => self::uris(ClientMetadataReader::MOST_VALUES),
+        ]);
+
+        // Then
+        static::assertCount(ClientMetadataReader::MOST_VALUES, $registration->redirectUris);
+    }
+
+    /**
+     * RFC 7591 §2, RFC 6749 §3.3
+     */
+    #[Test]
+    public function aScopeOfMoreThanAHundredScopesIsRefused(): void
+    {
+        // Then
+        $this->expectException(InvalidClientMetadataException::class);
+        $this->expectExceptionMessageIsOrContains('names 100 scopes at most');
+
+        // When
+        self::read([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'scope' => implode(' ', array_map(static fn (int $index): string => 'scope.' . $index, range(1, 101))),
+        ]);
+    }
+
     #[Test]
     public function aRegistrationWhoseSecretTheProviderHoldsIsRead(): void
     {
@@ -689,6 +777,14 @@ final class ClientMetadataReaderTest extends TestCase
     private static function read(array $members): ClientRegistration
     {
         return Registrations::reader()->read('drawn', self::registered($members), true);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function uris(int $count): array
+    {
+        return array_map(static fn (int $index): string => 'https://rp.example/cb/' . $index, range(1, $count));
     }
 
     /**
