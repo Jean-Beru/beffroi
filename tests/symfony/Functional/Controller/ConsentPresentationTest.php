@@ -22,9 +22,9 @@ final class ConsentPresentationTest extends BrowserTestCase
 {
     private const string TOKEN = 'a-value-the-tenant-handed-out';
 
-    private const string REDIRECT_URI = 'https://registered.test/callback';
+    private const string REDIRECT_URI = 'https://rp.test/callback';
 
-    private const string LOGO_URI = 'https://cdn.rp.test/logo.png';
+    private const string LOGO_URI = 'https://rp.test/logo.png';
 
     private const string POLICY_URI = 'https://rp.test/privacy';
 
@@ -110,6 +110,18 @@ final class ConsentPresentationTest extends BrowserTestCase
             ],
             ['client_uri'],
             '',
+        ];
+
+        yield 'the four pages on other hosts than the redirection URI (RFC 7591 section 5)' => [
+            [
+                'client_name' => 'An application of the ecosystem',
+                'logo_uri' => 'https://cdn.rp.test/logo.png',
+                'policy_uri' => 'https://bank.test/privacy',
+                'tos_uri' => 'https://bank.test/terms',
+                'client_uri' => 'https://bank.test/',
+            ],
+            [],
+            'An application of the ecosystem',
         ];
     }
 
