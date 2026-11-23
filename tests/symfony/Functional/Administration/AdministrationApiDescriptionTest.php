@@ -10,6 +10,7 @@ use Beffroi\Core\Domain\Event\PersonDescribed;
 use Beffroi\Core\Domain\Identity\ClaimChange;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Port\ChangesOfAPersonInterface;
+use Beffroi\Oidc\Domain\Event\PersonReadByAnAdministrator;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
 use Symfony\Component\HttpFoundation\Response;
@@ -71,6 +72,40 @@ final class AdministrationApiDescriptionTest extends AdministrationTestCase
 
         // Then
         static::assertSame([['bob-subject', 'alice-subject']], self::authored(PersonDescribed::NAME));
+    }
+
+    /**
+     * Decision 0022
+     */
+    #[Test]
+    public function aPatchThatChangesNothingIsAReadOfThePersonThatNamesTheAdministrator(): void
+    {
+        // Given
+        $bob = self::user('bob', 'bob-subject');
+        $token = $this->administratorToken(self::user('alice'));
+
+        // When
+        $this->patch($bob, $token, '{"username": "bob"}');
+
+        // Then
+        static::assertSame(
+            [[['bob-subject', 'alice-subject']], []],
+            [self::authored(PersonReadByAnAdministrator::NAME), self::authored(PersonDescribed::NAME)],
+        );
+    }
+
+    #[Test]
+    public function aPatchThatChangesSomethingIsNoReadOfThePerson(): void
+    {
+        // Given
+        $bob = self::user('bob', 'bob-subject');
+        $token = $this->administratorToken(self::user('alice'));
+
+        // When
+        $this->patch($bob, $token, '{"claims": {"nickname": "Bobby"}}');
+
+        // Then
+        static::assertSame([], self::authored(PersonReadByAnAdministrator::NAME));
     }
 
     #[Test]
