@@ -206,6 +206,22 @@ final class JournalTest extends ConsoleTestCase
     }
 
     #[Test]
+    public function theJsonFormatHoldsAValueAsItWasWritten(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        self::act($alice, 'tokens.issued', self::day('2026-10-03'), '<fg=red>oidc-demo</>');
+
+        // When
+        $document = self::document(self::journal('alice', [
+            '--format' => UserJournalCommand::JSON,
+        ]));
+
+        // Then
+        static::assertSame(['<fg=red>oidc-demo</>'], array_column(self::acts($document), 'client'));
+    }
+
+    #[Test]
     public function theTableNamesTheAdministratorWhoDidAnAct(): void
     {
         // Given

@@ -57,6 +57,26 @@ final class UserShowTest extends ConsoleTestCase
         ];
     }
 
+    /**
+     * OIDC Core §5.1
+     */
+    #[Test]
+    public function theControlsOfWhatAPersonWroteOfThemselvesAreNotPrinted(): void
+    {
+        // Given
+        $user = User::create(Uuid::v7(), self::tenant(), new Subject('mallory-subject'), 'mallory', self::now());
+        $user->updateProfile($user->profile->describedWith(['name' => "Mallory\e[2K\e[1A\e[2KNothing to see"]), self::now());
+        self::service('test.beffroi.users', UserRepositoryInterface::class)->save($user);
+
+        // When
+        $tester = self::console('beffroi:user:show', [
+            'username' => 'mallory',
+        ]);
+
+        // Then
+        static::assertSame('Mallory[2K[1A[2KNothing to see', self::displayed($tester, 'Name'));
+    }
+
     #[Test]
     public function theGroupsOfAPersonAreShownWithTheSourceOfEachMembership(): void
     {

