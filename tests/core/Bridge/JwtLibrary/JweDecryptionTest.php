@@ -116,6 +116,23 @@ final class JweDecryptionTest extends TestCase
         static::assertNotSame($opened, $this->opened->open($this->tenant, $this->encryption));
     }
 
+    #[Test]
+    public function aKeyThatHasRetiredLeavesTheProcessWhenItsSuccessorOpensAJwe(): void
+    {
+        // Given
+        $opened = $this->provider->decryptionKey($this->tenant, $this->encryption->kid);
+        $successor = $this->activate(Algorithms::ecdhEsA256Kw(), Keys::otherEncryptionPair());
+        $this->encryption->startRetiring(Fixtures::now(), Fixtures::now());
+        $this->encryption->retire(Fixtures::now());
+        $this->repository->save($this->encryption);
+
+        // When
+        $this->decrypter()->decrypt($this->tenant, self::encryptedTo($successor, '{"iss":"acme-console"}'));
+
+        // Then
+        static::assertNotSame($opened, $this->opened->open($this->tenant, $this->encryption));
+    }
+
     /**
      * RFC 7517 §4.2
      */
