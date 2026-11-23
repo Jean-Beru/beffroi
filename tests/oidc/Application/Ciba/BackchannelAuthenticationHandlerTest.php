@@ -767,7 +767,7 @@ final class BackchannelAuthenticationHandlerTest extends TestCase
             new Endpoints(),
             Grants::servedWithCiba(),
             RequestObjects::resolver($this->clients, $this->clock),
-            new SignedBackchannelRequest($this->replays),
+            new SignedBackchannelRequest($this->replays, new DateInterval('PT30S')),
             new UserHints([new SubjectLoginHint(Subjects::ofAProvider($this->users))]),
             $this->records,
             Secrets::drawer(),

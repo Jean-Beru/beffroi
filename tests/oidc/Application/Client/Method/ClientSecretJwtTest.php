@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Client\Method;
 
+use function array_values;
 use function count;
 use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Domain\Tenant\Tenant;
@@ -12,6 +13,7 @@ use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Oidc\Application\Client\AuthenticatedClient;
 use Beffroi\Oidc\Application\Client\ClientAuthenticator;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryClientAssertionReplayGuard;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryClientRepository;
 use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailed;
@@ -43,6 +45,8 @@ final class ClientSecretJwtTest extends TestCase
 
     private FakePasswordHasher $hasher;
 
+    private InMemoryClientAssertionReplayGuard $replays;
+
     private Client $client;
 
     protected function setUp(): void
@@ -50,6 +54,7 @@ final class ClientSecretJwtTest extends TestCase
         $this->tenant = Fixtures::tenant();
         $this->context = Fixtures::context();
         $this->hasher = new FakePasswordHasher();
+        $this->replays = new InMemoryClientAssertionReplayGuard();
         $this->clients = new InMemoryClientRepository();
         $this->events = new RecordingEventDispatcher();
         $this->client = Clients::withSharedSecret($this->tenant);
@@ -113,6 +118,19 @@ final class ClientSecretJwtTest extends TestCase
         $this->assertRefused(ClientAuthenticationFailureReason::ReplayedAssertion);
     }
 
+    /**
+     * RFC 7523 §3
+     */
+    #[Test]
+    public function itRemembersAnAssertionUntilTheLastInstantItWouldAcceptIt(): void
+    {
+        // When
+        $this->authenticate($this->assertion());
+
+        // Then
+        static::assertEquals([$this->context->receivedAt->modify('+90 seconds')], array_values($this->replays->seen));
+    }
+
     #[Test]
     public function aClientRegisteredForPrivateKeyJwtCannotSignWithASecretInstead(): void
     {
@@ -146,7 +164,7 @@ final class ClientSecretJwtTest extends TestCase
     {
         return new ClientAuthenticator(
             $this->clients,
-            Methods::all($this->hasher),
+            Methods::all($this->hasher, null, Methods::assertionValidator($this->replays)),
             Methods::requestParser(),
             new MockClock('2026-09-15T10:00:00+00:00'),
             $this->events,

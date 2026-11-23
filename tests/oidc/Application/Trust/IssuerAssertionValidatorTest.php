@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Trust;
 
+use function array_values;
 use DateInterval;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\Algorithms;
@@ -98,6 +99,23 @@ final class IssuerAssertionValidatorTest extends TestCase
 
         // When
         $this->validator->spend($this->tenant, $verified);
+    }
+
+    /**
+     * RFC 7523 §3
+     */
+    #[Test]
+    public function aSpentAssertionIsRememberedUntilTheLastInstantItWouldBeAccepted(): void
+    {
+        // Given
+        $assertion = TrustedIssuers::assertion('employee-42', (string) $this->tenant->issuer, Fixtures::now());
+        $verified = $this->validator->validate($this->tenant, $this->client, $assertion, Fixtures::now());
+
+        // When
+        $this->validator->spend($this->tenant, $verified);
+
+        // Then
+        static::assertEquals([Fixtures::now()->modify('+90 seconds')], array_values($this->replays->seen));
     }
 
     #[Test]
