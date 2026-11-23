@@ -142,7 +142,7 @@ final class GroupsSectionTest extends TestCase
     }
 
     /**
-     * Out of the last group that administers the tenant a person no longer administers it, so it is asked first.
+     * Out of a group that administers the tenant a person may no longer administer it, so it is asked first.
      */
     #[Test]
     public function takingAMemberOutIsAskedToBeConfirmedFirst(): void
@@ -161,7 +161,7 @@ final class GroupsSectionTest extends TestCase
         // Then
         static::assertSame([0, true], [
             $this->screen->requestsTo('/groups/g-administrators/members/p-alice', 'DELETE'),
-            str_contains($this->screen->screen(), 'last administering group'),
+            str_contains($this->screen->screen(), 'they will no longer administer it.'),
         ]);
     }
 

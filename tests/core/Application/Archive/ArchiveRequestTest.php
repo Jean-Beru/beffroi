@@ -100,6 +100,22 @@ final class ArchiveRequestTest extends TestCase
     }
 
     #[Test]
+    public function askingOnceOneIsReadyTakesTheRowItReplaces(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $archives = new InMemoryPersonalArchiveRepository();
+        $first = self::asking($archives)->askedBy($user, Fixtures::context());
+        $first->fill('{"profile":[]}', Fixtures::now());
+
+        // When
+        self::asking($archives)->askedBy($user, Fixtures::context());
+
+        // Then
+        static::assertSame(1, $archives->count());
+    }
+
+    #[Test]
     public function askingAgainOnceTheBuildDidNotComeBackStartsANewOne(): void
     {
         // Given
@@ -161,6 +177,21 @@ final class ArchiveRequestTest extends TestCase
 
         // Then
         static::assertFalse($again->id->equals($first->id));
+    }
+
+    #[Test]
+    public function askingOnceTheLastOneHasExpiredTakesTheRowItReplaces(): void
+    {
+        // Given
+        $user = Fixtures::user();
+        $archives = new InMemoryPersonalArchiveRepository();
+        $first = self::asking($archives)->askedBy($user, Fixtures::context());
+
+        // When
+        self::asking($archives, at: $first->expiresAt)->askedBy($user, Fixtures::context());
+
+        // Then
+        static::assertSame(1, $archives->count());
     }
 
     #[Test]
