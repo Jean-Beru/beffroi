@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Symfony\Unit\Http;
 
 use App\Http\RequestParameters;
+use function parse_str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function rawurlencode;
@@ -131,6 +133,45 @@ final class RequestParametersTest extends TestCase
             ],
             RequestParameters::ofForm($request),
         );
+    }
+
+    /**
+     * RFC 6749 §3.2
+     */
+    #[Test]
+    #[DataProvider('provideSpellingsPhpFilesUnderOneName')]
+    public function aNameTheFormCarriesTwiceUnderTwoSpellingsPhpFilesAsOneIsHandedOverAsTheListItWas(string $body): void
+    {
+        // Given
+        parse_str($body, $decoded);
+        $request = Request::create(
+            '/token',
+            'POST',
+            $decoded,
+            [],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/x-www-form-urlencoded',
+            ],
+            $body,
+        );
+
+        // When
+        $parameters = RequestParameters::ofForm($request);
+
+        // Then
+        static::assertSame(['authorization_code', 'refresh_token'], $parameters['grant_type'] ?? null);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideSpellingsPhpFilesUnderOneName(): iterable
+    {
+        yield 'a dot' => ['grant_type=authorization_code&grant.type=refresh_token'];
+        yield 'a space' => ['grant_type=authorization_code&grant+type=refresh_token'];
+        yield 'an encoded space' => ['grant_type=authorization_code&grant%20type=refresh_token'];
+        yield 'a leading space' => ['grant_type=authorization_code&%20grant_type=refresh_token'];
     }
 
     #[Test]
