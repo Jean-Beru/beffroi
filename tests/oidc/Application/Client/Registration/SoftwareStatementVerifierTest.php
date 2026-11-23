@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Beffroi\Oidc\Tests\Application\Client\Registration;
 
+use function array_values;
 use DateInterval;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\Algorithms;
@@ -32,13 +33,16 @@ final class SoftwareStatementVerifierTest extends TestCase
 
     private ClientRegistrationPolicy $policy;
 
+    private InMemorySoftwareStatementReplayGuard $replays;
+
     private SoftwareStatementVerifier $verifier;
 
     protected function setUp(): void
     {
         $this->tenant = Fixtures::tenant();
         $this->policy = Policies::attested([SoftwareStatements::authority()]);
-        $this->verifier = self::verifier();
+        $this->replays = new InMemorySoftwareStatementReplayGuard();
+        $this->verifier = self::verifier($this->replays);
     }
 
     /**
@@ -55,6 +59,19 @@ final class SoftwareStatementVerifierTest extends TestCase
 
         // Then
         static::assertSame('Invoice reader, attested', $members->members()['client_name']);
+    }
+
+    /**
+     * RFC 7591 §2.3
+     */
+    #[Test]
+    public function itRemembersAStatementUntilTheLastInstantItWouldAcceptIt(): void
+    {
+        // When
+        $this->verifier->verify($this->tenant, $this->policy, SoftwareStatements::statement((string) $this->tenant->issuer, Fixtures::now()), Fixtures::now());
+
+        // Then
+        static::assertEquals([Fixtures::now()->modify('+90 seconds')], array_values($this->replays->seen));
     }
 
     #[Test]
@@ -217,12 +234,12 @@ final class SoftwareStatementVerifierTest extends TestCase
         $this->verifier->verify($this->tenant, $this->policy, 'not-a-jws', Fixtures::now());
     }
 
-    private static function verifier(): SoftwareStatementVerifier
+    private static function verifier(?InMemorySoftwareStatementReplayGuard $replays = null): SoftwareStatementVerifier
     {
         return new SoftwareStatementVerifier(
             new JwtLibraryCompactJwtReader(),
             new JwtLibraryJwtKeyVerifier(Algorithms::all()->manager()),
-            new InMemorySoftwareStatementReplayGuard(),
+            $replays ?? new InMemorySoftwareStatementReplayGuard(),
             new DateInterval('PT5M'),
             new DateInterval('PT30S'),
         );
