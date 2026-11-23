@@ -166,6 +166,9 @@ parameters:
     # PlaneTest names BEFFROI_PLANE. Left alone, they are far above what the suite sends.
     env(BEFFROI_TEST_ORIGIN_BUDGET): 100000
     env(BEFFROI_TEST_CLIENT_BUDGET): 100000
+    # The persons one administrator reads (decision 0014): far above what the suite reads, a test of a refusal spending
+    # the budget itself before its request.
+    env(BEFFROI_TEST_ADMINISTRATOR_PERSONS): 100000
     # Settings the application reads from the environment (issues #911 and #913), read the same way here: what
     # an environment variable carries is a value at runtime only, so the bounds and the rules of the tree hold
     # it when a service is built, and a test that plays one out of them names it before it boots a kernel.
@@ -304,6 +307,9 @@ beffroi:
         client:
             limit: '%env(int:BEFFROI_TEST_CLIENT_BUDGET)%'
             interval: '%env(int:BEFFROI_TEST_CLIENT_INTERVAL)%'
+    administrator:
+        persons:
+            limit: '%env(int:BEFFROI_TEST_ADMINISTRATOR_PERSONS)%'
     keys:
         kms: test
         key_id: '%env(BEFFROI_TEST_KMS_KEY_ID)%'
@@ -1131,6 +1137,9 @@ services:
         public: true
     test.beffroi.client_load:
         alias: beffroi.load.client
+        public: true
+    test.beffroi.persons_budget:
+        alias: Beffroi\Oidc\Port\PersonsBudgetInterface
         public: true
     test.beffroi.web_push_sender:
         alias: App\Push\WebPushSender

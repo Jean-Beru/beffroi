@@ -269,6 +269,24 @@ abstract class AdministrationTestCase extends PasskeyTestCase
         ));
     }
 
+    /**
+     * A service of the kernel of the plane of the administration, by the public alias the test kernel gives it.
+     *
+     * @template T of object
+     *
+     * @param class-string<T> $type
+     *
+     * @return T
+     */
+    protected function administrationService(string $id, string $type): object
+    {
+        $kernel = $this->administration ??= self::administrationKernel();
+        $service = $kernel->getContainer()->get($id);
+        static::assertInstanceOf($type, $service);
+
+        return $service;
+    }
+
     private static function administrationKernel(): AppKernel
     {
         $kernel = new AppKernel('test_administration', false);

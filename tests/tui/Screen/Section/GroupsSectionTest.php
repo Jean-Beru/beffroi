@@ -57,7 +57,7 @@ final class GroupsSectionTest extends TestCase
 
         // Then
         static::assertSame([0, true], [
-            $this->screen->requestsTo('/groups/g-administrators/members'),
+            $this->screen->requestsTo('/groups/g-administrators/members?page=1'),
             str_contains($this->screen->screen(), 'Every read of a member is logged under your name'),
         ]);
     }
@@ -68,7 +68,7 @@ final class GroupsSectionTest extends TestCase
         // Given
         $this->screen = new SignedInScreen([
             '/groups' => self::tenantGroups(),
-            '/groups/g-administrators/members' => self::members(),
+            '/groups/g-administrators/members?page=1' => self::members(),
         ]);
         $this->screen->open('section.groups');
 
@@ -77,7 +77,7 @@ final class GroupsSectionTest extends TestCase
 
         // Then
         static::assertSame([1, 1], [
-            $this->screen->requestsTo('/groups/g-administrators/members'),
+            $this->screen->requestsTo('/groups/g-administrators/members?page=1'),
             preg_match('/alice +local +2026-10-01/', $this->screen->screen()),
         ]);
     }
@@ -150,7 +150,7 @@ final class GroupsSectionTest extends TestCase
         // Given
         $this->screen = new SignedInScreen([
             '/groups' => self::tenantGroups(),
-            '/groups/g-administrators/members' => self::members(),
+            '/groups/g-administrators/members?page=1' => self::members(),
         ]);
         $this->screen->open('section.groups');
         $this->screen->press(["\r", "\r"]);
@@ -171,7 +171,7 @@ final class GroupsSectionTest extends TestCase
         // Given
         $this->screen = new SignedInScreen([
             '/groups' => self::tenantGroups(),
-            '/groups/g-administrators/members' => self::members(),
+            '/groups/g-administrators/members?page=1' => self::members(),
             'DELETE /groups/g-administrators/members/p-alice' => ['group' => 'g-administrators', 'person' => 'p-alice'],
         ]);
         $this->screen->open('section.groups');
@@ -229,6 +229,145 @@ final class GroupsSectionTest extends TestCase
         ]);
     }
 
+    #[Test]
+    public function aGroupOfSeveralPagesSaysWhichPageIsShown(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/groups' => self::tenantGroups(),
+            '/groups/g-administrators/members?page=1' => self::members(page: 1, pages: 3),
+        ]);
+        $this->screen->open('section.groups');
+
+        // When
+        $this->screen->press(["\r", "\r"]);
+
+        // Then
+        static::assertStringContainsString('Members of administrators · page 1 of 3', $this->screen->screen());
+    }
+
+    #[Test]
+    public function theNextPageOfTheMembersIsReadOnlyWhenAsked(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/groups' => self::tenantGroups(),
+            '/groups/g-administrators/members?page=1' => self::members(page: 1, pages: 3),
+            '/groups/g-administrators/members?page=2' => self::members('bob', page: 2, pages: 3),
+        ]);
+        $this->screen->open('section.groups');
+        $this->screen->press(["\r", "\r"]);
+
+        // When
+        $this->screen->press(']');
+
+        // Then
+        static::assertSame([1, 1], [
+            $this->screen->requestsTo('/groups/g-administrators/members?page=2'),
+            preg_match('/bob +local +2026-10-01/', $this->screen->screen()),
+        ]);
+    }
+
+    #[Test]
+    public function theLastPageIsReadWhenAsked(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/groups' => self::tenantGroups(),
+            '/groups/g-administrators/members?page=1' => self::members(page: 1, pages: 2),
+            '/groups/g-administrators/members?page=2' => self::members('bob', page: 2, pages: 2),
+        ]);
+        $this->screen->open('section.groups');
+        $this->screen->press(["\r", "\r"]);
+
+        // When
+        $this->screen->press(']');
+
+        // Then
+        static::assertStringContainsString('Members of administrators · page 2 of 2', $this->screen->screen());
+    }
+
+    #[Test]
+    public function thePreviousPageIsReadWhenAsked(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/groups' => self::tenantGroups(),
+            '/groups/g-administrators/members?page=1' => self::members(page: 1, pages: 2),
+            '/groups/g-administrators/members?page=2' => self::members('bob', page: 2, pages: 2),
+        ]);
+        $this->screen->open('section.groups');
+        $this->screen->press(["\r", "\r", ']']);
+
+        // When
+        $this->screen->press('[');
+
+        // Then
+        static::assertSame(2, $this->screen->requestsTo('/groups/g-administrators/members?page=1'));
+    }
+
+    #[Test]
+    public function noPageIsAskedForBeforeTheFirstOne(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/groups' => self::tenantGroups(),
+            '/groups/g-administrators/members?page=1' => self::members(page: 1, pages: 3),
+        ]);
+        $this->screen->open('section.groups');
+        $this->screen->press(["\r", "\r"]);
+
+        // When
+        $this->screen->press('[');
+
+        // Then
+        static::assertSame(1, $this->screen->requestsTo('/groups/g-administrators/members?page=1'));
+    }
+
+    #[Test]
+    public function noPageIsAskedForPastTheLastOne(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/groups' => self::tenantGroups(),
+            '/groups/g-administrators/members?page=1' => self::members(),
+        ]);
+        $this->screen->open('section.groups');
+        $this->screen->press(["\r", "\r"]);
+
+        // When
+        $this->screen->press(']');
+
+        // Then
+        static::assertSame(0, $this->screen->requestsTo('/groups/g-administrators/members?page=2'));
+    }
+
+    /**
+     * Decision 0014: a read past the budget of the administrator delivers nobody, and says when to read again.
+     */
+    #[Test]
+    public function aReadPastTheBudgetOfTheAdministratorSaysWhenToReadAgain(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/groups' => self::tenantGroups(),
+            '/groups/g-administrators/members?page=1' => SignedInScreen::answered([
+                'error_description' => 'Too many persons read in this window; nobody was read this time. Try again in 42 seconds.',
+            ], 429),
+        ]);
+        $this->screen->open('section.groups');
+
+        // When
+        $this->screen->press(["\r", "\r"]);
+
+        // Then
+        $screen = $this->screen->screen();
+        static::assertSame([true, true], [
+            str_contains($screen, '429): Too many persons read in this window;'),
+            str_contains($screen, 'Try again in 42'),
+        ]);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -259,12 +398,16 @@ final class GroupsSectionTest extends TestCase
     /**
      * @return array<string, mixed>
      */
-    private static function members(): array
+    private static function members(string $username = 'alice', int $page = 1, int $pages = 1): array
     {
         return [
             'members' => [
-                ['person' => ['id' => 'p-alice', 'username' => 'alice'], 'source' => 'local', 'added_at' => '2026-10-01T08:00:00Z'],
+                ['person' => ['id' => 'p-' . $username, 'username' => $username], 'source' => 'local', 'added_at' => '2026-10-01T08:00:00Z'],
             ],
+            'page' => $page,
+            'per_page' => 1,
+            'pages' => $pages,
+            'total' => $pages,
         ];
     }
 }

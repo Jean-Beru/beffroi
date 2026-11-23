@@ -17,6 +17,7 @@ use Beffroi\Core\Port\GroupMembershipRepositoryInterface;
 use Beffroi\Core\Port\GroupRepositoryInterface;
 use Beffroi\Core\Port\GroupsOfAPersonInterface;
 use Beffroi\Oidc\Domain\Event\MembershipReadByAnAdministrator;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use function sprintf;
 use Symfony\Component\Clock\Clock;
@@ -241,6 +242,96 @@ final class AdministrationApiGroupsTest extends AdministrationTestCase
 
         // Then
         static::assertSame(Response::HTTP_NOT_FOUND, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function aPageHoldsTheMembersOfThatPageAndSaysHowManyTheGroupHolds(): void
+    {
+        // Given
+        $auditors = self::group('auditors');
+        foreach (['bob', 'carol', 'dave'] as $username) {
+            self::member($auditors, self::user($username, $username . '-subject'));
+        }
+        $token = $this->administratorToken(self::user('alice'));
+
+        // When
+        $response = $this->api(self::membersPath($auditors), $token, query: ['page' => '2', 'per_page' => '2']);
+
+        // Then
+        static::assertSame(
+            [['dave'], 2, 2, 2, 3],
+            [
+                array_map(
+                    static fn (array $member): mixed => is_array($member['person'] ?? null) ? $member['person']['username'] ?? null : null,
+                    self::listed($response, 'members'),
+                ),
+                ...self::members($response, ['page', 'per_page', 'pages', 'total']),
+            ],
+        );
+    }
+
+    #[Test]
+    public function aPageNamedByNobodyHoldsTheFirstMembersUpToFifty(): void
+    {
+        // Given
+        $auditors = self::group('auditors');
+        self::member($auditors, self::user('bob', 'bob-subject'));
+        $token = $this->administratorToken(self::user('alice'));
+
+        // When
+        $response = $this->api(self::membersPath($auditors), $token);
+
+        // Then
+        static::assertSame([1, 50, 1, 1], self::members($response, ['page', 'per_page', 'pages', 'total']));
+    }
+
+    #[Test]
+    public function aPagePastTheLastOneHoldsNobodyAndWritesNoAct(): void
+    {
+        // Given
+        $auditors = self::group('auditors');
+        self::member($auditors, self::user('bob', 'bob-subject'));
+        $token = $this->administratorToken(self::user('alice'));
+
+        // When
+        $response = $this->api(self::membersPath($auditors), $token, query: ['page' => '3']);
+
+        // Then
+        static::assertSame([[], 3, []], [
+            self::listed($response, 'members'),
+            self::members($response, ['page'])[0],
+            self::authored(MembershipReadByAnAdministrator::NAME),
+        ]);
+    }
+
+    /**
+     * @param array<string, string> $query
+     */
+    #[Test]
+    #[DataProvider('provideMalformedPages')]
+    public function aPageThatIsNotOneTheApiServesIsABadRequest(array $query): void
+    {
+        // Given
+        $auditors = self::group('auditors');
+        $token = $this->administratorToken(self::user('alice'));
+
+        // When
+        $response = $this->api(self::membersPath($auditors), $token, query: $query);
+
+        // Then
+        static::assertSame([Response::HTTP_BAD_REQUEST, 'invalid_request'], [$response->getStatusCode(), self::members($response, ['error'])[0]]);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, string>}>
+     */
+    public static function provideMalformedPages(): iterable
+    {
+        yield 'a page zero' => [['page' => '0']];
+        yield 'a page that is no number' => [['page' => 'two']];
+        yield 'a page with a sign' => [['page' => '+1']];
+        yield 'no member a page' => [['per_page' => '0']];
+        yield 'more members than the largest page' => [['per_page' => '101']];
     }
 
     private static function group(string $name): Group
