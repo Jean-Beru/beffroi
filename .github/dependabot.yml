@@ -2,6 +2,7 @@ version: 2
 updates:
   - package-ecosystem: composer
     directory: /
+    target-branch: "0.1.x"
     schedule:
       interval: weekly
     groups:
@@ -11,6 +12,7 @@ updates:
         dependency-type: development
   - package-ecosystem: composer
     directory: /apps/beffroi
+    target-branch: "0.1.x"
     schedule:
       interval: weekly
     allow:
@@ -20,6 +22,7 @@ updates:
         patterns: ["symfony/*"]
   - package-ecosystem: composer
     directory: /apps/tui
+    target-branch: "0.1.x"
     schedule:
       interval: weekly
     allow:
@@ -33,5 +36,12 @@ updates:
       interval: weekly
   - package-ecosystem: docker
     directory: /apps/beffroi
+    target-branch: "0.1.x"
     schedule:
-      interval: weekly
+      interval: daily
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      base-images:
+        patterns: ["*"]
