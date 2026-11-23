@@ -86,6 +86,36 @@ final class TheJournalIsChainedTest extends DatabaseTestCase
         static::assertSame([false, 'The act at position 2 of the journal is not the one written there.'], [$finding->green, $finding->lines[0] ?? null]);
     }
 
+    /**
+     * Decision 0062
+     */
+    #[Test]
+    public function theReasonOfARefusalChangedInTheDatabaseIsNamedByItsPosition(): void
+    {
+        // Given
+        $refused = new JournalEntry(
+            Uuid::v7(),
+            self::tenant(),
+            'client_authentication.failed',
+            self::service('clock', ClockInterface::class)->now(),
+            self::context(),
+            null,
+            'oidc-demo',
+            null,
+            'invalid_secret',
+            'client_secret_basic',
+        );
+        self::service('test.beffroi.journal', JournalInterface::class)->record($refused);
+        self::reload();
+        self::connection()->update('beffroi_journal', ['reason' => 'unexpected_method'], ['id' => $refused->id], ['id' => UuidType::NAME]);
+
+        // When
+        $finding = self::finding();
+
+        // Then
+        static::assertSame([false, 'The act at position 1 of the journal is not the one written there.'], [$finding->green, $finding->lines[0] ?? null]);
+    }
+
     #[Test]
     public function aProvenanceMovedFromAnotherActIsNamedByItsPosition(): void
     {

@@ -70,6 +70,34 @@ final class LinkTest extends TestCase
         yield 'the author' => [self::act(author: 'carol-subject')];
         yield 'one byte of the seal' => [self::act(sealedContext: 'sealed provenancE')];
         yield 'a byte moved from the person to the client' => [self::act(subject: 'alice-subjec', client: 't')];
+        yield 'a reason of a refusal (decision 0062)' => [self::act(reason: 'invalid_secret')];
+        yield 'a method refused (decision 0062)' => [self::act(method: 'client_secret_basic')];
+    }
+
+    /**
+     * Decision 0062: an act written before the journal said why a refusal refused links as it did then.
+     */
+    #[Test]
+    public function anActThatSaysNoReasonLinksAsBeforeTheJournalSaidOne(): void
+    {
+        // When / Then
+        static::assertSame('7e5ef199bc1a0ae2ef549cfc80cbf0cb6f70b8717eac0a5c06fdb569ac26c8c5', Link::beforeTheFirst()->then(self::act())->hash);
+    }
+
+    /**
+     * Decision 0062
+     */
+    #[Test]
+    public function theReasonAndTheMethodOfARefusalAreHeldByTheChain(): void
+    {
+        // Given
+        $refused = self::act(act: 'client_authentication.failed', reason: 'invalid_secret', method: 'client_secret_basic');
+
+        // When / Then
+        static::assertNotSame(
+            Link::beforeTheFirst()->then($refused)->hash,
+            Link::beforeTheFirst()->then(self::act(act: 'client_authentication.failed', reason: 'invalid_secret', method: 'private_key_jwt'))->hash,
+        );
     }
 
     #[Test]
@@ -124,7 +152,20 @@ final class LinkTest extends TestCase
         ?string $client = null,
         ?string $author = null,
         string $sealedContext = 'sealed provenance',
+        ?string $reason = null,
+        ?string $method = null,
     ): WrittenAct {
-        return new WrittenAct($id, $tenant, $act, $occurredAt ?? new DateTimeImmutable('2026-09-15 10:00:00'), $subject, $client, $author, $sealedContext);
+        return new WrittenAct(
+            $id,
+            $tenant,
+            $act,
+            $occurredAt ?? new DateTimeImmutable('2026-09-15 10:00:00'),
+            $subject,
+            $client,
+            $author,
+            $sealedContext,
+            $reason,
+            $method,
+        );
     }
 }
