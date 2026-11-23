@@ -10,7 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Architecture §5.7, RFC 5646 §2.2
+ * Architecture §5.7, RFC 5646 §2.1, §2.2
  */
 final class ServedLocalesTest extends TestCase
 {
@@ -57,6 +57,11 @@ final class ServedLocalesTest extends TestCase
         yield 'a script subtag is matched before the language alone' => [['en', 'zh_Hant'], ['zh-Hant-TW'], 'zh_Hant'];
         yield 'a tag no locale matches is skipped, not refused' => [['en', 'fr'], ['xx-YY', 'fr'], 'fr'];
         yield 'a private use subtag is ignored' => [['en', 'fr'], ['fr-x-private'], 'fr'];
+        yield 'a region the extended language subtags and the script are not before is not read' => [
+            ['en', 'fr', 'fr_CA'],
+            ['fr-abc-def-ghi-Latn-1694acad-CA'],
+            'fr',
+        ];
         yield 'a tag that names no language is ignored' => [['en', 'fr'], ['', '1-2', 'fr'], 'fr'];
         yield 'no tag matches anything' => [['en', 'fr'], ['de', 'es'], null];
         yield 'nothing is asked' => [['en', 'fr'], [], null];

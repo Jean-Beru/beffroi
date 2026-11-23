@@ -153,7 +153,7 @@ final class ClientCredentialsGrantTest extends TestCase
     {
         // Then
         $this->expectException(InvalidScopeException::class);
-        $this->expectExceptionMessageIs('invalid_scope: The scope parameter is not a space-separated list of scope tokens (RFC 6749 section 3.3).');
+        $this->expectExceptionMessageIs('invalid_scope: The scope parameter is not a space-separated list of at most 100 scope tokens (RFC 6749 section 3.3).');
 
         // When
         $this->grant->grant(new AuthenticatedClient($this->client), $this->request(scope: "invoices.read\tinvoices.write"), $this->context);

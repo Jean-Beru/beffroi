@@ -6,10 +6,11 @@ namespace Beffroi\Oidc\Tests\Application\Request;
 
 use Beffroi\Oidc\Application\Request\RequestParameters;
 use Beffroi\Oidc\Exception\InvalidRequestException;
+use function array_fill;
 use function array_map;
-use function hrtime;
 use function implode;
 use function range;
+use function sprintf;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -234,22 +235,38 @@ final class RequestParametersTest extends TestCase
         yield 'values made of digits' => [['2', '1', '02', '2'], ['2', '1', '02']];
     }
 
+    /**
+     * RFC 8707 §2
+     */
     #[Test]
-    public function itReadsFiftyThousandDistinctValuesOfARepeatedParameterInLessThanASecond(): void
+    public function aRepeatedParameterOfAHundredValuesIsRead(): void
     {
         // Given
         $request = RequestParameters::of([
-            'resource' => array_map(static fn (int $index): string => 'https://api.example/' . $index, range(1, 50_000)),
+            'resource' => self::resources(100),
         ]);
 
-        // When
-        $start = hrtime(true);
-        $values = $request->repeated('resource');
-        $milliseconds = (hrtime(true) - $start) / 1_000_000;
+        // When / Then
+        static::assertCount(100, $request->repeated('resource'));
+    }
+
+    /**
+     * RFC 8707 §2
+     */
+    #[Test]
+    public function aRepeatedParameterOfMoreThanAHundredValuesIsRefused(): void
+    {
+        // Given
+        $request = RequestParameters::of([
+            'resource' => self::resources(101),
+        ]);
 
         // Then
-        static::assertCount(50_000, $values);
-        static::assertLessThan(1_000, $milliseconds);
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessageIs('invalid_request: The resource parameter holds 100 values at most.');
+
+        // When
+        $request->repeated('resource');
     }
 
     #[Test]
@@ -377,22 +394,53 @@ final class RequestParametersTest extends TestCase
         static::assertSame(['2', '1', '02'], $request->acrValues());
     }
 
+    /**
+     * OIDC Core §3.1.2.1
+     *
+     * @param callable(RequestParameters): list<string> $read
+     */
     #[Test]
-    public function itReadsFiftyThousandDistinctLanguageTagsInLessThanASecond(): void
+    #[DataProvider('provideSpaceSeparatedLists')]
+    public function aListOfAHundredValuesIsRead(string $name, callable $read): void
     {
         // Given
         $request = RequestParameters::of([
-            'ui_locales' => implode(' ', array_map(static fn (int $index): string => 'en-' . $index, range(1, 50_000))),
+            $name => implode(' ', array_map(static fn (int $index): string => 'en-' . $index, range(1, 100))),
         ]);
 
-        // When
-        $start = hrtime(true);
-        $tags = $request->uiLocales();
-        $milliseconds = (hrtime(true) - $start) / 1_000_000;
+        // When / Then
+        static::assertCount(100, $read($request));
+    }
+
+    /**
+     * OIDC Core §3.1.2.1
+     *
+     * @param callable(RequestParameters): list<string> $read
+     */
+    #[Test]
+    #[DataProvider('provideSpaceSeparatedLists')]
+    public function aListOfMoreThanAHundredValuesIsRefusedBeforeAnyIsRead(string $name, callable $read): void
+    {
+        // Given
+        $request = RequestParameters::of([
+            $name => implode(' ', array_fill(0, 101, "\u{e9}")),
+        ]);
 
         // Then
-        static::assertCount(50_000, $tags);
-        static::assertLessThan(1_000, $milliseconds);
+        $this->expectException(InvalidRequestException::class);
+        $this->expectExceptionMessageIs(sprintf('invalid_request: The %s parameter holds 100 values at most.', $name));
+
+        // When
+        $read($request);
+    }
+
+    /**
+     * @return iterable<string, array{string, callable(RequestParameters): list<string>}>
+     */
+    public static function provideSpaceSeparatedLists(): iterable
+    {
+        yield 'ui_locales' => ['ui_locales', static fn (RequestParameters $request): array => $request->uiLocales()];
+        yield 'acr_values' => ['acr_values', static fn (RequestParameters $request): array => $request->acrValues()];
     }
 
     #[Test]
@@ -409,6 +457,14 @@ final class RequestParametersTest extends TestCase
 
         // When
         $request->uiLocales();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function resources(int $count): array
+    {
+        return array_map(static fn (int $index): string => 'https://api.example/' . $index, range(1, $count));
     }
 
     /**
