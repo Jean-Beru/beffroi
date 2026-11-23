@@ -12,6 +12,7 @@ use Beffroi\Core\Application\Totp\ActiveTotp;
 use Beffroi\Core\Application\Totp\TotpAuthentication;
 use Beffroi\Core\Application\Totp\TotpCodeMatcher;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Bridge\InMemory\InMemoryTotpUses;
 use Beffroi\Core\Domain\Credential\BackupCode;
 use Beffroi\Core\Domain\Credential\TotpCredential;
 use Beffroi\Core\Domain\Event\AuthenticationFailed;
@@ -21,13 +22,14 @@ use Beffroi\Core\Domain\Event\TotpUsed;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\RequestContext;
 use Beffroi\Core\Exception\KmsUnavailableException;
-use Beffroi\Core\Port\CredentialRepositoryInterface;
 use Beffroi\Core\Port\SecretSealerInterface;
+use Beffroi\Core\Port\TotpUsesInterface;
 use Beffroi\Core\Tests\Fixture\FakeAttemptLimiter;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
 use Beffroi\Core\Tests\Fixture\Totps;
+use Beffroi\Core\Tests\Fixture\TotpUsesRacedByAnotherRequest;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -57,7 +59,7 @@ final class TotpAuthenticationTest extends TestCase
     protected function setUp(): void
     {
         $this->alice = Fixtures::user();
-        $credentials = $this->credentials = new InMemoryCredentialRepository();
+        $this->credentials = new InMemoryCredentialRepository();
         $this->hasher = new FakePasswordHasher();
         $this->attempts = new FakeAttemptLimiter(5);
         $this->events = new RecordingEventDispatcher();
@@ -68,18 +70,8 @@ final class TotpAuthenticationTest extends TestCase
             Totps::stepAt($this->clock->now()->modify('-1 hour')),
             createdAt: $this->clock->now()->modify('-1 hour'),
         );
-        $credentials->save($this->totp);
-        $this->authentication = new TotpAuthentication(
-            $credentials,
-            new ActiveTotp(new ActiveCredentials($credentials)),
-            new TotpCodeMatcher(Totps::algorithm()),
-            Totps::sealer(),
-            $this->hasher,
-            $this->attempts,
-            new AuthenticationRefusal($this->clock, $this->events),
-            $this->clock,
-            $this->events,
-        );
+        $this->credentials->save($this->totp);
+        $this->authentication = $this->authenticationWith();
     }
 
     #[Test]
@@ -103,40 +95,85 @@ final class TotpAuthenticationTest extends TestCase
         static::assertEquals($this->clock->now(), $this->totp->lastUsedAt);
     }
 
+    /**
+     * @param non-empty-string $write
+     */
     #[Test]
     #[DataProvider('provideAcceptedCodes')]
-    public function anAcceptedCodeSavesTheCredential(string $code): void
+    public function anAcceptedCodeIsWrittenAsAUseOfTheCredential(string $code, string $write): void
     {
         // Given
-        $credentials = $this->createMock(CredentialRepositoryInterface::class);
-        $credentials->method('findByUser')->willReturn([$this->totp]);
-        $credentials->expects(static::once())->method('save')->with($this->totp);
-        $authentication = new TotpAuthentication(
-            $credentials,
-            new ActiveTotp(new ActiveCredentials($credentials)),
-            new TotpCodeMatcher(Totps::algorithm()),
-            Totps::sealer(),
-            $this->hasher,
-            $this->attempts,
-            new AuthenticationRefusal($this->clock, $this->events),
-            $this->clock,
-            $this->events,
-        );
-
-        // When
-        $authentication->authenticate($this->alice, $code === 'totp' ? Totps::codeAt($this->clock->now()) : $code, Fixtures::context($this->clock->now()));
+        $uses = $this->createMock(TotpUsesInterface::class);
+        $authentication = $this->authenticationWith(uses: $uses);
 
         // Then
-        static::assertEquals($this->clock->now(), $this->totp->lastUsedAt);
+        $uses->expects(static::once())->method($write)->with($this->totp)->willReturn(true);
+
+        // When
+        $authentication->authenticate($this->alice, self::presented($code, $this->clock), Fixtures::context($this->clock->now()));
+    }
+
+    /**
+     * @return iterable<string, array{string, non-empty-string}>
+     */
+    public static function provideAcceptedCodes(): iterable
+    {
+        yield 'a code of the authenticator' => ['totp', 'acceptStep'];
+        yield 'a backup code' => [Totps::BACKUP_CODES[2], 'spendBackupCode'];
+    }
+
+    /**
+     * RFC 6238 §5.2
+     */
+    #[Test]
+    #[DataProvider('provideCodes')]
+    public function ofTwoRequestsPresentingTheSameCodeAtOnceTheOneThatWritesSecondIsRefusedAsReplayed(string $code): void
+    {
+        // Given
+        $this->racedByAnotherRequestPresenting(self::presented($code, $this->clock));
+
+        // When
+        $exception = $this->failToAuthenticate(self::presented($code, $this->clock));
+
+        // Then
+        static::assertSame(AuthenticationFailureReason::ReplayedCode, $exception->reason);
     }
 
     /**
      * @return iterable<string, array{string}>
      */
-    public static function provideAcceptedCodes(): iterable
+    public static function provideCodes(): iterable
     {
         yield 'a code of the authenticator' => ['totp'];
         yield 'a backup code' => [Totps::BACKUP_CODES[2]];
+    }
+
+    /**
+     * RFC 6238 §5.2
+     *
+     * @param class-string<TotpUsed|BackupCodeUsed> $use
+     */
+    #[Test]
+    #[DataProvider('provideCodesAndTheirUse')]
+    public function ofTwoRequestsPresentingTheSameCodeAtOnceOneUseIsAnnounced(string $code, string $use): void
+    {
+        // Given
+        $this->racedByAnotherRequestPresenting(self::presented($code, $this->clock));
+
+        // When
+        $this->failToAuthenticate(self::presented($code, $this->clock));
+
+        // Then
+        static::assertCount(1, $this->events->of($use));
+    }
+
+    /**
+     * @return iterable<string, array{string, class-string<TotpUsed|BackupCodeUsed>}>
+     */
+    public static function provideCodesAndTheirUse(): iterable
+    {
+        yield 'a code of the authenticator' => ['totp', TotpUsed::class];
+        yield 'a backup code' => [Totps::BACKUP_CODES[2], BackupCodeUsed::class];
     }
 
     #[Test]
@@ -491,19 +528,33 @@ final class TotpAuthenticationTest extends TestCase
         static::assertSame(Totps::stepAt($this->clock->now()->modify('-1 hour')), $this->totp->lastAcceptedStep);
     }
 
-    private function authenticationWith(SecretSealerInterface $sealer): TotpAuthentication
+    private function authenticationWith(?SecretSealerInterface $sealer = null, TotpUsesInterface $uses = new InMemoryTotpUses()): TotpAuthentication
     {
         return new TotpAuthentication(
-            $this->credentials,
+            $uses,
             new ActiveTotp(new ActiveCredentials($this->credentials)),
             new TotpCodeMatcher(Totps::algorithm()),
-            $sealer,
+            $sealer ?? Totps::sealer(),
             $this->hasher,
             $this->attempts,
             new AuthenticationRefusal($this->clock, $this->events),
             $this->clock,
             $this->events,
         );
+    }
+
+    private function racedByAnotherRequestPresenting(string $code): void
+    {
+        $uses = new TotpUsesRacedByAnotherRequest(new InMemoryTotpUses());
+        $this->authentication = $this->authenticationWith(uses: $uses);
+        $uses->anotherRequest = function () use ($code): void {
+            $this->authentication->authenticate($this->alice, $code, Fixtures::context($this->clock->now()));
+        };
+    }
+
+    private static function presented(string $code, MockClock $clock): string
+    {
+        return $code === 'totp' ? Totps::codeAt($clock->now()) : $code;
     }
 
     private function sealerThatDoesNotAnswer(): SecretSealerInterface

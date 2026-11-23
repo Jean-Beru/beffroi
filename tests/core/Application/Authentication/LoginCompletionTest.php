@@ -22,6 +22,7 @@ use Beffroi\Core\Application\Totp\TotpAuthentication;
 use Beffroi\Core\Application\Totp\TotpCodeMatcher;
 use Beffroi\Core\Bridge\InMemory\InMemoryAuthenticationSessionRepository;
 use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
+use Beffroi\Core\Bridge\InMemory\InMemoryTotpUses;
 use Beffroi\Core\Bridge\InMemory\InMemoryUserRepository;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
@@ -96,7 +97,7 @@ final class LoginCompletionTest extends TestCase
                 new FederatedDomains($this->upstreamProviders),
             ),
             new TotpAuthentication(
-                $credentials,
+                new InMemoryTotpUses(),
                 new ActiveTotp(new ActiveCredentials($credentials)),
                 new TotpCodeMatcher(Totps::algorithm()),
                 Totps::sealer(),
