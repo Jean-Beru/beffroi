@@ -8,7 +8,8 @@ name: TUI
 # It is built at every release published and on demand, from the Actions tab or with
 # "gh workflow run tui.yml --ref <ref>". From a release tag A.B.C, by the release or by a dispatch on the tag, the four
 # files are uploaded to that release with SHA256SUMS, their digests, and SHA256SUMS.asc, the detached signature of
-# that file by the key that signs the release tags, SIGNING_KEY_FINGERPRINT, published at https://github.com/Spomky.gpg;
+# that file by the key that signs the release tags, SIGNING_KEY_FINGERPRINT, the one the client carries in
+# apps/tui/resources/release-signing-key.gpg;
 # a SIGNING_SECRET_KEY that holds another key signs nothing and fails the run. A file the release carries already is
 # replaced. From any other
 # ref the four files are built, each one is run once, and they are kept as artifacts of the run for three days;
@@ -75,7 +76,7 @@ env:
   SPC_VERSION: "2.8.5"
   MICRO_EXTENSIONS: "dom,filter,iconv,intl,mbstring,openssl,pcntl,phar,posix,simplexml,sodium,zlib"
   ALPINE_IMAGE: "alpine:3.22"
-  SIGNING_KEY_FINGERPRINT: "5E85361FC66BB177139388310B2A1B9931D62A89"
+  SIGNING_KEY_FINGERPRINT: "FAFA4D7E39BAB0AE08EE4439544F6C7929EA07AF"
 
 jobs:
   prepare:
@@ -314,7 +315,7 @@ jobs:
             printf "%s" "${SIGNING_SECRET_KEY}" | gpg --batch --quiet --import
             held=$(gpg --batch --with-colons --list-secret-keys | awk -F: "/^fpr/ { print \$10; exit }")
             if [ "${held}" != "${SIGNING_KEY_FINGERPRINT}" ]; then
-              echo "::error title=Not the published key::SIGNING_SECRET_KEY holds the key ${held}, and the key published at https://github.com/Spomky.gpg is ${SIGNING_KEY_FINGERPRINT}: nothing is signed." >&2
+              echo "::error title=Not the key of the releases::SIGNING_SECRET_KEY holds the key ${held}, and the key the client carries in apps/tui/resources/release-signing-key.gpg is ${SIGNING_KEY_FINGERPRINT}: nothing is signed." >&2
               exit 1
             fi
             gpg --batch --yes --armor --detach-sign --local-user "${SIGNING_KEY_FINGERPRINT}" --output SHA256SUMS.asc SHA256SUMS
