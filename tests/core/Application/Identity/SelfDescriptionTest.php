@@ -19,6 +19,7 @@ use Beffroi\Core\Domain\Tenant\SelfServedClaims;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Core\Tests\Fixture\WritesAsTheyCome;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -37,6 +38,19 @@ final class SelfDescriptionTest extends TestCase
 
         // Then
         static::assertSame('Ada', $user->profile->nickname);
+    }
+
+    #[Test]
+    public function theDescriptionAndItsHistoryLineAreWrittenInOneUnit(): void
+    {
+        // Given
+        $writes = new WritesAsTheyCome();
+
+        // When
+        self::describing(writes: $writes)->describe(self::user(['nickname']), new Nickname(), 'Ada', Fixtures::context());
+
+        // Then
+        static::assertSame(1, $writes->units);
     }
 
     #[Test]
@@ -261,11 +275,15 @@ final class SelfDescriptionTest extends TestCase
         static::assertSame('+33 1 23 45 67 89', $changes[0]->became);
     }
 
-    private static function describing(?RecordingEventDispatcher $events = null, ?InMemoryClaimHistory $history = null): SelfDescription
-    {
+    private static function describing(
+        ?RecordingEventDispatcher $events = null,
+        ?InMemoryClaimHistory $history = null,
+        ?WritesAsTheyCome $writes = null,
+    ): SelfDescription {
         return new SelfDescription(
             new InMemoryUserRepository(),
             $history ?? new InMemoryClaimHistory(),
+            $writes ?? new WritesAsTheyCome(),
             $events ?? new RecordingEventDispatcher(),
             new MockClock(Fixtures::now()),
         );

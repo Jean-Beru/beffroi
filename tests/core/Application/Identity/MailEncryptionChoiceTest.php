@@ -14,6 +14,7 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Exception\MailEncryptionRefusedException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
+use Beffroi\Core\Tests\Fixture\WritesAsTheyCome;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -27,11 +28,14 @@ final class MailEncryptionChoiceTest extends TestCase
 
     private RecordingEventDispatcher $events;
 
+    private WritesAsTheyCome $writes;
+
     protected function setUp(): void
     {
         $this->users = new InMemoryUserRepository();
         $this->history = new InMemoryClaimHistory();
         $this->events = new RecordingEventDispatcher();
+        $this->writes = new WritesAsTheyCome();
     }
 
     #[Test]
@@ -65,6 +69,19 @@ final class MailEncryptionChoiceTest extends TestCase
         static::assertSame('smime 9F2C', $changes[0]->was);
         static::assertSame('smime 51AB', $changes[0]->became);
         static::assertNull($changes[0]->author);
+    }
+
+    #[Test]
+    public function theChoiceAndItsHistoryLineAreWrittenInOneUnit(): void
+    {
+        // Given
+        $user = self::verified();
+
+        // When
+        $this->choice()->choose($user, self::key('9F2C'), Fixtures::context());
+
+        // Then
+        static::assertSame(1, $this->writes->units);
     }
 
     #[Test]
@@ -132,7 +149,7 @@ final class MailEncryptionChoiceTest extends TestCase
 
     private function choice(): MailEncryptionChoice
     {
-        return new MailEncryptionChoice($this->users, $this->history, $this->events, new MockClock(Fixtures::now()));
+        return new MailEncryptionChoice($this->users, $this->history, $this->writes, $this->events, new MockClock(Fixtures::now()));
     }
 
     private static function verified(): User
