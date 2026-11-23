@@ -53,6 +53,19 @@ final class AuthenticatorModelsTest extends TestCase
     }
 
     #[Test]
+    public function theAaguidAloneNamesTheModel(): void
+    {
+        // Given
+        $models = new AuthenticatorModels([self::list([self::AAGUID => AuthenticatorLists::model('Proton Pass')])]);
+
+        // When
+        $model = $models->named(Uuid::fromString(self::AAGUID));
+
+        // Then
+        static::assertSame('Proton Pass', $model?->name);
+    }
+
+    #[Test]
     public function aModelNoSourceNamesIsUnknown(): void
     {
         // Given
