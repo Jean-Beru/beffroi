@@ -25,6 +25,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
+use Beffroi\Core\Tests\Fixture\FakeMonotonicClock;
 
 final class EnrolmentTicketRedemptionTest extends TestCase
 {
@@ -62,7 +63,7 @@ final class EnrolmentTicketRedemptionTest extends TestCase
         )->issue($this->alice, Fixtures::context($this->clock->now()));
         $this->redemption = new EnrolmentTicketRedemption(
             $this->tickets,
-            new TicketRedeeming($this->hasher, new DecoyHash($this->hasher, new SymfonyUuidGenerator()), $this->clock),
+            new TicketRedeeming($this->hasher, new DecoyHash($this->hasher, new SymfonyUuidGenerator(), new FakeMonotonicClock()), $this->clock),
         );
     }
 

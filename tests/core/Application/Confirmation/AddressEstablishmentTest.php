@@ -41,6 +41,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use function substr;
 use Symfony\Component\Uid\Uuid;
+use Beffroi\Core\Tests\Fixture\FakeMonotonicClock;
 
 /**
  * NIST SP 800-63B-4 §4.2.1.2, decision 0026
@@ -876,7 +877,7 @@ final class AddressEstablishmentTest extends TestCase
             $this->sender,
             $sends,
             new AddressConfirmationIssuing($uuids, $randomness, $this->hasher, $this->clock),
-            new AddressConfirmationRedeeming($this->hasher, new DecoyHash($this->hasher, $uuids), $attempts, $this->clock),
+            new AddressConfirmationRedeeming($this->hasher, new DecoyHash($this->hasher, $uuids, new FakeMonotonicClock()), $attempts, $this->clock),
             $this->users,
             $this->history,
             new WritesAsTheyCome(),

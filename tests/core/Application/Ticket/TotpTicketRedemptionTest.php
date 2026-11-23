@@ -45,6 +45,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
+use Beffroi\Core\Tests\Fixture\FakeMonotonicClock;
 
 /**
  * Decision 0026
@@ -84,7 +85,7 @@ final class TotpTicketRedemptionTest extends TestCase
         $notifier = new RecordingCredentialChangeNotifier();
         $this->redemption = new TotpTicketRedemption(
             $this->tickets,
-            new TicketRedeeming($this->hasher, new DecoyHash($this->hasher, new SymfonyUuidGenerator()), $this->clock),
+            new TicketRedeeming($this->hasher, new DecoyHash($this->hasher, new SymfonyUuidGenerator(), new FakeMonotonicClock()), $this->clock),
             new TotpEnrolment(
                 $this->credentials,
                 new EnrolmentRefusal(new FederatedDomains(new InMemoryUpstreamProviders())),

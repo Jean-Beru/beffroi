@@ -38,6 +38,7 @@ use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Signature\Algorithm\HS256;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\MockClock;
+use Beffroi\Core\Tests\Fixture\FakeMonotonicClock;
 
 final class Methods
 {
@@ -45,14 +46,14 @@ final class Methods
     {
         $hasher ??= new FakePasswordHasher();
 
-        return new ClientSecretBasic($hasher, $decoy ?? new DecoyHash($hasher, new SymfonyUuidGenerator()));
+        return new ClientSecretBasic($hasher, $decoy ?? new DecoyHash($hasher, new SymfonyUuidGenerator(), new FakeMonotonicClock()));
     }
 
     public static function clientSecretPost(?PasswordHasherInterface $hasher = null, ?DecoyHash $decoy = null): ClientSecretPost
     {
         $hasher ??= new FakePasswordHasher();
 
-        return new ClientSecretPost($hasher, $decoy ?? new DecoyHash($hasher, new SymfonyUuidGenerator()));
+        return new ClientSecretPost($hasher, $decoy ?? new DecoyHash($hasher, new SymfonyUuidGenerator(), new FakeMonotonicClock()));
     }
 
     public static function none(): NoAuthentication
@@ -137,7 +138,7 @@ final class Methods
         ?ClientAssertionValidator $claims = null,
     ): ClientAuthenticationMethods {
         $hasher ??= new FakePasswordHasher();
-        $decoy = new DecoyHash($hasher, new SymfonyUuidGenerator());
+        $decoy = new DecoyHash($hasher, new SymfonyUuidGenerator(), new FakeMonotonicClock());
         $claims ??= self::assertionValidator();
 
         return new ClientAuthenticationMethods([

@@ -37,6 +37,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
+use Beffroi\Core\Tests\Fixture\FakeMonotonicClock;
 
 final class TheOrderOfAPasswordLoginTest extends TestCase
 {
@@ -72,7 +73,7 @@ final class TheOrderOfAPasswordLoginTest extends TestCase
                 $credentials,
                 new ActivePassword(new ActiveCredentials($credentials)),
                 $this->hasher,
-                new DecoyHash($this->hasher, new SymfonyUuidGenerator()),
+                new DecoyHash($this->hasher, new SymfonyUuidGenerator(), new FakeMonotonicClock()),
                 new FakeAttemptLimiter(5),
                 new AuthenticationRefusal($clock, $this->events),
                 $clock,
