@@ -14,7 +14,7 @@ use Beffroi\Oidc\Bridge\InMemory\InMemoryClientStore;
 use Beffroi\Oidc\Domain\Client\ClientRecord;
 use Beffroi\Oidc\Domain\Event\RegisteredClientDeleted;
 use Beffroi\Oidc\Domain\Secret\DrawnSecret;
-use Beffroi\Oidc\Port\ClientRegistrationPolicyInterface;
+use Beffroi\Oidc\Port\ClientRetentionPolicyInterface;
 use Beffroi\Oidc\Tests\Fixture\RegistrationPolicies;
 use Beffroi\Oidc\Tests\Fixture\Secrets;
 use PHPUnit\Framework\Attributes\Test;
@@ -133,17 +133,16 @@ final class UnusedClientRemovalTest extends TestCase
      * Decision 0009
      */
     #[Test]
-    public function aTenantThatRegistersNobodyDropsNothing(): void
+    public function aTenantThatNoLongerRegistersStillDropsWhatItRegistered(): void
     {
         // Given
         $this->register('never-used');
 
         // When
-        $removed = $this->removeUnusedAt(Fixtures::now()->modify('+1 year'), policies: RegistrationPolicies::closed());
+        $removed = $this->removeUnusedAt(Fixtures::now()->modify('+1 year'), retentions: RegistrationPolicies::closed());
 
         // Then
-        static::assertSame([], $removed);
-        static::assertCount(1, $this->clients->records);
+        static::assertSame(['never-used'], $removed);
     }
 
     #[Test]
@@ -185,11 +184,11 @@ final class UnusedClientRemovalTest extends TestCase
     private function removeUnusedAt(
         DateTimeImmutable $now,
         int $perRun = UnusedClientRemoval::PER_RUN,
-        ?ClientRegistrationPolicyInterface $policies = null,
+        ?ClientRetentionPolicyInterface $retentions = null,
     ): array {
         return new UnusedClientRemoval(
             [$this->clients],
-            $policies ?? RegistrationPolicies::controlled(),
+            $retentions ?? RegistrationPolicies::controlled(),
             new RegisteredClientRemoval($this->clients, $this->events),
             new MockClock($now),
             $perRun,
