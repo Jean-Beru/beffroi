@@ -20,7 +20,7 @@ final class Rs1RefusingAttestationStatementSupportTest extends TestCase
      */
     #[Test]
     #[DataProvider('provideTheIdentifierOfRs1')]
-    public function aStatementSignedWithRs1IsRefusedBeforeTheFormatVerifiesIt(int|string $algorithm): void
+    public function aStatementSignedWithRs1IsRefusedBeforeTheFormatVerifiesIt(int|float|string $algorithm): void
     {
         // Given
         $format = new RecordingAttestationStatementSupport();
@@ -36,12 +36,18 @@ final class Rs1RefusingAttestationStatementSupportTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{int|string}>
+     * @return iterable<string, array{int|float|string}>
      */
     public static function provideTheIdentifierOfRs1(): iterable
     {
         yield 'an integer' => [-65535];
         yield 'text' => ['-65535'];
+        yield 'text with a leading zero' => ['-065535'];
+        yield 'text with a leading space' => [' -65535'];
+        yield 'text with a trailing space' => ['-65535 '];
+        yield 'text with a fraction' => ['-65535.9'];
+        yield 'text followed by letters' => ['-65535rs1'];
+        yield 'a float' => [-65535.0];
     }
 
     /**
