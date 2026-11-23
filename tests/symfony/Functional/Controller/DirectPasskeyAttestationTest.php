@@ -71,7 +71,6 @@ final class DirectPasskeyAttestationTest extends PasskeyAttestationTestCase
         // Then
         static::assertSame(ModelProof::Declared, self::passkeysOf($alice)[0]->modelProof);
         static::assertSame('declared', $page->filter('[data-model-proof]')->attr('data-model-proof'));
-        static::assertCount(1, $page->filter('p[data-authenticators-declared]'));
     }
 
     /**

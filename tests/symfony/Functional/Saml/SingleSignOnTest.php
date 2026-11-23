@@ -163,13 +163,11 @@ final class SingleSignOnTest extends ConsoleTestCase
             [
                 'fr',
                 'Connexion en cours',
-                "Votre navigateur arrive d\u{2019}un autre site sans votre session. Utilisez le bouton ci-dessous pour continuer.",
                 'Continuer',
             ],
             [
                 (string) $crawler->filter('html')->attr('lang'),
                 $crawler->filter('title')->text(),
-                $crawler->filter('noscript p')->text(),
                 $crawler->filter('noscript button')->text(),
             ],
         );

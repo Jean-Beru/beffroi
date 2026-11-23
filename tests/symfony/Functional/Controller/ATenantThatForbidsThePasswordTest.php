@@ -75,7 +75,7 @@ final class ATenantThatForbidsThePasswordTest extends PasskeyTestCase
         // Then
         static::assertSame(Response::HTTP_OK, $this->browser->getResponse()->getStatusCode());
         static::assertCount(0, $page->filter('form[data-two-factor="begin"]'));
-        static::assertStringContainsString('needs no authenticator app', self::string($page->filter('p[data-two-factor="none"]')->text()));
+        static::assertStringContainsString('no authenticator app is needed', self::string($page->filter('p[data-two-factor="none"]')->text()));
     }
 
     #[Test]

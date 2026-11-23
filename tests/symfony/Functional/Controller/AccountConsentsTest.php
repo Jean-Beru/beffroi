@@ -76,7 +76,7 @@ final class AccountConsentsTest extends BrowserTestCase
         $crawler = $this->consentsPage();
 
         // When
-        $this->browser->submit($crawler->selectButton('Take back')->form());
+        $this->browser->submit($crawler->selectButton('Revoke access')->form());
 
         // Then
         static::assertSame('/account/consents', $this->browser->getResponse()->headers->get('Location'));
@@ -206,7 +206,7 @@ final class AccountConsentsTest extends BrowserTestCase
 
     private function takeBack(): void
     {
-        $this->browser->submit($this->consentsPage()->selectButton('Take back')->form());
+        $this->browser->submit($this->consentsPage()->selectButton('Revoke access')->form());
         static::assertSame(Response::HTTP_SEE_OTHER, $this->browser->getResponse()->getStatusCode());
     }
 

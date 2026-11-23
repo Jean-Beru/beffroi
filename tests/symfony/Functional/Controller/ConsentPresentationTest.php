@@ -204,7 +204,7 @@ final class ConsentPresentationTest extends BrowserTestCase
         static::assertSame(
             [
                 'Comment Une application de l’écosystème utilise vos données',
-                'Conditions d’utilisation de Une application de l’écosystème',
+                'Conditions d\'utilisation de Une application de l’écosystème',
                 'Site de Une application de l’écosystème',
             ],
             $links->extract(['_text']),
