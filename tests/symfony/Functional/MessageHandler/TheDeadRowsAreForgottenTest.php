@@ -177,7 +177,7 @@ final class TheDeadRowsAreForgottenTest extends DatabaseTestCase
     }
 
     /**
-     * RFC 9700 §4.13.2
+     * RFC 9700 §4.14.2
      */
     #[Test]
     public function aRotatedRefreshTokenOutlivesItsOwnExpiry(): void

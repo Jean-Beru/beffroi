@@ -471,7 +471,7 @@ beffroi:
         # A public client that asks to keep its access while the person is away (OIDC Core §11): it has no
         # credentials and binds nothing, so its refresh token is rotated at every use, rotation being the whole of
         # what tells it from a copy of itself, and a rotated token presented again revokes its family (RFC 9700
-        # §4.13.2).
+        # §4.14.2).
         offline-app:
             client_name: 'Application that keeps its access offline'
             redirect_uris: ['https://offline.test/callback']

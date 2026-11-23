@@ -312,7 +312,7 @@ final class RefreshTokenTest extends TestCase
     }
 
     /**
-     * RFC 6749 §6, RFC 9700 §4.13.2
+     * RFC 6749 §6, RFC 9700 §4.14.2
      */
     #[Test]
     public function rotatingDatesTheRotation(): void
