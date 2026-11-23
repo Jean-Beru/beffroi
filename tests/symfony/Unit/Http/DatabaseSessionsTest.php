@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Tests\Symfony\Unit\Http;
 
+use App\Doctrine\PersonalData\TenantScopedEncrypter;
 use App\Http\DatabaseSessions;
-use function array_map;
+use App\Tests\Symfony\Fixture\AmbientTenant;
+use Beffroi\Core\Tests\Fixture\Fixtures;
+use function hash;
 use PDO;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use function strlen;
+use Symfony\Component\KeyManagement\StoredEnvelopeEncrypter;
+use Symfony\Component\KeyManagement\Test\InMemoryDataKeyStore;
 
 /**
  * Decision 0053
@@ -23,30 +27,32 @@ final class DatabaseSessionsTest extends TestCase
     {
         // Given
         $database = self::database();
-        self::write(new DatabaseSessions($database, 'secret'), 'the data of the browser');
+        $sealer = self::sealer();
+        self::write(new DatabaseSessions($database, $sealer), 'the data of the browser');
 
         // When
-        $read = self::read(new DatabaseSessions($database, 'secret'));
+        $read = self::read(new DatabaseSessions($database, $sealer));
 
         // Then
         static::assertSame('the data of the browser', $read);
     }
 
     #[Test]
-    public function aRowIsKeyedByAnHmacAndNeverByTheIdentifierOfItsCookie(): void
+    public function aRowIsKeyedByTheHashAndNeverByTheIdentifierOfItsCookie(): void
     {
         // Given
         $database = self::database();
 
         // When
-        self::write(new DatabaseSessions($database, 'secret'), 'the data of the browser');
+        self::write(new DatabaseSessions($database, self::sealer()), 'the data of the browser');
 
         // Then
-        $keys = self::column($database, 'SELECT sess_id FROM beffroi_session');
-        static::assertSame([64], array_map(strlen(...), $keys));
-        static::assertNotContains(self::COOKIE, $keys);
+        static::assertSame([hash('sha256', self::COOKIE)], self::column($database, 'SELECT sess_id FROM beffroi_session'));
     }
 
+    /**
+     * Decision 0011
+     */
     #[Test]
     public function theDataOfASessionIsSealedSoThatTheTableHoldsNoneOfIt(): void
     {
@@ -54,7 +60,7 @@ final class DatabaseSessionsTest extends TestCase
         $database = self::database();
 
         // When
-        self::write(new DatabaseSessions($database, 'secret'), 'the data of the browser');
+        self::write(new DatabaseSessions($database, self::sealer()), 'the data of the browser');
 
         // Then
         $stored = self::column($database, 'SELECT sess_data FROM beffroi_session');
@@ -63,14 +69,14 @@ final class DatabaseSessionsTest extends TestCase
     }
 
     #[Test]
-    public function anotherSecretReadsNoSession(): void
+    public function aRowSealedUnderADataKeyTheTenantNoLongerHoldsIsNoSession(): void
     {
         // Given
         $database = self::database();
-        self::write(new DatabaseSessions($database, 'secret'), 'the data of the browser');
+        self::write(new DatabaseSessions($database, self::sealer()), 'the data of the browser');
 
         // When
-        $read = self::read(new DatabaseSessions($database, 'another secret'));
+        $read = self::read(new DatabaseSessions($database, self::sealer()));
 
         // Then
         static::assertSame('', $read);
@@ -79,9 +85,17 @@ final class DatabaseSessionsTest extends TestCase
     private static function database(): PDO
     {
         $database = new PDO('sqlite::memory:');
-        new DatabaseSessions($database, 'secret')->createTable();
+        new DatabaseSessions($database, self::sealer())->createTable();
 
         return $database;
+    }
+
+    /**
+     * A store of data keys of its own: two sealers hold no key in common.
+     */
+    private static function sealer(): TenantScopedEncrypter
+    {
+        return new TenantScopedEncrypter(new StoredEnvelopeEncrypter(new InMemoryDataKeyStore()), new AmbientTenant(Fixtures::tenant('acme')));
     }
 
     /**
