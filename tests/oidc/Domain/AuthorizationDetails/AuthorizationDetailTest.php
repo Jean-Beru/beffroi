@@ -147,6 +147,57 @@ final class AuthorizationDetailTest extends TestCase
                 'account' => 'acct-4711',
             ],
         ];
+        yield 'the members in another order' => [
+            self::TYPE,
+            [
+                'actions' => ['read'],
+                'account' => 'acct-4711',
+            ],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $members
+     */
+    #[Test]
+    #[DataProvider('provideOtherDetails')]
+    public function aDetailThatDiffersAtAllHasAnotherIdentity(string $type, array $members): void
+    {
+        // Given
+        $detail = new AuthorizationDetail(self::TYPE, [
+            'account' => 'acct-4711',
+            'actions' => ['read'],
+        ]);
+
+        // When / Then
+        static::assertNotSame($detail->identity(), new AuthorizationDetail($type, $members)->identity());
+    }
+
+    #[Test]
+    #[DataProvider('provideIdenticalDetails')]
+    public function anIdenticalDetailHasTheSameIdentity(AuthorizationDetail $one, AuthorizationDetail $other): void
+    {
+        // When / Then
+        static::assertSame($one->identity(), $other->identity());
+    }
+
+    /**
+     * @return iterable<string, array{AuthorizationDetail, AuthorizationDetail}>
+     */
+    public static function provideIdenticalDetails(): iterable
+    {
+        yield 'the same members' => [
+            new AuthorizationDetail(self::TYPE, ['account' => 'acct-4711']),
+            new AuthorizationDetail(self::TYPE, ['account' => 'acct-4711']),
+        ];
+        yield 'a negative zero for a zero' => [
+            new AuthorizationDetail(self::TYPE, ['limits' => ['overdraft' => -0.0]]),
+            new AuthorizationDetail(self::TYPE, ['limits' => ['overdraft' => 0.0]]),
+        ];
+        yield 'another rendering' => [
+            new AuthorizationDetail(self::TYPE, ['account' => 'acct-4711'], ['account' => 'acct-4711']),
+            new AuthorizationDetail(self::TYPE, ['account' => 'acct-4711']),
+        ];
     }
 
     #[Test]

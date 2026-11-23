@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Beffroi\Oidc\Tests\Application\Client;
 
 use function array_map;
+use function hrtime;
+use function range;
 use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
@@ -97,6 +99,25 @@ final class RegisteredClientsTest extends TestCase
         );
     }
 
+    #[Test]
+    public function twentyThousandResourcesOfTwoSourcesAreGatheredInLessThanASecond(): void
+    {
+        // Given
+        $resources = array_map(static fn (int $index): ResourceIndicator => new ResourceIndicator('https://api.example/' . $index), range(1, 20_000));
+        $this->declared->save(Clients::public($this->tenant, resources: $resources));
+        $this->registered->save(Clients::public($this->tenant, 'registered-spa', $resources));
+        $clients = $this->clients();
+
+        // When
+        $start = hrtime(true);
+        $gathered = $clients->resourcesRegisteredIn($this->tenant);
+        $milliseconds = (hrtime(true) - $start) / 1_000_000;
+
+        // Then
+        static::assertCount(20_000, $gathered);
+        static::assertLessThan(1_000, $milliseconds);
+    }
+
     /**
      * OIDC Discovery §3
      */
@@ -116,6 +137,25 @@ final class RegisteredClientsTest extends TestCase
             ['openid', 'billing.read', 'billing.write'],
             array_map(static fn (Scope $scope): string => $scope->value, $scopes),
         );
+    }
+
+    #[Test]
+    public function twentyThousandScopesOfTwoSourcesAreGatheredInLessThanASecond(): void
+    {
+        // Given
+        $scopes = new Scopes(array_map(static fn (int $index): Scope => new Scope('scope.' . $index), range(1, 20_000)));
+        $this->declared->save(Clients::public($this->tenant, allowedScopes: $scopes));
+        $this->registered->save(Clients::public($this->tenant, 'registered-spa', allowedScopes: $scopes));
+        $clients = $this->clients();
+
+        // When
+        $start = hrtime(true);
+        $gathered = $clients->scopesRegisteredIn($this->tenant);
+        $milliseconds = (hrtime(true) - $start) / 1_000_000;
+
+        // Then
+        static::assertCount(20_000, $gathered);
+        static::assertLessThan(1_000, $milliseconds);
     }
 
     /**

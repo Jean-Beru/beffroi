@@ -9,6 +9,9 @@ use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
 use Beffroi\Oidc\Domain\Token\TokenAudience;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
 use Beffroi\Oidc\Tests\Fixture\Clients;
+use function array_map;
+use function hrtime;
+use function range;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -149,6 +152,48 @@ final class TokenAudienceTest extends TestCase
 
         // When
         new TokenAudience(['spa', '']);
+    }
+
+    /**
+     * RFC 7519 §4.1.3
+     *
+     * @param list<string> $values
+     * @param list<string> $kept
+     */
+    #[Test]
+    #[DataProvider('provideAudiencesWithRepeats')]
+    public function anAudienceNamedTwiceCountsOnceWhereItWasFirstNamed(array $values, array $kept): void
+    {
+        // When
+        $audience = new TokenAudience($values);
+
+        // Then
+        static::assertSame($kept, $audience->values);
+    }
+
+    /**
+     * @return iterable<string, array{list<string>, list<string>}>
+     */
+    public static function provideAudiencesWithRepeats(): iterable
+    {
+        yield 'a resource named twice' => [[Clients::CALENDAR, Clients::CONTACTS, Clients::CALENDAR], [Clients::CALENDAR, Clients::CONTACTS]];
+        yield 'names made of digits' => [['2', '1', '02', '2'], ['2', '1', '02']];
+    }
+
+    #[Test]
+    public function itNamesFiftyThousandDistinctAudiencesInLessThanASecond(): void
+    {
+        // Given
+        $values = array_map(static fn (int $index): string => 'https://api.example/' . $index, range(1, 50_000));
+
+        // When
+        $start = hrtime(true);
+        $audience = new TokenAudience($values);
+        $milliseconds = (hrtime(true) - $start) / 1_000_000;
+
+        // Then
+        static::assertCount(50_000, $audience);
+        static::assertLessThan(1_000, $milliseconds);
     }
 
     #[Test]
