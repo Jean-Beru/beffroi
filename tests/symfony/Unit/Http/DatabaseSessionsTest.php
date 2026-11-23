@@ -22,6 +22,8 @@ final class DatabaseSessionsTest extends TestCase
 {
     private const string COOKIE = 'r8Kq2mZ7tVb1sNc4';
 
+    private const string ANOTHER_COOKIE = 'Xp3vQ9wE5yLh0aJd';
+
     #[Test]
     public function aSessionIsReadBackUnderTheIdentifierOfItsCookie(): void
     {
@@ -82,6 +84,43 @@ final class DatabaseSessionsTest extends TestCase
         static::assertSame('', $read);
     }
 
+    #[Test]
+    public function aRowMovedUnderTheHashOfAnotherIdentifierIsNoSession(): void
+    {
+        // Given
+        $database = self::database();
+        $sealer = self::sealer();
+        self::write(new DatabaseSessions($database, $sealer), 'the data of the browser');
+        $moved = $database->prepare('UPDATE beffroi_session SET sess_id = :moved');
+        $moved->execute(['moved' => hash('sha256', self::ANOTHER_COOKIE)]);
+
+        // When
+        $read = self::read(new DatabaseSessions($database, $sealer), self::ANOTHER_COOKIE);
+
+        // Then
+        static::assertSame('', $read);
+    }
+
+    /**
+     * Decision 0011
+     */
+    #[Test]
+    public function aValueSealedForAColumnOfAPersonIsNoSession(): void
+    {
+        // Given
+        $database = self::database();
+        $sealer = self::sealer();
+        self::write(new DatabaseSessions($database, $sealer), 'the data of the browser');
+        $replaced = $database->prepare('UPDATE beffroi_session SET sess_data = :sealed');
+        $replaced->execute(['sealed' => (string) $sealer->encrypt('user', 'what a person wrote')]);
+
+        // When
+        $read = self::read(new DatabaseSessions($database, $sealer));
+
+        // Then
+        static::assertSame('', $read);
+    }
+
     private static function database(): PDO
     {
         $database = new PDO('sqlite::memory:');
@@ -122,10 +161,10 @@ final class DatabaseSessionsTest extends TestCase
         $sessions->close();
     }
 
-    private static function read(DatabaseSessions $sessions): string
+    private static function read(DatabaseSessions $sessions, string $cookie = self::COOKIE): string
     {
         $sessions->open('', 'beffroi');
-        $read = $sessions->read(self::COOKIE);
+        $read = $sessions->read($cookie);
         $sessions->close();
         static::assertIsString($read);
 
