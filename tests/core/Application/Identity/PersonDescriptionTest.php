@@ -123,6 +123,33 @@ final class PersonDescriptionTest extends TestCase
     }
 
     #[Test]
+    public function theDescriptionAnswersTheNamesOfWhatChanged(): void
+    {
+        // Given
+        $alice = $this->alice();
+        $alice->updateProfile(new Profile(nickname: 'Ada'), Fixtures::now());
+
+        // When
+        $changed = $this->describe($alice, ['nickname' => 'Ada', 'given_name' => 'Ada']);
+
+        // Then
+        static::assertSame(['given_name'], $changed);
+    }
+
+    #[Test]
+    public function aDescriptionThatChangesNothingAnswersNothing(): void
+    {
+        // Given
+        $alice = $this->alice();
+
+        // When
+        $changed = $this->describe($alice, ['username' => 'alice']);
+
+        // Then
+        static::assertSame([], $changed);
+    }
+
+    #[Test]
     public function aValueSaidAsItIsWritesNoRowAndAnnouncesNoAct(): void
     {
         // Given
@@ -350,10 +377,12 @@ final class PersonDescriptionTest extends TestCase
 
     /**
      * @param array<string, mixed> $said
+     *
+     * @return list<string>
      */
-    private function describe(User $user, array $said): void
+    private function describe(User $user, array $said): array
     {
-        new PersonDescription(
+        return new PersonDescription(
             new FixedClaims([new Nickname(), new GivenName(), new Birthdate(), new PhoneNumber()]),
             [new UsernameMember($this->users), new EmailMember(), new EmailVerifiedMember(), new PhoneNumberVerifiedMember(), new AddressMember()],
             $this->users,

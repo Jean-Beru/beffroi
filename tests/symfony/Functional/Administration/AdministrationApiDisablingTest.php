@@ -7,6 +7,7 @@ namespace App\Tests\Symfony\Functional\Administration;
 use Beffroi\Core\Domain\Event\PersonDisabled;
 use Beffroi\Core\Domain\Event\PersonEnabled;
 use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Oidc\Domain\Event\PersonReadByAnAdministrator;
 use Beffroi\Core\Domain\Session\SessionEnd;
 use PHPUnit\Framework\Attributes\Test;
 use function count;
@@ -82,6 +83,24 @@ final class AdministrationApiDisablingTest extends AdministrationTestCase
         static::assertSame([Response::HTTP_OK, 1], [$response->getStatusCode(), count(self::authored(PersonDisabled::NAME))]);
     }
 
+    /**
+     * Decision 0022
+     */
+    #[Test]
+    public function answeringAPersonDisabledAlreadyIsAReadOfThemThatNamesTheAdministrator(): void
+    {
+        // Given
+        $bob = self::user('bob', 'bob-subject');
+        $token = $this->administratorToken(self::user('alice'));
+        $this->api(self::disabledPath($bob), $token, method: 'PUT');
+
+        // When
+        $this->api(self::disabledPath($bob), $token, method: 'PUT');
+
+        // Then
+        static::assertSame([['bob-subject', 'alice-subject']], self::authored(PersonReadByAnAdministrator::NAME));
+    }
+
     #[Test]
     public function anAdministratorDoesNotDisableTheAccountTheyActWith(): void
     {
@@ -130,6 +149,37 @@ final class AdministrationApiDisablingTest extends AdministrationTestCase
 
         // Then
         static::assertSame([['bob-subject', 'alice-subject']], self::authored(PersonEnabled::NAME));
+    }
+
+    /**
+     * Decision 0022
+     */
+    #[Test]
+    public function answeringAPersonEnabledAlreadyIsAReadOfThemThatNamesTheAdministrator(): void
+    {
+        // Given
+        $bob = self::user('bob', 'bob-subject');
+        $token = $this->administratorToken(self::user('alice'));
+
+        // When
+        $this->api(self::disabledPath($bob), $token, method: 'DELETE');
+
+        // Then
+        static::assertSame([['bob-subject', 'alice-subject']], self::authored(PersonReadByAnAdministrator::NAME));
+    }
+
+    #[Test]
+    public function aDisablingThatChangesSomethingIsNoReadOfThePerson(): void
+    {
+        // Given
+        $bob = self::user('bob', 'bob-subject');
+        $token = $this->administratorToken(self::user('alice'));
+
+        // When
+        $this->api(self::disabledPath($bob), $token, method: 'PUT');
+
+        // Then
+        static::assertSame([], self::authored(PersonReadByAnAdministrator::NAME));
     }
 
     #[Test]

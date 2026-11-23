@@ -16,6 +16,7 @@ use Beffroi\Core\Domain\Session\AuthenticationSession;
 use Beffroi\Core\Domain\Session\SessionEnd;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
 use Beffroi\Oidc\Domain\Event\LogoutTokenIssued;
+use Beffroi\Oidc\Domain\Event\PersonReadByAnAdministrator;
 use PHPUnit\Framework\Attributes\Test;
 use function count;
 use function sprintf;
@@ -167,6 +168,25 @@ final class AdministrationApiWriteTest extends AdministrationTestCase
             [Response::HTTP_OK, $first['revoked_at'] ?? null, 1],
             [$again->getStatusCode(), self::json($again)['revoked_at'] ?? null, count(self::authored(CredentialRevoked::NAME))],
         );
+    }
+
+    /**
+     * Decision 0022
+     */
+    #[Test]
+    public function answeringACredentialRevokedAlreadyIsAReadOfThePersonThatNamesTheAdministrator(): void
+    {
+        // Given
+        $bob = self::user('bob', 'bob-subject');
+        $passkey = $this->enrol($bob, self::device());
+        $token = $this->administratorToken(self::user('alice'));
+        $this->api(self::credentialPath($bob, $passkey->id), $token, method: 'DELETE');
+
+        // When
+        $this->api(self::credentialPath($bob, $passkey->id), $token, method: 'DELETE');
+
+        // Then
+        static::assertSame([['bob-subject', 'alice-subject']], self::authored(PersonReadByAnAdministrator::NAME));
     }
 
     #[Test]
