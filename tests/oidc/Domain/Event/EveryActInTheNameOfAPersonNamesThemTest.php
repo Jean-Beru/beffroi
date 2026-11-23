@@ -19,7 +19,7 @@ use function sort;
 final class EveryActInTheNameOfAPersonNamesThemTest extends TestCase
 {
     private const array NAMES_NOBODY = [
-        ClientAuthenticationFailed::class => 'a request refused before any client was authenticated names neither a client nor a person (RFC 6749 §5.2)',
+        ClientAuthenticationFailed::class => 'a request refused before any client was authenticated names no person, and the client it named only when the tenant holds it (RFC 6749 §5.2)',
         InitialAccessTokenIssued::class => 'an initial access token is issued for an integration, and the clients it will register are nobody yet (RFC 7591 §1.2)',
         InitialAccessTokenRevoked::class => 'an initial access token taken back authorises no registration, and names no person this provider serves (RFC 7591 §1.2)',
         PushedRequestRefused::class => 'a reference refused at the authorization endpoint says what was refused, and nobody had been asked anything yet (RFC 9126 §4)',

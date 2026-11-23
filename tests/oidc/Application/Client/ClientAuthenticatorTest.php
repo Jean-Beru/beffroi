@@ -673,7 +673,7 @@ final class ClientAuthenticatorTest extends TestCase
     }
 
     #[Test]
-    public function anUnknownClientIsAnnouncedWithTheIdentifierAndTheMethodItUsed(): void
+    public function anUnknownClientIsAnnouncedWithTheMethodItUsedAndNamesNoClient(): void
     {
         // When
         $this->failToAuthenticate(null, [
@@ -682,7 +682,7 @@ final class ClientAuthenticatorTest extends TestCase
         ]);
 
         // Then
-        $this->assertFailureAnnounced(ClientAuthenticationFailureReason::UnknownClient, 'nobody', 'client_secret_post');
+        $this->assertFailureAnnounced(ClientAuthenticationFailureReason::UnknownClient, null, 'client_secret_post');
     }
 
     #[Test]
@@ -695,7 +695,7 @@ final class ClientAuthenticatorTest extends TestCase
 
         // Then
         static::assertInstanceOf(InvalidClientException::class, $exception);
-        $this->assertFailureAnnounced(ClientAuthenticationFailureReason::UnknownClient, 'nobody', 'none');
+        $this->assertFailureAnnounced(ClientAuthenticationFailureReason::UnknownClient, null, 'none');
     }
 
     #[Test]
@@ -718,7 +718,7 @@ final class ClientAuthenticatorTest extends TestCase
 
         // Then
         static::assertInstanceOf(InvalidClientException::class, $exception);
-        $this->assertFailureAnnounced(ClientAuthenticationFailureReason::UnknownClient, 'foreign-client', 'client_secret_basic');
+        $this->assertFailureAnnounced(ClientAuthenticationFailureReason::UnknownClient, null, 'client_secret_basic');
     }
 
     /**

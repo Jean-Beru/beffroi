@@ -40,4 +40,24 @@ final class ClientAuthenticationFailedTest extends TestCase
         static::assertSame('oidc-demo', $event->clientId);
         static::assertSame('client_secret_basic', $event->method);
     }
+
+    /**
+     * Decision 0062
+     */
+    #[Test]
+    public function itSaysWhyItRefusedAndTheMethodItRefused(): void
+    {
+        // When
+        $event = new ClientAuthenticationFailed(
+            Fixtures::now(),
+            Fixtures::tenant(),
+            Fixtures::context(),
+            ClientAuthenticationFailureReason::InvalidAssertion,
+            'oidc-demo',
+            'private_key_jwt',
+        );
+
+        // Then
+        static::assertSame(['invalid_assertion', 'private_key_jwt'], [$event->refusalReason(), $event->refusedMethod()]);
+    }
 }

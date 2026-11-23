@@ -17,6 +17,8 @@ use Beffroi\Core\Domain\Journal\JournalEntry;
 use Beffroi\Oidc\Domain\Claims\ClaimNames;
 use Beffroi\Oidc\Domain\Event\ConsentGranted;
 use Beffroi\Oidc\Domain\Event\PersonReadByAnAdministrator;
+use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailed;
+use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailureReason;
 use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use function array_keys;
@@ -145,12 +147,65 @@ final class EveryActIsWrittenDownTest extends DatabaseTestCase
         static::assertNull($act->subject, 'an authentication that failed on an identifier no account answers happened to nobody');
     }
 
+    /**
+     * Decision 0062
+     */
     #[Test]
-    public function theJournalHoldsTheFourFactsAndTheThreeNamesAndNothingElse(): void
+    public function aRefusalSaysWhyItRefusedAndTheMethodItRefused(): void
+    {
+        // When
+        self::announce(new ClientAuthenticationFailed(
+            self::now(),
+            self::tenant(),
+            self::context(),
+            ClientAuthenticationFailureReason::InvalidSecret,
+            'oidc-demo',
+            'client_secret_basic',
+        ));
+
+        // Then
+        $act = self::onlyAct();
+        static::assertSame(['oidc-demo', 'invalid_secret', 'client_secret_basic'], [$act->client, $act->reason, $act->method]);
+    }
+
+    /**
+     * Decision 0062
+     */
+    #[Test]
+    public function aRefusalOfAClientTheTenantDoesNotHoldNamesNoClient(): void
+    {
+        // When
+        self::announce(new ClientAuthenticationFailed(
+            self::now(),
+            self::tenant(),
+            self::context(),
+            ClientAuthenticationFailureReason::UnknownClient,
+            null,
+            'client_secret_post',
+        ));
+
+        // Then
+        $act = self::onlyAct();
+        static::assertSame([null, 'unknown_client', 'client_secret_post'], [$act->client, $act->reason, $act->method]);
+    }
+
+    #[Test]
+    public function anActThatRefusedNothingSaysNoReason(): void
+    {
+        // When
+        self::announce(new LoadBudgetSpent(self::now(), self::tenant(), self::context(), 'origin', '/jwks', null));
+
+        // Then
+        $act = self::onlyAct();
+        static::assertSame([null, null], [$act->reason, $act->method]);
+    }
+
+    #[Test]
+    public function theJournalHoldsTheFourFactsTheThreeNamesAndWhyARefusalRefusedAndNothingElse(): void
     {
         // When / Then
         static::assertSame(
-            ['act', 'author', 'client', 'context', 'id', 'occurred_at', 'subject', 'tenant_id'],
+            ['act', 'author', 'client', 'context', 'id', 'method', 'occurred_at', 'reason', 'subject', 'tenant_id'],
             array_keys(ClassifiedModel::of(self::entityManager())->linesOf('beffroi_journal')),
         );
     }
