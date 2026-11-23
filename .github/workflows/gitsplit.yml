@@ -160,6 +160,10 @@ jobs:
       # carries and never from what this repository carries: a default branch is a branch that exists,
       # and the push above is what makes it exist. The default is moved before anything is deleted,
       # because a default branch cannot be deleted.
+      #
+      # The branches of a mirror are read into a variable before they are walked, so that a call that
+      # fails stops the step: read through a process substitution, its status is lost, and the mirror
+      # reads as one that carries no branch of the origins (issue #1133).
       - name: "Align the mirrors on this repository"
         env:
           GH_TOKEN: ${{ steps.token.outputs.token }}
@@ -168,9 +172,11 @@ jobs:
           mapfile -t MIRRORS < <(grep -oP '(?<=github\.com/)[^"]+(?=\.git)' .gitsplit.yml)
 
           for repo in "${MIRRORS[@]}"; do
+            branches=$(gh api "repos/${repo}/branches" --paginate --jq '.[].name')
             kept=()
             stale=()
             while read -r branch; do
+              [ -n "${branch}" ] || continue
               matched=false
               for pattern in "${PATTERNS[@]}"; do
                 if grep -Pq -- "${pattern}" <<< "${branch}"; then
@@ -179,7 +185,7 @@ jobs:
                 fi
               done
               if [ "${matched}" = true ]; then kept+=("${branch}"); else stale+=("${branch}"); fi
-            done < <(gh api "repos/${repo}/branches" --paginate --jq '.[].name')
+            done <<< "${branches}"
 
             if [ ${#kept[@]} -eq 0 ]; then
               echo "::warning title=${repo}::Not one branch of this mirror is named by the origins of .gitsplit.yml, so none of them can be its default: nothing was touched."
