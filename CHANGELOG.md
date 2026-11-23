@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented in this file, in reverse chronological order by release.
 
-## 0.0.0 - TBD
+## 0.1.0 - TBD
 
 The first release. `beffroi/core`, and every package that requires it, requires `symfony/key-management` 8.2, published
 only as pre-releases until Symfony 8.2.0 is out: until then, a project that requires them sets

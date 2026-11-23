@@ -57,7 +57,7 @@ services:
   # the database and plays the migrations every time it starts, then Caddy serves SERVER_NAME and issues its
   # certificate, which is why 80 and 443 reach it from the outside.
   op:
-    image: ghcr.io/beffroi-auth/beffroi:${BEFFROI_VERSION:-0.0.x}
+    image: ghcr.io/beffroi-auth/beffroi:${BEFFROI_VERSION:-0.1.x}
     restart: unless-stopped
     environment:
       <<: *environment
@@ -107,7 +107,7 @@ services:
   # has migrated, plays no migration itself, and stops every hour, or at 256 MB, for its restart policy to start
   # it again.
   worker:
-    image: ghcr.io/beffroi-auth/beffroi:${BEFFROI_VERSION:-0.0.x}
+    image: ghcr.io/beffroi-auth/beffroi:${BEFFROI_VERSION:-0.1.x}
     restart: unless-stopped
     command: ["bin/console", "messenger:consume", "scheduler_beffroi", "async_notifications", "async_priority_high", "async_priority_medium", "async_priority_low", "--time-limit=3600", "--memory-limit=256M"]
     # The image checks Caddy, which the worker does not run: it is healthy while the consumer is its first process.
