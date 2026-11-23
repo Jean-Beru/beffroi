@@ -50,7 +50,7 @@ final class UsersSectionTest extends TestCase
                     $request['url'],
                     FakeProvider::ADMINISTRATION . '/users',
                 )),
-                str_contains($this->screen->screen(), 'Reading a person, their sessions or their journal'),
+                str_contains($this->screen->screen(), 'Every read of a person is logged under your name'),
             ],
         );
     }
@@ -89,7 +89,7 @@ final class UsersSectionTest extends TestCase
         $this->screen->press("\r");
 
         // Then
-        static::assertStringContainsString('Nobody of the tenant has the username nobody.', $this->screen->screen());
+        static::assertStringContainsString('No user named nobody.', $this->screen->screen());
     }
 
     /**
@@ -224,7 +224,7 @@ final class UsersSectionTest extends TestCase
         static::assertSame([1, false, true], [
             $this->screen->requestsTo('/users/0193-alice/sessions/session-1', 'DELETE'),
             str_contains($screen, '203.0.113.4'),
-            str_contains($screen, 'The session of alice is ended'),
+            str_contains($screen, 'Session of alice ended'),
         ]);
     }
 
@@ -364,7 +364,7 @@ final class UsersSectionTest extends TestCase
         // Then
         static::assertSame([['{"username":"dave"}'], true], [
             $this->screen->bodiesTo('/users', 'POST'),
-            str_contains($this->screen->screen(), 'dave is created, with no credential'),
+            str_contains($this->screen->screen(), 'Account dave created, with no credential'),
         ]);
     }
 
@@ -408,7 +408,7 @@ final class UsersSectionTest extends TestCase
         $this->screen->press("\r");
 
         // Then
-        static::assertStringContainsString('The tenant has a person of the username alice already.', $this->screen->screen());
+        static::assertStringContainsString('The username alice is already taken.', $this->screen->screen());
     }
 
     #[Test]
@@ -422,7 +422,7 @@ final class UsersSectionTest extends TestCase
 
         // Then
         $lines = explode("\n", $this->screen->screen());
-        static::assertStringContainsString('enrolment link', $lines[count($lines) - 1]);
+        static::assertStringContainsString('passkey link', $lines[count($lines) - 1]);
     }
 
     /**
@@ -441,7 +441,7 @@ final class UsersSectionTest extends TestCase
         // Then
         static::assertSame([0, true], [
             $this->screen->requestsTo('/users/0193-alice/enrolment-ticket', 'POST'),
-            str_contains($this->screen->screen(), 'Issue a link that lets alice pose a passkey?'),
+            str_contains($this->screen->screen(), 'Issue a link to add a passkey for alice?'),
         ]);
     }
 
@@ -484,7 +484,7 @@ final class UsersSectionTest extends TestCase
         $screen = $this->screen->screen();
         static::assertSame([1, true, true, false], [
             $this->screen->requestsTo('/users/0193-alice/enrolment-ticket', 'POST'),
-            str_contains($screen, self::LINK . ' opens until'),
+            str_contains($screen, self::LINK . ' is valid until'),
             str_contains($screen, '▀'),
             str_contains($screen, 'YubiKey 5 NFC'),
         ]);
@@ -506,7 +506,7 @@ final class UsersSectionTest extends TestCase
         // Then
         static::assertSame([0, true], [
             $this->screen->requestsTo('/users/0193-alice/password-ticket', 'POST'),
-            str_contains($this->screen->screen(), 'Issue a link that lets alice pose a new password?'),
+            str_contains($this->screen->screen(), 'Issue a new password link for alice?'),
         ]);
     }
 
@@ -529,7 +529,7 @@ final class UsersSectionTest extends TestCase
         static::assertSame([1, true, true, true], [
             $this->screen->requestsTo('/users/0193-alice/password-ticket', 'POST'),
             str_contains($screen, 'Password link of alice'),
-            str_contains($screen, self::LINK . ' opens until'),
+            str_contains($screen, self::LINK . ' is valid until'),
             str_contains($screen, '▀'),
         ]);
     }
@@ -550,7 +550,7 @@ final class UsersSectionTest extends TestCase
         // Then
         static::assertSame([0, true], [
             $this->screen->requestsTo('/users/0193-alice/totp-ticket', 'POST'),
-            str_contains($this->screen->screen(), 'Issue a link that lets alice set up an authenticator app'),
+            str_contains($this->screen->screen(), 'Issue a new authenticator app link for alice?'),
         ]);
     }
 
@@ -573,7 +573,7 @@ final class UsersSectionTest extends TestCase
         static::assertSame([1, true, true, true], [
             $this->screen->requestsTo('/users/0193-alice/totp-ticket', 'POST'),
             str_contains($screen, 'OTP link of alice'),
-            str_contains($screen, self::LINK . ' opens until'),
+            str_contains($screen, self::LINK . ' is valid until'),
             str_contains($screen, '▀'),
         ]);
     }
@@ -769,7 +769,7 @@ final class UsersSectionTest extends TestCase
         // Then
         $screen = $this->screen->screen();
         static::assertSame([true, 1, false, true], [
-            str_contains($screen, 'The account of alice is saved.'),
+            str_contains($screen, 'Changes to alice saved.'),
             preg_match('/nickname +Ali/', $screen),
             str_contains($screen, 'Account of alice'),
             str_contains($screen, 'YubiKey 5 NFC'),
@@ -817,7 +817,7 @@ final class UsersSectionTest extends TestCase
         // Then
         static::assertSame([0, true], [
             $this->screen->requestsTo('/users/0193-alice', 'PATCH'),
-            str_contains($this->screen->screen(), 'Nothing is changed yet'),
+            str_contains($this->screen->screen(), 'Nothing has changed'),
         ]);
     }
 
@@ -925,7 +925,7 @@ final class UsersSectionTest extends TestCase
         $lines = explode("\n", $screen);
         static::assertSame([1, true, 1], [
             $this->screen->requestsTo('/users/0193-alice/disabled', 'PUT'),
-            str_contains($screen, 'The account of alice is disabled'),
+            str_contains($screen, 'Account of alice disabled'),
             preg_match('/ d +enable /', $lines[count($lines) - 1]),
         ]);
     }
@@ -965,7 +965,7 @@ final class UsersSectionTest extends TestCase
         static::assertSame([1, 0, true], [
             $this->screen->requestsTo('/users/0193-alice/disabled', 'DELETE'),
             $this->screen->requestsTo('/users/0193-alice/disabled', 'PUT'),
-            str_contains($this->screen->screen(), 'The account of alice is enabled again.'),
+            str_contains($this->screen->screen(), 'Account of alice enabled again.'),
         ]);
     }
 
@@ -1024,7 +1024,7 @@ final class UsersSectionTest extends TestCase
 
         // Then
         $lines = explode("\n", $this->screen->screen());
-        static::assertMatchesRegularExpression('/ x +take back /', $lines[count($lines) - 1]);
+        static::assertMatchesRegularExpression('/ x +revoke /', $lines[count($lines) - 1]);
     }
 
     /**
@@ -1047,7 +1047,7 @@ final class UsersSectionTest extends TestCase
         // Then
         static::assertSame([0, true], [
             $this->screen->requestsTo('/users/0193-alice/consents/consent-1', 'DELETE'),
-            str_contains($this->screen->screen(), 'Take back what alice granted Invoices?'),
+            str_contains($this->screen->screen(), 'Revoke the consent alice gave Invoices?'),
         ]);
     }
 
@@ -1071,7 +1071,7 @@ final class UsersSectionTest extends TestCase
         static::assertSame([1, 0, true], [
             $this->screen->requestsTo('/users/0193-alice/consents/consent-1', 'DELETE'),
             preg_match('/Invoices +oidc-demo/', $screen),
-            str_contains($screen, 'What alice granted Invoices is taken back'),
+            str_contains($screen, 'Consent alice gave Invoices revoked'),
         ]);
     }
 
@@ -1092,7 +1092,7 @@ final class UsersSectionTest extends TestCase
         // Then
         static::assertSame([0, false], [
             $this->screen->requestsTo('/users/0193-alice/consents/consent-1', 'DELETE'),
-            str_contains($this->screen->screen(), 'Take back what alice granted'),
+            str_contains($this->screen->screen(), 'Revoke the consent alice gave'),
         ]);
     }
 

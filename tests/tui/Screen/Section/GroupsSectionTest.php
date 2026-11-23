@@ -58,7 +58,7 @@ final class GroupsSectionTest extends TestCase
         // Then
         static::assertSame([0, true], [
             $this->screen->requestsTo('/groups/g-administrators/members'),
-            str_contains($this->screen->screen(), 'Reading a member is an act written in their journal'),
+            str_contains($this->screen->screen(), 'Every read of a member is logged under your name'),
         ]);
     }
 
@@ -108,7 +108,7 @@ final class GroupsSectionTest extends TestCase
         $screen = $this->screen->screen();
         static::assertSame([['{"name":"staff"}'], true, 1], [
             $this->screen->bodiesTo('/groups', 'POST'),
-            str_contains($screen, 'The group staff is created.'),
+            str_contains($screen, 'Group staff created.'),
             preg_match('/staff +local +0 +no /', $screen),
         ]);
     }
@@ -161,7 +161,7 @@ final class GroupsSectionTest extends TestCase
         // Then
         static::assertSame([0, true], [
             $this->screen->requestsTo('/groups/g-administrators/members/p-alice', 'DELETE'),
-            str_contains($this->screen->screen(), 'last group that administers the tenant'),
+            str_contains($this->screen->screen(), 'last administering group'),
         ]);
     }
 
