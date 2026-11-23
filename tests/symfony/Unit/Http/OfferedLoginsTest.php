@@ -8,7 +8,6 @@ use App\Http\OfferedLogins;
 use App\Security\OfferedLoginInterface;
 use App\Security\PasskeyLogin;
 use App\Security\PasswordLogin;
-use Beffroi\Core\Bridge\InMemory\InMemoryCredentialRepository;
 use Beffroi\Core\Domain\Session\PhishingResistantHardware;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingEventDispatcher;
@@ -66,6 +65,6 @@ final class OfferedLoginsTest extends TestCase
      */
     private static function logins(): array
     {
-        return [new PasswordLogin(), new PasskeyLogin(new InMemoryCredentialRepository(), new RecordingEventDispatcher())];
+        return [new PasswordLogin(), new PasskeyLogin(new RecordingEventDispatcher())];
     }
 }

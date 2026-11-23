@@ -1211,6 +1211,9 @@ services:
     test.beffroi.totp_uses:
         alias: Beffroi\Core\Port\TotpUsesInterface
         public: true
+    test.beffroi.passkey_uses:
+        alias: Beffroi\Core\Port\PasskeyUsesInterface
+        public: true
     test.beffroi.mail_signing_keys:
         alias: Beffroi\Core\Port\MailSigningKeyRepositoryInterface
         public: true
