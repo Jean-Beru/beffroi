@@ -12,6 +12,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function sprintf;
+use function str_repeat;
 
 final class ProfileTest extends TestCase
 {
@@ -326,5 +327,54 @@ final class ProfileTest extends TestCase
     {
         // When / Then
         static::assertCount(13, Profile::empty()->claims());
+    }
+
+    /**
+     * OIDC Core §5.1
+     */
+    #[Test]
+    #[DataProvider('provideTextClaimsThatAreNotPlain')]
+    public function aClaimOfTextThatIsNotPlainIsRefused(string $claim, string $value, string $message): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs($message);
+
+        // When
+        Profile::empty()->describedWith([
+            $claim => $value,
+        ]);
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string}>
+     */
+    public static function provideTextClaimsThatAreNotPlain(): iterable
+    {
+        yield 'a name of two million characters' => [
+            'name',
+            str_repeat('a', 2_000_000),
+            'The name must be plain text of at most 255 characters, with no control, format or line separator character.',
+        ];
+        yield 'a nickname that overrides the direction of the line' => [
+            'nickname',
+            "Alice\u{202E}gnp.exe",
+            'The nickname must be plain text of at most 255 characters, with no control, format or line separator character.',
+        ];
+        yield 'a given name with an escape sequence' => [
+            'given_name',
+            "Ada\e[31m",
+            'The given_name must be plain text of at most 255 characters, with no control, format or line separator character.',
+        ];
+        yield 'a locale on two lines' => [
+            'locale',
+            "fr\nen",
+            'The locale must be plain text of at most 255 characters, with no control, format or line separator character.',
+        ];
+        yield 'a website longer than an address is' => [
+            'website',
+            'https://rp.example/' . str_repeat('a', 2048),
+            'The website must be at most 2048 characters long.',
+        ];
     }
 }

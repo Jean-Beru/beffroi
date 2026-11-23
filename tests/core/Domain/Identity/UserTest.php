@@ -199,6 +199,47 @@ final class UserTest extends TestCase
         static::assertTrue($user->phoneNumberVerified);
     }
 
+    /**
+     * OIDC Core §5.1
+     */
+    #[Test]
+    #[DataProvider('providePhoneNumbersThatAreNotPlain')]
+    public function aPhoneNumberThatIsNotPlainTextIsRefused(string $phoneNumber): void
+    {
+        // Given
+        $user = Fixtures::user();
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A phone number is plain text of at most 64 characters, with no control, format or line separator character.');
+
+        // When
+        $user->changePhoneNumber($phoneNumber, false, Fixtures::now());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function providePhoneNumbersThatAreNotPlain(): iterable
+    {
+        yield 'two million characters' => [str_repeat('1', 2_000_000)];
+        yield 'a number followed by a line' => ["+33600000000\nCall this number instead"];
+        yield 'a number written right to left' => ["+33600000000\u{202E}"];
+    }
+
+    #[Test]
+    public function aPhoneNumberWithAnExtensionIsKept(): void
+    {
+        // Given
+        $user = Fixtures::user();
+
+        // When
+        $user->changePhoneNumber('+1 (604) 555-1234;ext=5678', false, Fixtures::now());
+
+        // Then
+        static::assertSame('+1 (604) 555-1234;ext=5678', $user->phoneNumber);
+    }
+
     #[Test]
     public function aPhoneNumberCanBeRemoved(): void
     {
