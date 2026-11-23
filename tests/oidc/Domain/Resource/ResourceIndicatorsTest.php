@@ -8,7 +8,9 @@ use function array_map;
 use Beffroi\Oidc\Domain\Resource\ResourceIndicator;
 use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
+use function hrtime;
 use function iterator_to_array;
+use function range;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -44,6 +46,35 @@ final class ResourceIndicatorsTest extends TestCase
 
         // Then
         static::assertSame([self::CONTACTS, self::CALENDAR], $resources->values());
+    }
+
+    #[Test]
+    public function theFirstOfTwoEqualResourcesIsTheOneKept(): void
+    {
+        // Given
+        $first = new ResourceIndicator(self::CONTACTS);
+
+        // When
+        $resources = new ResourceIndicators([$first, new ResourceIndicator(self::CALENDAR), new ResourceIndicator(self::CONTACTS)]);
+
+        // Then
+        static::assertSame($first, $resources->all[0]);
+    }
+
+    #[Test]
+    public function aSetOfTwentyThousandResourcesIsBuiltInLessThanASecond(): void
+    {
+        // Given
+        $given = self::resources(20_000);
+
+        // When
+        $start = hrtime(true);
+        $resources = new ResourceIndicators($given);
+        $milliseconds = (hrtime(true) - $start) / 1_000_000;
+
+        // Then
+        static::assertCount(20_000, $resources);
+        static::assertLessThan(1_000, $milliseconds);
     }
 
     #[Test]
@@ -92,6 +123,25 @@ final class ResourceIndicatorsTest extends TestCase
         yield 'a subset' => [[self::CALENDAR, self::CONTACTS], [self::CONTACTS], true];
         yield 'another resource' => [[self::CALENDAR], [self::CONTACTS], false];
         yield 'one more resource' => [[self::CALENDAR], [self::CALENDAR, self::CONTACTS], false];
+        yield 'a resource without its final slash' => [[self::CALENDAR], ['https://cal.example.com'], false];
+        yield 'a resource whose host is in capitals' => [[self::CALENDAR], ['https://CAL.example.com/'], false];
+    }
+
+    #[Test]
+    public function aSetCoversAnotherOfTwentyThousandResourcesInLessThanASecond(): void
+    {
+        // Given
+        $held = new ResourceIndicators(self::resources(20_000));
+        $asked = new ResourceIndicators(self::resources(20_000));
+
+        // When
+        $start = hrtime(true);
+        $covers = $held->covers($asked);
+        $milliseconds = (hrtime(true) - $start) / 1_000_000;
+
+        // Then
+        static::assertTrue($covers);
+        static::assertLessThan(1_000, $milliseconds);
     }
 
     #[Test]
@@ -180,5 +230,13 @@ final class ResourceIndicatorsTest extends TestCase
 
         // When
         ResourceIndicators::fromDocument(self::CALENDAR . ' cal.example.com');
+    }
+
+    /**
+     * @return list<ResourceIndicator>
+     */
+    private static function resources(int $count): array
+    {
+        return array_map(static fn (int $index): ResourceIndicator => new ResourceIndicator('https://api.example/' . $index), range(1, $count));
     }
 }

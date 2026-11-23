@@ -6,6 +6,9 @@ namespace Beffroi\Oidc\Tests\Domain\Scope;
 
 use function array_map;
 use Beffroi\Oidc\Domain\Scope\Scope;
+use function hrtime;
+use function implode;
+use function range;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -112,6 +115,47 @@ final class ScopeTest extends TestCase
 
         // Then
         static::assertSame(['profile', 'openid'], array_map(strval(...), $scopes));
+    }
+
+    /**
+     * RFC 6749 §3.3
+     *
+     * @param list<string> $kept
+     */
+    #[Test]
+    #[DataProvider('provideListsWithRepeats')]
+    public function aTokenIsTheSameAsAnotherWhenItIsWrittenTheSame(string $list, array $kept): void
+    {
+        // When
+        $scopes = Scope::parseList($list);
+
+        // Then
+        static::assertSame($kept, array_map(strval(...), $scopes));
+    }
+
+    /**
+     * @return iterable<string, array{string, list<string>}>
+     */
+    public static function provideListsWithRepeats(): iterable
+    {
+        yield 'in another case' => ['openid OpenID openid', ['openid', 'OpenID']];
+        yield 'made of digits' => ['2 1 02 2 1', ['2', '1', '02']];
+    }
+
+    #[Test]
+    public function itReadsTwentyThousandDistinctTokensInLessThanASecond(): void
+    {
+        // Given
+        $list = implode(' ', array_map(static fn (int $index): string => 'scope.' . $index, range(1, 20_000)));
+
+        // When
+        $start = hrtime(true);
+        $scopes = Scope::parseList($list);
+        $milliseconds = (hrtime(true) - $start) / 1_000_000;
+
+        // Then
+        static::assertCount(20_000, $scopes);
+        static::assertLessThan(1_000, $milliseconds);
     }
 
     #[Test]

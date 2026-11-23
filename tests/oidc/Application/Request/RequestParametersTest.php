@@ -6,6 +6,10 @@ namespace Beffroi\Oidc\Tests\Application\Request;
 
 use Beffroi\Oidc\Application\Request\RequestParameters;
 use Beffroi\Oidc\Exception\InvalidRequestException;
+use function array_map;
+use function hrtime;
+use function implode;
+use function range;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -227,6 +231,25 @@ final class RequestParametersTest extends TestCase
             ['https://api.example', 'https://files.example'],
         ];
         yield 'sent twice with the same value' => [['https://api.example', 'https://api.example'], ['https://api.example']];
+        yield 'values made of digits' => [['2', '1', '02', '2'], ['2', '1', '02']];
+    }
+
+    #[Test]
+    public function itReadsFiftyThousandDistinctValuesOfARepeatedParameterInLessThanASecond(): void
+    {
+        // Given
+        $request = RequestParameters::of([
+            'resource' => array_map(static fn (int $index): string => 'https://api.example/' . $index, range(1, 50_000)),
+        ]);
+
+        // When
+        $start = hrtime(true);
+        $values = $request->repeated('resource');
+        $milliseconds = (hrtime(true) - $start) / 1_000_000;
+
+        // Then
+        static::assertCount(50_000, $values);
+        static::assertLessThan(1_000, $milliseconds);
     }
 
     #[Test]
@@ -337,6 +360,39 @@ final class RequestParametersTest extends TestCase
 
         // When / Then
         static::assertSame(['fr-CA', 'fr', 'en'], $request->uiLocales());
+    }
+
+    /**
+     * OIDC Core §3.1.2.1
+     */
+    #[Test]
+    public function itReadsTheAuthenticationContextClassesOnceInTheOrderTheyWereAskedFor(): void
+    {
+        // Given
+        $request = RequestParameters::of([
+            'acr_values' => '2 1 02 2 1',
+        ]);
+
+        // When / Then
+        static::assertSame(['2', '1', '02'], $request->acrValues());
+    }
+
+    #[Test]
+    public function itReadsFiftyThousandDistinctLanguageTagsInLessThanASecond(): void
+    {
+        // Given
+        $request = RequestParameters::of([
+            'ui_locales' => implode(' ', array_map(static fn (int $index): string => 'en-' . $index, range(1, 50_000))),
+        ]);
+
+        // When
+        $start = hrtime(true);
+        $tags = $request->uiLocales();
+        $milliseconds = (hrtime(true) - $start) / 1_000_000;
+
+        // Then
+        static::assertCount(50_000, $tags);
+        static::assertLessThan(1_000, $milliseconds);
     }
 
     #[Test]

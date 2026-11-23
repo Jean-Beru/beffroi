@@ -9,6 +9,10 @@ use Beffroi\Oidc\Domain\Client\Metadata\DeclaredMembers;
 use Beffroi\Oidc\Domain\Client\Metadata\RegisteredMembers;
 use Beffroi\Oidc\Domain\Client\Metadata\SpecifiedDefaults;
 use Beffroi\Oidc\Exception\LogicException;
+use function array_fill_keys;
+use function array_map;
+use function hrtime;
+use function range;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -107,5 +111,25 @@ final class ClientMetadataTest extends TestCase
 
         // When / Then
         static::assertSame(['grant_types', 'invented', 'token_endpoint_auth_method'], $metadata->members());
+    }
+
+    #[Test]
+    public function fiftyThousandMembersOfTwoSourcesAreNamedInLessThanASecond(): void
+    {
+        // Given
+        $names = array_map(static fn (int $index): string => 'member_' . $index, range(1, 50_000));
+        $metadata = new ClientMetadata([
+            new RegisteredMembers(array_fill_keys($names, 'statement')),
+            new DeclaredMembers(array_fill_keys($names, 'body')),
+        ]);
+
+        // When
+        $start = hrtime(true);
+        $members = $metadata->members();
+        $milliseconds = (hrtime(true) - $start) / 1_000_000;
+
+        // Then
+        static::assertSame($names, $members);
+        static::assertLessThan(1_000, $milliseconds);
     }
 }

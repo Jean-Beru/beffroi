@@ -38,6 +38,9 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Beffroi\Oidc\Tests\Fixture\Shapes;
+use function array_map;
+use function hrtime;
+use function range;
 
 /**
  * RFC 7591 §2
@@ -429,6 +432,81 @@ final class ClientRegistrationTest extends TestCase
         static::assertSame(['openid', 'email'], $client->allowedScopes->values());
     }
 
+    #[Test]
+    public function theFirstOfTwoEqualUrisIsTheOneKept(): void
+    {
+        // Given
+        $first = new RedirectUri('https://rp.example/cb');
+
+        // When
+        $client = new ClientRegistration(
+            'twice',
+            new ClientPresentation('Twice'),
+            Methods::none(),
+            false,
+            [$first, new RedirectUri('https://rp.example/cb2'), new RedirectUri('https://rp.example/cb')],
+            Shapes::jwt(),
+        );
+
+        // Then
+        static::assertSame($first, $client->redirectUris[0]);
+    }
+
+    #[Test]
+    public function itKeepsTwentyThousandDistinctUrisAndResourcesInLessThanASecond(): void
+    {
+        // Given
+        $redirectUris = array_map(static fn (int $index): RedirectUri => new RedirectUri('https://rp.example/cb/' . $index), range(1, 20_000));
+        $requestUris = array_map(static fn (int $index): RequestUri => new RequestUri('https://rp.example/request/' . $index), range(1, 20_000));
+        $resources = self::resources(20_000);
+
+        // When
+        $start = hrtime(true);
+        $client = new ClientRegistration(
+            'many',
+            new ClientPresentation('Many'),
+            Methods::none(),
+            false,
+            $redirectUris,
+            Shapes::jwt(),
+            $redirectUris,
+            requestUris: $requestUris,
+            resources: $resources,
+        );
+        $milliseconds = (hrtime(true) - $start) / 1_000_000;
+
+        // Then
+        static::assertCount(20_000, $client->redirectUris);
+        static::assertCount(20_000, $client->postLogoutRedirectUris);
+        static::assertCount(20_000, $client->requestUris);
+        static::assertCount(20_000, $client->resources);
+        static::assertLessThan(1_000, $milliseconds);
+    }
+
+    #[Test]
+    public function itKeepsFiftyThousandDistinctAuthorizationDetailTypesInLessThanASecond(): void
+    {
+        // Given
+        $types = array_map(static fn (int $index): string => 'type_' . $index, range(1, 50_000));
+
+        // When
+        $start = hrtime(true);
+        $client = new ClientRegistration(
+            'many',
+            new ClientPresentation('Many'),
+            Methods::none(),
+            false,
+            [new RedirectUri('https://rp.example/cb')],
+            Shapes::jwt(),
+            authorizationDetailsTypes: $types,
+        );
+        $milliseconds = (hrtime(true) - $start) / 1_000_000;
+
+        // Then
+        static::assertCount(50_000, $client->authorizationDetailsTypes);
+        static::assertLessThan(1_000, $milliseconds);
+    }
+
     /**
      * @param callable(): ClientRegistration $build
      */
@@ -718,6 +796,23 @@ final class ClientRegistrationTest extends TestCase
         static::assertFalse($client->registration->allowsResources(ResourceIndicators::of([Clients::CALENDAR, Clients::CONTACTS])));
     }
 
+    #[Test]
+    public function aClientRegisteredForTwentyThousandResourcesIsAllowedThemInLessThanASecond(): void
+    {
+        // Given
+        $client = Clients::public(Fixtures::tenant(), resources: self::resources(20_000));
+        $asked = new ResourceIndicators(self::resources(20_000));
+
+        // When
+        $start = hrtime(true);
+        $allowed = $client->registration->allowsResources($asked);
+        $milliseconds = (hrtime(true) - $start) / 1_000_000;
+
+        // Then
+        static::assertTrue($allowed);
+        static::assertLessThan(1_000, $milliseconds);
+    }
+
     /**
      * RFC 8707 §2
      */
@@ -807,6 +902,48 @@ final class ClientRegistrationTest extends TestCase
         yield 'another client' => [['other'], false];
         yield 'a resource it did not register' => [[Clients::CONTACTS], false];
         yield 'a registered resource and one it did not register' => [[Clients::CALENDAR, Clients::CONTACTS], false];
+    }
+
+    /**
+     * RFC 8707 §2
+     *
+     * @param list<string> $audience
+     */
+    #[Test]
+    #[DataProvider('provideAudiencesOfAClientOfDigits')]
+    public function aTokenIsAddressedToAClientOfDigitsAsItIsWritten(array $audience, bool $addressable): void
+    {
+        // Given
+        $client = Clients::public(Fixtures::tenant(), '12');
+
+        // When / Then
+        static::assertSame($addressable, $client->registration->mayBeAddressedTo(new TokenAudience($audience)));
+    }
+
+    /**
+     * @return iterable<string, array{list<string>, bool}>
+     */
+    public static function provideAudiencesOfAClientOfDigits(): iterable
+    {
+        yield 'the client itself' => [['12'], true];
+        yield 'the client written with a leading zero' => [['012'], false];
+    }
+
+    #[Test]
+    public function aTokenAddressedToTwentyThousandRegisteredResourcesIsAddressableInLessThanASecond(): void
+    {
+        // Given
+        $client = Clients::public(Fixtures::tenant(), resources: self::resources(20_000));
+        $audience = new TokenAudience(array_map(static fn (ResourceIndicator $resource): string => $resource->value, self::resources(20_000)));
+
+        // When
+        $start = hrtime(true);
+        $addressable = $client->registration->mayBeAddressedTo($audience);
+        $milliseconds = (hrtime(true) - $start) / 1_000_000;
+
+        // Then
+        static::assertTrue($addressable);
+        static::assertLessThan(1_000, $milliseconds);
     }
 
     /**
@@ -906,5 +1043,13 @@ final class ClientRegistrationTest extends TestCase
     {
         yield 'no algorithm, any the provider verifies' => [new AnyRegisteredAlgorithm()];
         yield 'one algorithm' => [new OneRegisteredAlgorithm(Algorithms::es256())];
+    }
+
+    /**
+     * @return list<ResourceIndicator>
+     */
+    private static function resources(int $count): array
+    {
+        return array_map(static fn (int $index): ResourceIndicator => new ResourceIndicator('https://api.example/' . $index), range(1, $count));
     }
 }

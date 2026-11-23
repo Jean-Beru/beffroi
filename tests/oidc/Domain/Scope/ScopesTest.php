@@ -8,6 +8,8 @@ use Beffroi\Oidc\Domain\Scope\Scope;
 use Beffroi\Oidc\Domain\Scope\Scopes;
 use Beffroi\Oidc\Exception\InvalidArgumentException;
 use function array_map;
+use function hrtime;
+use function range;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -39,6 +41,35 @@ final class ScopesTest extends TestCase
 
         // Then
         static::assertSame(['profile', 'openid'], $scopes->values());
+    }
+
+    #[Test]
+    public function theFirstOfTwoEqualScopesIsTheOneKept(): void
+    {
+        // Given
+        $first = new Scope('profile');
+
+        // When
+        $scopes = new Scopes([$first, Scope::openid(), new Scope('profile')]);
+
+        // Then
+        static::assertSame($first, $scopes->all[0]);
+    }
+
+    #[Test]
+    public function aSetOfTwentyThousandScopesIsBuiltInLessThanASecond(): void
+    {
+        // Given
+        $given = self::scopes(20_000);
+
+        // When
+        $start = hrtime(true);
+        $scopes = new Scopes($given);
+        $milliseconds = (hrtime(true) - $start) / 1_000_000;
+
+        // Then
+        static::assertCount(20_000, $scopes);
+        static::assertLessThan(1_000, $milliseconds);
     }
 
     #[Test]
@@ -85,6 +116,25 @@ final class ScopesTest extends TestCase
         yield 'a narrower set' => [['openid', 'email'], ['openid'], true];
         yield 'a wider set' => [['openid'], ['openid', 'email'], false];
         yield 'a disjoint set' => [['openid'], ['email'], false];
+        yield 'a scope in another case' => [['openid'], ['OpenID'], false];
+        yield 'a scope of other digits' => [['1'], ['01'], false];
+    }
+
+    #[Test]
+    public function aSetCoversAnotherOfTwentyThousandScopesInLessThanASecond(): void
+    {
+        // Given
+        $held = new Scopes(self::scopes(20_000));
+        $asked = new Scopes(self::scopes(20_000));
+
+        // When
+        $start = hrtime(true);
+        $covers = $held->covers($asked);
+        $milliseconds = (hrtime(true) - $start) / 1_000_000;
+
+        // Then
+        static::assertTrue($covers);
+        static::assertLessThan(1_000, $milliseconds);
     }
 
     /**
@@ -115,5 +165,13 @@ final class ScopesTest extends TestCase
 
         // When
         Scopes::parse('open"id');
+    }
+
+    /**
+     * @return list<Scope>
+     */
+    private static function scopes(int $count): array
+    {
+        return array_map(static fn (int $index): Scope => new Scope('scope.' . $index), range(1, $count));
     }
 }
