@@ -32,10 +32,10 @@
 #     /app/var/keys /app/var/kms /app/var/geoip /app/var/webauthn /app/var/share /data /config
 #
 # The first start, in the order of https://doc.beffroi.tech/getting-started/the-standalone-application/ (the
-# tenant has a row before it has a key, and its first key is the one messages are sealed to), the worker last:
+# server writes the row of the tenant as it starts, and the first key of the tenant is the one messages are
+# sealed to), the worker last:
 #
 #   docker compose -f compose.prod.yaml up -d --wait op
-#   docker compose -f compose.prod.yaml exec op bin/console beffroi:tenant:synchronize
 #   docker compose -f compose.prod.yaml exec op bin/console beffroi:keys:generate --algorithm=MESSAGE-SEAL
 #   docker compose -f compose.prod.yaml exec op bin/console beffroi:keys:generate
 #   docker compose -f compose.prod.yaml up -d --wait
