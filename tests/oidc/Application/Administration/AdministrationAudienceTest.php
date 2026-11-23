@@ -11,6 +11,7 @@ use Beffroi\Core\Domain\Group\GroupSource;
 use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Domain\Session\AuthenticationMethod;
 use Beffroi\Core\Domain\Session\AuthenticationProofs;
+use Beffroi\Core\Domain\Session\SessionEnd;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Application\Administration\AdministrationAudience;
@@ -25,6 +26,7 @@ use Beffroi\Oidc\Domain\Token\ClientAuthorization;
 use Beffroi\Oidc\Domain\Token\KeyConfirmation;
 use Beffroi\Oidc\Domain\Token\UserAuthorization;
 use Beffroi\Oidc\Exception\AccessDeniedException;
+use Beffroi\Oidc\Exception\InvalidGrantException;
 use Beffroi\Oidc\Exception\InvalidTargetException;
 use Beffroi\Oidc\Tests\Fixture\Administrations;
 use Beffroi\Oidc\Tests\Fixture\Clients;
@@ -159,7 +161,7 @@ final class AdministrationAudienceTest extends TestCase
         $this->expectNotToPerformAssertions();
 
         // When
-        $this->audience->assertMayBeAddressedBy($authorization);
+        $this->audience->assertMayBeAddressedBy($authorization, Fixtures::now());
     }
 
     /**
@@ -174,7 +176,7 @@ final class AdministrationAudienceTest extends TestCase
         $this->expectExceptionMessageIs('invalid_target: The requested resource is reserved to the administrators of the tenant (RFC 8707 section 2).');
 
         // When
-        $this->audience->assertMayBeAddressedBy($authorization($this));
+        $this->audience->assertMayBeAddressedBy($authorization($this), Fixtures::now());
     }
 
     /**
@@ -206,6 +208,56 @@ final class AdministrationAudienceTest extends TestCase
         ];
     }
 
+    /**
+     * Decisions 0031 and 0038, RFC 6749 §5.2
+     */
+    #[Test]
+    public function noTokenForTheAdministrationApiOutlivesTheExpiryOfItsSession(): void
+    {
+        // Given
+        $authorization = $this->authorization($this->administrator, self::passkey(), true);
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs('invalid_grant: The session the administrator signed in with has ended or expired, and no token for the administration API outlives it (decision 0038).');
+
+        // When
+        $this->audience->assertMayBeAddressedBy($authorization, Fixtures::now()->modify('+12 hours'));
+    }
+
+    /**
+     * Decision 0038, RFC 6749 §5.2
+     */
+    #[Test]
+    public function noTokenForTheAdministrationApiOutlivesTheEndOfItsSession(): void
+    {
+        // Given
+        $authorization = $this->authorization($this->administrator, self::passkey(), true);
+        $authorization->session->end(SessionEnd::User, Fixtures::now());
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+
+        // When
+        $this->audience->assertMayBeAddressedBy($authorization, Fixtures::now());
+    }
+
+    /**
+     * Decision 0031
+     */
+    #[Test]
+    public function aTokenForAnotherResourceOutlivesTheExpiryOfItsSession(): void
+    {
+        // Given
+        $authorization = $this->authorization($this->administrator, self::passkey(), true, Clients::CALENDAR);
+
+        // Then
+        $this->expectNotToPerformAssertions();
+
+        // When
+        $this->audience->assertMayBeAddressedBy($authorization, Fixtures::now()->modify('+12 hours'));
+    }
+
     #[Test]
     public function aTokenForAnotherResourceIsNotHeldToTheReservation(): void
     {
@@ -216,7 +268,7 @@ final class AdministrationAudienceTest extends TestCase
         $this->expectNotToPerformAssertions();
 
         // When
-        $this->audience->assertMayBeAddressedBy($authorization);
+        $this->audience->assertMayBeAddressedBy($authorization, Fixtures::now());
     }
 
     private function authorization(User $user, AuthenticationProofs $proofs, bool $bound, string $resource = Administrations::RESOURCE): UserAuthorization
