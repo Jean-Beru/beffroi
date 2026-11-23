@@ -320,14 +320,13 @@ final class ClientRegistrationTest extends BrowserTestCase
             'which requires client authentication, and authenticates with none, which proves nothing',
         ];
 
-        yield 'signed request objects required, and read unsigned (RFC 9101 section 10.5)' => [
+        yield 'request objects read unsigned (decision 0012)' => [
             [
                 'redirect_uris' => [self::REDIRECT_URI],
-                'require_signed_request_object' => true,
                 'request_object_signing_alg' => 'none',
             ],
             'invalid_client_metadata',
-            'registers no request_object_signing_alg under which an unsigned one is read',
+            'A client does not register "none" as its request_object_signing_alg',
         ];
 
         yield 'a page of the client served in plain HTTP (OIDC Registration section 2)' => [

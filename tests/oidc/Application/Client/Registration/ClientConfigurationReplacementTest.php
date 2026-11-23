@@ -334,23 +334,22 @@ final class ClientConfigurationReplacementTest extends TestCase
     }
 
     /**
-     * RFC 9101 §10.5
+     * Decision 0012, RFC 7592 §2.2
      */
     #[Test]
-    public function aReplacementCannotHaveTheSignedObjectsItRequiresReadUnsigned(): void
+    public function aReplacementCannotHaveItsRequestObjectsReadUnsigned(): void
     {
         // Given
         $this->register();
 
         // Then
         $this->expectException(InvalidClientMetadataException::class);
-        $this->expectExceptionMessageIsOrContains('registers no request_object_signing_alg under which an unsigned one is read (RFC 9101 section 10.5)');
+        $this->expectExceptionMessageIsOrContains('A client does not register "none" as its request_object_signing_alg');
 
         // When
         $this->replace([
             'client_id' => self::CLIENT_ID,
             'redirect_uris' => ['https://rp.example/cb'],
-            'require_signed_request_object' => true,
             'request_object_signing_alg' => 'none',
         ]);
     }

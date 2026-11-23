@@ -290,6 +290,27 @@ final class ClientMetadataReaderTest extends TestCase
     }
 
     /**
+     * RFC 9101 §10.5, decision 0012
+     */
+    #[Test]
+    public function aDeclarationThatRequiresSignedRequestObjectsAndReadsThemUnsignedIsRefused(): void
+    {
+        // Given
+        $metadata = self::declared([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'require_signed_request_object' => true,
+            'request_object_signing_alg' => 'none',
+        ]);
+
+        // Then
+        $this->expectException(InvalidClientMetadataException::class);
+        $this->expectExceptionMessageIsOrContains('registers no request_object_signing_alg under which an unsigned one is read');
+
+        // When
+        Registrations::reader()->read('drawn', $metadata, true);
+    }
+
+    /**
      * RFC 7591 §3.2.2
      *
      * @param array<string, mixed> $members
@@ -411,16 +432,6 @@ final class ClientMetadataReaderTest extends TestCase
             InvalidClientMetadataException::class,
             'jwks',
             'carries a modulus "n" of 2048 bits at least',
-        ];
-        yield 'signed request objects required, and read unsigned (RFC 9101 section 10.5)' => [
-            [
-                'redirect_uris' => ['https://rp.example/cb'],
-                'require_signed_request_object' => true,
-                'request_object_signing_alg' => 'none',
-            ],
-            InvalidClientMetadataException::class,
-            null,
-            'registers no request_object_signing_alg under which an unsigned one is read',
         ];
         yield 'a response type this provider does not answer with' => [
             [
