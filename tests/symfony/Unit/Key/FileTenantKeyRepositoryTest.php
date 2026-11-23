@@ -166,6 +166,25 @@ final class FileTenantKeyRepositoryTest extends TestCase
     }
 
     #[Test]
+    public function aKeyRetiredWhileItWaitedIsReadBackNeverActive(): void
+    {
+        // Given
+        $tenant = Fixtures::tenant();
+        $key = self::key($tenant, Keys::pair()->kid);
+        $key->startRetiring(Fixtures::now()->modify('+1 minute'), Fixtures::now()->modify('+1 minute'));
+        $key->retire(Fixtures::now()->modify('+1 minute'));
+        $this->repository->save($key);
+
+        // When
+        $retired = $this->repository->find($tenant, $key->kid) ?? static::fail('The key is found.');
+
+        // Then
+        static::assertSame(KeyStatus::Retired, $retired->status);
+        static::assertNull($retired->activatedAt);
+        static::assertEquals(Fixtures::now()->modify('+1 minute'), $retired->retiredAt);
+    }
+
+    #[Test]
     public function theActiveKeyIsFoundAmongTheOthers(): void
     {
         // Given
