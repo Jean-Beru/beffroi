@@ -9,6 +9,9 @@
 {% block title %}{{ 'account.title'|trans }}{% endblock %}
 
 {% block content %}
+    {% if untold_change %}
+        <p data-untold-change>{{ 'untold_change.text'|trans }} <a href="{{ path('beffroi_interaction_account_acts', {act: 'credential_change.not_told'}) }}">{{ 'acts.title'|trans }}</a></p>
+    {% endif %}
     <p>{{ 'account.signed_in_as'|trans({username: user.username}) }}</p>
     <p><time datetime="{{ signed_in_since|date('c') }}">{{ 'account.signed_in_since'|trans({date: signed_in_since|beffroi_moment(user)}) }}</time></p>
     <ul data-sections="{{ sections|length }}">
