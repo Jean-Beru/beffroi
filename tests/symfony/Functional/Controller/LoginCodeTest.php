@@ -478,6 +478,52 @@ final class LoginCodeTest extends PasskeyTestCase
         static::assertSame(AuthenticationFailureReason::TooManyAttempts, self::events(AuthenticationFailed::class)[0]->reason ?? null);
     }
 
+    /**
+     * Decision 0014, Architecture §5.4
+     */
+    #[Test]
+    public function aCodePostedWithAForgedTokenCountsNoAttempt(): void
+    {
+        // Given
+        $this->userWithTotp('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+        for ($attempt = 1; $attempt <= 5; ++$attempt) {
+            $this->browser->request('POST', '/login/code?interaction=' . $interaction, [
+                '_code' => '000000',
+                '_csrf_token' => 'forged',
+            ]);
+        }
+
+        // When
+        $this->submitCode($interaction, $this->codeAt(new DateTimeImmutable()));
+
+        // Then
+        static::assertTrue($this->isBoundToASession());
+    }
+
+    /**
+     * Decision 0014, Architecture §5.4
+     */
+    #[Test]
+    public function aCodePostedWithAForgedTokenIsNotTried(): void
+    {
+        // Given
+        $this->userWithTotp('alice', self::PASSWORD);
+        $interaction = $this->authorize();
+        $this->submitLogin($interaction, 'alice', self::PASSWORD);
+        self::forgetEvents();
+
+        // When
+        $this->browser->request('POST', '/login/code?interaction=' . $interaction, [
+            '_code' => '000000',
+            '_csrf_token' => 'forged',
+        ]);
+
+        // Then
+        static::assertSame([], self::events(AuthenticationFailed::class));
+    }
+
     #[Test]
     public function theCodeRefusedByTheLimitSaysToWait(): void
     {
