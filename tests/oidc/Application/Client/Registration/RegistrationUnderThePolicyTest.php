@@ -316,14 +316,14 @@ final class RegistrationUnderThePolicyTest extends TestCase
             self::SECTOR_IDENTIFIER_URI,
             'https://sector.example/redirect_uris.json redirects, and no outbound request follows a redirect; publish the document at the URL that is registered.',
             [],
-            'no outbound request follows a redirect',
+            'cannot be read as the JSON array of redirection URIs of OIDC Registration section 5',
         ];
 
         yield 'a document that is no JSON array' => [
             self::SECTOR_IDENTIFIER_URI,
             'https://sector.example/redirect_uris.json does not answer the JSON array of redirection URIs of OIDC Registration section 5.',
             [],
-            'does not answer the JSON array of redirection URIs',
+            'cannot be read as the JSON array of redirection URIs of OIDC Registration section 5',
         ];
 
         yield 'a document that omits a redirection URI the client registers' => [

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Core\Tests\Application\Push;
 
 use Beffroi\Core\Application\Push\PushSubscriptionEnrolment;
+use Beffroi\Core\Application\Push\PushSubscriptionRevocation;
 use Beffroi\Core\Bridge\InMemory\InMemoryPushSubscriptionRepository;
 use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Beffroi\Core\Bridge\Key\SealedKeyProvider;
@@ -56,6 +57,7 @@ final class PushSubscriptionEnrolmentTest extends TestCase
             new SealedKeyProvider($this->keys, Keys::opened()),
             new SymfonyUuidGenerator(),
             $this->clock,
+            new PushSubscriptionRevocation($this->subscriptions, $this->clock),
         );
     }
 
@@ -111,6 +113,38 @@ final class PushSubscriptionEnrolmentTest extends TestCase
         static::assertCount(1, $this->subscriptions->findActiveByUser($this->alice));
     }
 
+    #[Test]
+    public function aBrowserBeyondTheMostAPersonKeepsTakesOutTheOldest(): void
+    {
+        // Given
+        $this->activeKey();
+        $oldest = $this->enrolOneMinuteApart(PushSubscriptionEnrolment::MOST_BROWSERS)[0];
+
+        // When
+        $this->clock->modify('+1 minute');
+        $this->enrol(endpoint: 'https://push.example/f/latest');
+
+        // Then
+        static::assertCount(PushSubscriptionEnrolment::MOST_BROWSERS, $this->subscriptions->findActiveByUser($this->alice));
+        static::assertTrue($oldest->isRevoked());
+    }
+
+    #[Test]
+    public function theBrowserThatSubscribesAgainIsNotTheOneTakenOut(): void
+    {
+        // Given
+        $this->activeKey();
+        [$oldest, $next] = $this->enrolOneMinuteApart(PushSubscriptionEnrolment::MOST_BROWSERS + 1);
+
+        // When
+        $this->clock->modify('+1 minute');
+        $again = $this->enrol(endpoint: $oldest->endpoint);
+
+        // Then
+        static::assertFalse($again->isRevoked());
+        static::assertTrue($next->isRevoked());
+    }
+
     /**
      * Decision 0002
      */
@@ -157,12 +191,26 @@ final class PushSubscriptionEnrolmentTest extends TestCase
         $this->enrol();
     }
 
-    private function enrol(?string $label = 'Alice at the counter'): PushSubscription
+    /**
+     * @return list<PushSubscription> in the order they were enrolled
+     */
+    private function enrolOneMinuteApart(int $browsers): array
+    {
+        $enrolled = [];
+        for ($browser = 1; $browser <= $browsers; $browser++) {
+            $this->clock->modify('+1 minute');
+            $enrolled[] = $this->enrol(endpoint: 'https://push.example/f/' . $browser);
+        }
+
+        return $enrolled;
+    }
+
+    private function enrol(?string $label = 'Alice at the counter', string $endpoint = self::ENDPOINT): PushSubscription
     {
         return $this->enrolment->enrol(
             $this->alice,
             Algorithms::vapid(),
-            self::ENDPOINT,
+            $endpoint,
             self::PUBLIC_KEY,
             self::AUTH_SECRET,
             $label,
