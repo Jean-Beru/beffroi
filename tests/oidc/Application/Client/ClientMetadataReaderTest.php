@@ -8,7 +8,11 @@ use Beffroi\Core\Tests\Fixture\TextsThatAreNotPlain;
 use Beffroi\Core\Tests\Fixture\RsaModuli;
 use Beffroi\Oidc\Application\Client\ClientAuthenticationMethods;
 use Beffroi\Oidc\Application\Client\ClientMetadataReader;
+use Beffroi\Oidc\Domain\Client\ClientUri;
+use Beffroi\Oidc\Domain\Client\Metadata\AttestedMembers;
 use Beffroi\Oidc\Domain\Client\Metadata\ClientMetadata;
+use Beffroi\Oidc\Domain\Client\Metadata\DeclaredMembers;
+use Beffroi\Oidc\Domain\Client\Metadata\DeploymentDefaults;
 use Beffroi\Oidc\Domain\Client\Metadata\RegisteredMembers;
 use Beffroi\Oidc\Domain\Client\Metadata\SpecifiedDefaults;
 use Beffroi\Oidc\Domain\Client\ClientRegistration;
@@ -779,6 +783,113 @@ final class ClientMetadataReaderTest extends TestCase
 
         // Then
         static::assertTrue($registration->registersASecret);
+    }
+
+    /**
+     * RFC 7591 §5
+     */
+    #[Test]
+    #[DataProvider('providePages')]
+    public function aPageTheClientRegistersOnTheHostOfItsRedirectionIsShown(string $member): void
+    {
+        // When
+        $registration = self::read([
+            'redirect_uris' => ['https://rp.example/cb'],
+            $member => 'https://rp.example/' . $member,
+        ]);
+
+        // Then
+        static::assertSame('https://rp.example/' . $member, (string) self::pageOf($registration, $member));
+    }
+
+    /**
+     * RFC 7591 §5
+     */
+    #[Test]
+    #[DataProvider('providePages')]
+    public function aPageTheClientRegistersOnAnotherHostIsReadAsNone(string $member): void
+    {
+        // When
+        $registration = self::read([
+            'redirect_uris' => ['https://rp.example/cb'],
+            $member => 'https://cdn.rp.example/' . $member,
+        ]);
+
+        // Then
+        static::assertNull(self::pageOf($registration, $member));
+    }
+
+    /**
+     * RFC 7591 §5
+     */
+    #[Test]
+    #[DataProvider('providePages')]
+    public function aPageADeploymentDeclaresOnAnotherHostIsShown(string $member): void
+    {
+        // When
+        $registration = Registrations::reader()->read(
+            'declared',
+            new ClientMetadata([
+                new DeclaredMembers([
+                    'redirect_uris' => ['https://rp.example/cb'],
+                    $member => 'https://cdn.rp.example/' . $member,
+                ]),
+                new DeploymentDefaults(),
+            ]),
+            true,
+        );
+
+        // Then
+        static::assertSame('https://cdn.rp.example/' . $member, (string) self::pageOf($registration, $member));
+    }
+
+    /**
+     * RFC 7591 §2.3, §5
+     */
+    #[Test]
+    #[DataProvider('providePages')]
+    public function aPageAnAuthorityAttestsOnAnotherHostIsShown(string $member): void
+    {
+        // When
+        $registration = Registrations::reader()->read(
+            'attested',
+            new ClientMetadata([
+                new AttestedMembers([
+                    $member => 'https://cdn.rp.example/' . $member,
+                ]),
+                new RegisteredMembers([
+                    'redirect_uris' => ['https://rp.example/cb'],
+                ]),
+                new SpecifiedDefaults(),
+            ]),
+            true,
+        );
+
+        // Then
+        static::assertSame('https://cdn.rp.example/' . $member, (string) self::pageOf($registration, $member));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function providePages(): iterable
+    {
+        yield 'its logo' => ['logo_uri'];
+        yield 'its home page' => ['client_uri'];
+        yield 'its policy' => ['policy_uri'];
+        yield 'its terms' => ['tos_uri'];
+    }
+
+    private static function pageOf(ClientRegistration $registration, string $member): ?ClientUri
+    {
+        $presentation = $registration->presentation;
+
+        return match ($member) {
+            'logo_uri' => $presentation->logoUri,
+            'client_uri' => $presentation->uri,
+            'policy_uri' => $presentation->policyUri,
+            default => $presentation->tosUri,
+        };
     }
 
     /**
