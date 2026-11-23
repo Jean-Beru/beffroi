@@ -41,13 +41,17 @@ final class PasswordStrengthTest extends TestCase
         yield 'sixteen letters and a space' => ['anvil carpet bone', PasswordStrength::MEDIUM];
         yield 'twenty-two letters and spaces' => ['nine lives of a quiet', PasswordStrength::STRONG];
         yield 'four words of letters' => ['correct horse battery staple', PasswordStrength::VERY_STRONG];
+        yield 'a euro sign fifteen times' => [str_repeat('€', 15), PasswordStrength::NOTHING];
+        yield 'an emoji twelve times' => [str_repeat('😀', 12), PasswordStrength::NOTHING];
+        yield 'a letter and fourteen zero-width spaces' => ['a' . str_repeat("\u{200B}", 14), PasswordStrength::NOTHING];
+        yield 'three accented words' => ['élève café thé', PasswordStrength::MEDIUM];
     }
 
     #[Test]
-    public function anAccentedPasswordIsCountedOverItsBytes(): void
+    public function anAccentedPasswordIsCountedOverItsCharacters(): void
     {
         // When / Then
-        static::assertSame(28.0, PasswordStrength::of('éééééééé')->bits);
+        static::assertSame(7.0, PasswordStrength::of('éééééééé')->bits);
     }
 
     #[Test]
@@ -69,7 +73,8 @@ final class PasswordStrengthTest extends TestCase
         yield 'letters alone' => ['azqjxkbmwp', 47.004397181410916];
         yield 'a tabulation and a space' => ["ab\tcd ef", 52.188495648456104];
         yield 'a delete and a space' => ["abcdef\x7f ", 52.188495648456104];
-        yield 'one byte beyond ascii' => ["abcdefg\x80", 58.13429232555921];
+        yield 'one character beyond ascii' => ['abcdefgé', 58.13429232555921];
+        yield 'a byte that is no character' => ["abcdefg\x80", 58.13429232555921];
         yield 'digits and a tabulation' => ["ab12\t34cd", 54.97672011100352];
     }
 

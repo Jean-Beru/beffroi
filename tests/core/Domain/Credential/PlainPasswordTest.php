@@ -121,6 +121,9 @@ final class PlainPasswordTest extends TestCase
         yield 'twelve letters and nothing else' => ['abcdefghijkl'];
         yield 'one character repeated' => [str_repeat('a', 24)];
         yield 'a word written twice' => ['passwordpassword'];
+        yield 'a euro sign repeated' => [str_repeat('€', 15)];
+        yield 'an emoji repeated' => [str_repeat('😀', 12)];
+        yield 'a letter padded with zero-width spaces' => ['a' . str_repeat("\u{200B}", 14)];
     }
 
     #[Test]
