@@ -22,6 +22,7 @@ use DateTimeZone;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function sprintf;
 
 final class ClaimsTest extends TestCase
 {
@@ -181,6 +182,34 @@ final class ClaimsTest extends TestCase
         yield 'profile' => [new ProfileUrl(), 'profile', static fn (Profile $profile): ?string => $profile->profileUrl];
         yield 'picture' => [new PictureUrl(), 'picture', static fn (Profile $profile): ?string => $profile->pictureUrl];
         yield 'website' => [new WebsiteUrl(), 'website', static fn (Profile $profile): ?string => $profile->websiteUrl];
+    }
+
+    /**
+     * OIDC Core §5.1
+     */
+    #[Test]
+    #[DataProvider('provideUrlClaims')]
+    public function aUrlClaimSaidAsAScriptIsRefused(ClaimInterface $claim): void
+    {
+        // Given
+        $user = Fixtures::user();
+
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs(sprintf('The %s "javascript:alert(1)" must be an absolute https or http URL (OIDC Core section 5.1).', $claim->name()));
+
+        // When
+        $claim->describe($user, 'javascript:alert(1)', Fixtures::now());
+    }
+
+    /**
+     * @return iterable<string, array{ClaimInterface}>
+     */
+    public static function provideUrlClaims(): iterable
+    {
+        yield 'profile' => [new ProfileUrl()];
+        yield 'picture' => [new PictureUrl()];
+        yield 'website' => [new WebsiteUrl()];
     }
 
     #[Test]

