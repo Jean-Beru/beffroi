@@ -449,6 +449,23 @@ final class BackchannelAuthenticationGrantTest extends TestCase
     }
 
     /**
+     * Architecture §4.3
+     */
+    #[Test]
+    public function aRequestWhoseGrantWasRevokedGrantsNothing(): void
+    {
+        // Given
+        $this->approved()->revoke($this->clock->now());
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs('invalid_grant: The auth_req_id is invalid.');
+
+        // When
+        $this->poll();
+    }
+
+    /**
      * RFC 8705 §3, RFC 9449 §5
      */
     #[Test]

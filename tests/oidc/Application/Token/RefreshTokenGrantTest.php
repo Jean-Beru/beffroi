@@ -23,13 +23,16 @@ use Beffroi\Oidc\Application\Token\RequestedAuthorizationDetails;
 use Beffroi\Oidc\Domain\AuthorizationDetails\AuthorizationDetails;
 use Beffroi\Oidc\Application\Token\TokenIssuer;
 use Beffroi\Oidc\Application\Request\RequestParameters;
+use Beffroi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryRefreshTokenRepository;
+use Beffroi\Oidc\Domain\Authorization\AuthorizationCode;
 use Beffroi\Oidc\Domain\Client\Client;
 use Beffroi\Oidc\Domain\Event\RefreshTokenOutlivedItsSession;
 use Beffroi\Oidc\Domain\Event\RefreshTokenReuseDetected;
 use Beffroi\Oidc\Domain\Event\RefreshTokenRotated;
 use Beffroi\Oidc\Domain\Event\TokensIssued;
 use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Token\ConfirmationInterface;
 use Beffroi\Oidc\Domain\Token\IssuedRefreshToken;
 use Beffroi\Oidc\Domain\Token\KeyConfirmation;
 use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
@@ -79,6 +82,8 @@ final class RefreshTokenGrantTest extends TestCase
 
     private InMemoryRefreshTokenRepository $refreshTokens;
 
+    private InMemoryAuthorizationCodeRepository $grants;
+
     private FakeAccessTokenIssuer $accessTokenIssuer;
 
     private FakeIdTokenIssuer $idTokens;
@@ -102,6 +107,7 @@ final class RefreshTokenGrantTest extends TestCase
         $sessions->save($this->session);
         $this->context = Fixtures::context($this->clock->now());
         $this->refreshTokens = new InMemoryRefreshTokenRepository();
+        $this->grants = new InMemoryAuthorizationCodeRepository();
         $this->accessTokenIssuer = new FakeAccessTokenIssuer();
         $this->idTokens = new FakeIdTokenIssuer();
         $this->events = new RecordingEventDispatcher();
@@ -109,6 +115,7 @@ final class RefreshTokenGrantTest extends TestCase
         $issuer = new TokenIssuer($this->accessTokenIssuer, $this->idTokens, $this->refreshTokens, Secrets::drawer(), $this->events);
         $this->grant = new RefreshTokenGrant(
             $this->refreshTokens,
+            $this->grants,
             new RefreshTokenRevocation($this->refreshTokens),
             $sessions,
             $issuer,
@@ -593,6 +600,16 @@ final class RefreshTokenGrantTest extends TestCase
 
             return 'revoked';
         }];
+        yield 'of a grant revoked since it was issued' => [static function (self $test): string {
+            $test->grantOf($test->token('of-a-revoked-grant'))->revoke($test->clock->now());
+
+            return 'of-a-revoked-grant';
+        }];
+        yield 'of a grant no store holds' => [static function (self $test): string {
+            $test->refreshTokens->save(Tokens::refreshToken('of-no-grant', $test->client, $test->session, $test->clock->now()));
+
+            return 'of-no-grant';
+        }];
     }
 
     /**
@@ -1008,6 +1025,7 @@ final class RefreshTokenGrantTest extends TestCase
         ?AuthenticationSession $session = null,
         ?ResourceIndicators $resources = null,
         ?AuthorizationDetails $authorizationDetails = null,
+        ?ConfirmationInterface $confirmation = null,
     ): RefreshToken {
         $token = Tokens::refreshToken(
             $value,
@@ -1016,12 +1034,28 @@ final class RefreshTokenGrantTest extends TestCase
             $this->clock->now(),
             $family,
             $scopes,
+            confirmation: $confirmation,
             resources: $resources,
             authorizationDetails: $authorizationDetails,
         );
         $this->refreshTokens->save($token);
+        $this->grantOf($token);
 
         return $token;
+    }
+
+    private function grantOf(RefreshToken $token): AuthorizationCode
+    {
+        $grant = $this->grants->findByGrantId($token->family->grantId) ?? Tokens::code(
+            $token->family->id->toRfc4122(),
+            $token->client,
+            $token->session,
+            $token->family->startedAt,
+            grantId: $token->family->grantId,
+        );
+        $this->grants->save($grant);
+
+        return $grant;
     }
 
     private function rotatedOnAnotherWorker(string $value, AuthenticationSession $session): RefreshToken
@@ -1046,7 +1080,7 @@ final class RefreshTokenGrantTest extends TestCase
     {
         // Given
         $key = new KeyConfirmation(self::THUMBPRINT);
-        $this->refreshTokens->save(Tokens::refreshToken('the-token', $this->client, $this->session, $this->clock->now(), confirmation: $key));
+        $this->token('the-token', confirmation: $key);
 
         // When
         $issued = $this->grant->grant(new AuthenticatedClient($this->client, $key), $this->request(), $this->context);
@@ -1060,13 +1094,7 @@ final class RefreshTokenGrantTest extends TestCase
     public function aBoundTokenIsNotRefreshedByARequestThatProvesAnythingElse(?string $thumbprint): void
     {
         // Given
-        $this->refreshTokens->save(Tokens::refreshToken(
-            'the-token',
-            $this->client,
-            $this->session,
-            $this->clock->now(),
-            confirmation: new KeyConfirmation(self::THUMBPRINT),
-        ));
+        $this->token('the-token', confirmation: new KeyConfirmation(self::THUMBPRINT));
         $proven = $thumbprint === null ? null : new KeyConfirmation($thumbprint);
 
         // Then

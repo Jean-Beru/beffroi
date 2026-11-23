@@ -148,6 +148,7 @@ final class TokenHandlerTest extends TestCase
         );
         $refreshGrant = new RefreshTokenGrant(
             $this->refreshTokens,
+            $this->codes,
             new RefreshTokenRevocation($this->refreshTokens),
             $sessions,
             $this->issuer,
@@ -203,7 +204,16 @@ final class TokenHandlerTest extends TestCase
     public function itRefreshesTokens(): void
     {
         // Given
-        $token = Tokens::refreshToken('the-token', $this->postClient, $this->session, $this->clock->now(), null, ['openid', 'profile']);
+        $code = Tokens::code('the-code', $this->postClient, $this->session, $this->clock->now());
+        $this->codes->save($code);
+        $token = Tokens::refreshToken(
+            'the-token',
+            $this->postClient,
+            $this->session,
+            $this->clock->now(),
+            Tokens::family($this->clock->now(), $this->tenant, grantId: $code->grantId),
+            ['openid', 'profile'],
+        );
         $this->refreshTokens->save($token);
 
         // When

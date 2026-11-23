@@ -41,6 +41,7 @@ use Beffroi\Oidc\Domain\Event\AuthorizationCodeReplayed;
 use Beffroi\Oidc\Domain\Event\TokensIssued;
 use Beffroi\Oidc\Domain\Resource\ResourceIndicators;
 use Beffroi\Oidc\Domain\Scope\Scope;
+use Beffroi\Oidc\Domain\Secret\DrawnSecret;
 use Beffroi\Oidc\Domain\Token\RefreshToken;
 use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
 use Beffroi\Oidc\Exception\InvalidAuthorizationDetailsException;
@@ -1346,6 +1347,23 @@ final class AuthorizationCodeGrantTest extends TestCase
     }
 
     /**
+     * Architecture §4.3
+     */
+    #[Test]
+    public function itRefusesACodeWhoseGrantWasRevoked(): void
+    {
+        // Given
+        $this->code('the-code', $this->client)->revoke($this->clock->now());
+
+        // Then
+        $this->expectException(InvalidGrantException::class);
+        $this->expectExceptionMessageIs(self::INVALID_GRANT);
+
+        // When
+        $this->grant->grant(new AuthenticatedClient($this->client), $this->request(), $this->context);
+    }
+
+    /**
      * @param callable(self): RequestParameters $request
      */
     #[Test]
@@ -1376,6 +1394,11 @@ final class AuthorizationCodeGrantTest extends TestCase
         ];
         yield 'expired code' => [static function (self $test): RequestParameters {
             $test->clock->sleep(60);
+
+            return $test->request();
+        }];
+        yield 'code whose grant was revoked' => [static function (self $test): RequestParameters {
+            $test->codes->findByCodeHash(DrawnSecret::digestOf('the-code'))?->revoke($test->clock->now());
 
             return $test->request();
         }];
