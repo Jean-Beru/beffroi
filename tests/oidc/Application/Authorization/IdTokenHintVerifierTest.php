@@ -8,7 +8,10 @@ use Beffroi\Core\Domain\Tenant\Tenant;
 use Beffroi\Core\Exception\InvalidJwsException;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Oidc\Application\Authorization\IdTokenHintVerifier;
+use Beffroi\Oidc\Application\Token\JwtAccessTokenIssuer;
 use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\EndSession\LogoutToken;
+use Beffroi\Oidc\Domain\Introspection\IntrospectionResponse;
 use Beffroi\Oidc\Exception\InvalidRequestException;
 use Beffroi\Oidc\Tests\Fixture\Clients;
 use Beffroi\Oidc\Tests\Fixture\FakeJwsVerifier;
@@ -145,6 +148,41 @@ final class IdTokenHintVerifierTest extends TestCase
         yield 'audience not a string' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":42}'];
     }
 
+    /**
+     * RFC 8725 §3.11, RFC 9068 §5, OIDC Core §3.1.2.1
+     */
+    #[Test]
+    #[DataProvider('provideTypes')]
+    public function itRefusesATokenThatNamesAType(string $type): void
+    {
+        // Given
+        $this->jws->knows($this->tenant, self::TOKEN, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa"}', [
+            'typ' => $type,
+        ]);
+
+        // When
+        try {
+            $this->verifier->verify($this->client, self::TOKEN);
+            static::fail('The hint should have been refused.');
+        } catch (InvalidRequestException $exception) {
+            // Then
+            static::assertTrue($exception->redirectable);
+            static::assertSame('The id_token_hint parameter is not an ID token issued by this provider.', $exception->errorDescription);
+        }
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideTypes(): iterable
+    {
+        yield 'an access token' => [JwtAccessTokenIssuer::TYPE];
+        yield 'a logout token' => [LogoutToken::TYPE];
+        yield 'an introspection response' => [IntrospectionResponse::JWT_TYPE];
+        yield 'a JWT' => ['JWT'];
+        yield 'an empty type' => [''];
+    }
+
     #[Test]
     public function itVerifiesAgainstTheKeysOfTheTenantOfTheClient(): void
     {
@@ -204,6 +242,29 @@ final class IdTokenHintVerifierTest extends TestCase
     {
         // Given
         $this->jws->knows($this->tenant, self::TOKEN, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","sid":' . $sid . '}');
+
+        // When
+        try {
+            $this->verifier->read($this->tenant, self::TOKEN, false);
+            static::fail('The hint should have been refused.');
+        } catch (InvalidRequestException $exception) {
+            // Then
+            static::assertFalse($exception->redirectable);
+            static::assertSame('The id_token_hint parameter is not an ID token issued by this provider.', $exception->errorDescription);
+        }
+    }
+
+    /**
+     * RP-Initiated Logout §2, §6, RFC 8725 §3.11
+     */
+    #[Test]
+    #[DataProvider('provideTypes')]
+    public function itReadsNoSessionFromATokenThatNamesAType(string $type): void
+    {
+        // Given
+        $this->jws->knows($this->tenant, self::TOKEN, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","sid":"' . self::SID . '"}', [
+            'typ' => $type,
+        ]);
 
         // When
         try {
