@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Oidc\Tests\Application\Client;
 
 use Beffroi\Oidc\Application\Client\ClientAuthenticationMethods;
+use Beffroi\Oidc\Application\Client\ClientMetadataReader;
 use Beffroi\Oidc\Domain\Client\Metadata\ClientMetadata;
 use Beffroi\Oidc\Domain\Client\Metadata\RegisteredMembers;
 use Beffroi\Oidc\Domain\Client\Metadata\SpecifiedDefaults;
@@ -20,6 +21,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use function array_map;
+use function str_repeat;
 
 /**
  * RFC 7591 §2, OIDC Registration §2
@@ -597,6 +599,55 @@ final class ClientMetadataReaderTest extends TestCase
 
         // When
         Registrations::reader()->read('drawn', $metadata);
+    }
+
+    /**
+     * OIDC Registration §2
+     */
+    #[Test]
+    #[DataProvider('provideNamesThatAreNotPlainText')]
+    public function aNameThatIsNotPlainTextIsRefused(string $name): void
+    {
+        // Then
+        $this->expectException(InvalidClientMetadataException::class);
+        $this->expectExceptionMessageIsOrContains('must be plain text of at most 100 characters');
+
+        // When
+        self::read([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'client_name' => $name,
+        ]);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideNamesThatAreNotPlainText(): iterable
+    {
+        yield 'a line feed' => ["Acme\n\nYour account is locked, call +33 1 23 45 67 89"];
+        yield 'a right-to-left override' => ["Acme \u{202E}gnp.exe"];
+        yield 'a zero-width space' => ["Ac\u{200B}me"];
+        yield 'a line separator' => ["Acme\u{2028}Your account is locked"];
+        yield 'a hundred and one characters' => [str_repeat('é', ClientMetadataReader::MAX_NAME_LENGTH + 1)];
+    }
+
+    /**
+     * OIDC Registration §2
+     */
+    #[Test]
+    public function aNameOfAHundredCharactersIsRead(): void
+    {
+        // Given
+        $name = 'Ministère de l’Intérieur ' . str_repeat('é', ClientMetadataReader::MAX_NAME_LENGTH - 25);
+
+        // When
+        $registration = self::read([
+            'redirect_uris' => ['https://rp.example/cb'],
+            'client_name' => $name,
+        ]);
+
+        // Then
+        static::assertSame($name, $registration->presentation->name);
     }
 
     #[Test]
