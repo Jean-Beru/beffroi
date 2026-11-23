@@ -465,6 +465,25 @@ final class PasskeyLoginTest extends PasskeyTestCase
     }
 
     #[Test]
+    public function aLoginWithoutItsTokenLeavesTheCeremonyToThePerson(): void
+    {
+        // Given
+        $device = self::device();
+        $this->enrol(self::user('alice'), $device);
+        $this->forgetTheBrowser();
+        $interaction = $this->authorize();
+        $token = $this->loginPage($interaction)->filter('form[data-passkey="login"] input[name="_csrf_token"]')->attr('value');
+        $assertion = $device->get($this->requestOptions($interaction));
+        $this->postPasskeyLogin($interaction, 'forged', 'not-the-token');
+
+        // When
+        $this->postPasskeyLogin($interaction, $assertion, $token);
+
+        // Then
+        static::assertTrue($this->isBoundToASession());
+    }
+
+    #[Test]
     public function aPasskeyLoginPostedWithoutOriginOrRefererOpensASession(): void
     {
         // Given
