@@ -8,6 +8,7 @@ use function array_count_values;
 use function array_keys;
 use function array_unique;
 use function array_values;
+use App\Configuration\SecretFile;
 use App\DependencyInjection\BeffroiExtension;
 use App\Message\Command;
 use App\Message\Event;
@@ -78,7 +79,7 @@ final class MessengerContractTest extends TestCase
         foreach (MessengerContract::LANES as $name) {
             $lane = $transports[$name] ?? null;
             static::assertIsArray($lane);
-            static::assertSame(LaneDsn::of($name, MessengerContract::DSN_ENVIRONMENT_VARIABLE), $lane['dsn'] ?? null);
+            static::assertSame(LaneDsn::of($name, SecretFile::PREFIX . ':' . MessengerContract::DSN_ENVIRONMENT_VARIABLE), $lane['dsn'] ?? null);
         }
         static::assertSame('sync://', $transports['sync'] ?? null);
         static::assertSame(MessengerContract::FAILURE_DSN, $transports[MessengerContract::FAILURE_TRANSPORT] ?? null);
