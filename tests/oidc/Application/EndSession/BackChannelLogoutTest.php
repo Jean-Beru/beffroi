@@ -19,6 +19,7 @@ use Beffroi\Oidc\Application\EndSession\BackChannelLogout;
 use Beffroi\Oidc\Application\EndSession\LogoutTokenIssuer;
 use Beffroi\Oidc\Bridge\InMemory\InMemoryAuthorizationCodeRepository;
 use Beffroi\Oidc\Domain\Client\Client;
+use Beffroi\Oidc\Domain\Client\ClientJwks;
 use Beffroi\Oidc\Domain\Client\ClientUri;
 use Beffroi\Oidc\Domain\Client\ResponseFormat;
 use Beffroi\Oidc\Domain\Event\LogoutTokenIssued;
@@ -264,6 +265,44 @@ final class BackChannelLogoutTest extends TestCase
     }
 
     /**
+     * Back-Channel Logout 1.0 §2.6
+     */
+    #[Test]
+    public function aClientWhoseKeyReceivesNoJweIsLeftForLater(): void
+    {
+        // Given
+        $this->signedIn(self::offItsCurve($this->session));
+
+        // When
+        $this->logout->sessionEnded($this->ended(), Fixtures::context());
+
+        // Then
+        static::assertSame([], $this->events->of(LogoutTokenIssued::class));
+        static::assertSame(['off-its-curve'], array_column($this->retries->later, 'clientId'));
+    }
+
+    /**
+     * Back-Channel Logout 1.0 §2.6
+     */
+    #[Test]
+    public function theOtherClientsAreToldWhileOneWhoseKeyReceivesNoJweIsLeftForLater(): void
+    {
+        // Given
+        $this->signedIn(Clients::withBackChannelLogout($this->session->tenant, 'listening', 'https://listening.example/logout'));
+        $this->signedIn(self::offItsCurve($this->session));
+        $this->signedIn(Clients::withBackChannelLogout($this->session->tenant, 'also-listening', 'https://also-listening.example/logout'));
+
+        // When
+        $this->logout->sessionEnded($this->ended(), Fixtures::context());
+
+        // Then
+        static::assertSame(['listening', 'also-listening'], array_map(
+            static fn (LogoutTokenIssued $event): string => $event->clientId,
+            $this->events->of(LogoutTokenIssued::class),
+        ));
+    }
+
+    /**
      * Architecture §5.6
      */
     #[Test]
@@ -329,6 +368,17 @@ final class BackChannelLogoutTest extends TestCase
         $this->session->end(SessionEnd::RelyingParty, Fixtures::now());
 
         return $this->session;
+    }
+
+    private static function offItsCurve(AuthenticationSession $session): Client
+    {
+        return Clients::encryptedFor(
+            $session->tenant,
+            ResponseFormat::signed(null, ClientEncryption::registration()),
+            clientId: 'off-its-curve',
+            backChannelLogoutUri: new ClientUri('https://off-its-curve.example/logout'),
+            jwks: new ClientJwks([ClientEncryption::keyOffItsCurve()]),
+        );
     }
 
     private static function unreachable(AuthenticationSession $session): Client

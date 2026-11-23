@@ -585,6 +585,7 @@ final class Clients
         string $clientId = 'encrypted-client',
         ?ClientUri $jwksUri = null,
         ?ClientUri $backChannelLogoutUri = null,
+        ?ClientJwks $jwks = null,
     ): Client {
         return new Client(
             $tenant,
@@ -599,7 +600,7 @@ final class Clients
                 [Grants::authorizationCode(), Grants::refreshToken()],
                 new Scopes([new Scope('openid'), new Scope('profile'), new Scope('email')]),
                 backChannelLogoutUri: $backChannelLogoutUri,
-                jwks: $jwksUri === null ? ClientEncryption::publishedKeys() : null,
+                jwks: $jwksUri === null ? $jwks ?? ClientEncryption::publishedKeys() : null,
                 jwksUri: $jwksUri,
                 idToken: $idToken,
                 authorizationResponse: $authorizationResponse,
