@@ -84,6 +84,18 @@ final class BrowsersOfAPerson
         return $this;
     }
 
+    /**
+     * @param string $error what the HTTP client says of a request no push service took, as curl words it
+     */
+    public function unreachable(string $error): self
+    {
+        $this->answers[] = new MockResponse('', [
+            'error' => $error,
+        ]);
+
+        return $this;
+    }
+
     public function subscribed(string $endpoint = self::ENDPOINT): PushSubscription
     {
         $subscription = new PushSubscription(
@@ -103,6 +115,17 @@ final class BrowsersOfAPerson
 
     public function broadcast(): WebPushBroadcast
     {
+        return new WebPushBroadcast(
+            $this->subscriptions,
+            new PushSubscriptionRevocation($this->subscriptions, $this->clock),
+            $this->sender(),
+            $this->clock,
+            new NullLogger(),
+        );
+    }
+
+    public function sender(): WebPushSender
+    {
         $http = new MockHttpClient(function (): ResponseInterface {
             $answer = array_shift($this->answers) ?? new MockResponse('', [
                 'http_code' => 201,
@@ -112,18 +135,12 @@ final class BrowsersOfAPerson
             return $answer;
         });
 
-        return new WebPushBroadcast(
-            $this->subscriptions,
-            new PushSubscriptionRevocation($this->subscriptions, $this->clock),
-            new WebPushSender(
-                new SealedKeyProvider($this->keys, Keys::opened()),
-                $http,
-                $this->clock,
-                'mailto:operator@acme.example',
-                new Timeout(1.0),
-            ),
+        return new WebPushSender(
+            new SealedKeyProvider($this->keys, Keys::opened()),
+            $http,
             $this->clock,
-            new NullLogger(),
+            'mailto:operator@acme.example',
+            new Timeout(1.0),
         );
     }
 
