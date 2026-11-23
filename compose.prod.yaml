@@ -110,7 +110,8 @@ services:
     image: ghcr.io/beffroi-auth/beffroi:${BEFFROI_VERSION:-0.1.x}
     restart: unless-stopped
     command: ["bin/console", "messenger:consume", "scheduler_beffroi", "async_notifications", "async_priority_high", "async_priority_medium", "async_priority_low", "--time-limit=3600", "--memory-limit=256M"]
-    # The image checks Caddy, which the worker does not run: it is healthy while the consumer is its first process.
+    # The image asks the provider through Caddy, which the worker does not run: it is healthy while the consumer is its
+    # first process.
     healthcheck:
       test: ["CMD-SHELL", "grep -q messenger:consume /proc/1/cmdline"]
       start_period: 90s
