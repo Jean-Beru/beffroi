@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace Beffroi\Oidc\Tests\Domain\Administration;
 
 use function array_diff;
+use function array_keys;
 use function array_values;
 use function basename;
 use Beffroi\Core\Domain\Event\ConcernsAPersonInterface;
 use Beffroi\Core\Domain\Event\NamesItsAuthorInterface;
 use Beffroi\Oidc\Domain\Administration\ReadsByAnAdministrator;
 use Beffroi\Oidc\Domain\Consent\ConsentActs;
+use Beffroi\Oidc\Domain\Event\LogoutTokenGivenUp;
+use Beffroi\Oidc\Domain\Event\LogoutTokenIssued;
 use Beffroi\Oidc\Domain\Event\TokensIssued;
 use function class_exists;
 use function dirname;
@@ -25,14 +28,23 @@ use function sprintf;
 final class ReadsByAnAdministratorTest extends TestCase
 {
     /**
+     * The acts of a person that name an administrator and that the page of their acts does not list, each with the
+     * reason: their archive holds them, saying an administrator did it.
+     */
+    private const array OFF_THE_PAGE = [
+        LogoutTokenIssued::NAME => 'an application told of a session the administrator ended, which no page of the person lists whoever ended it',
+        LogoutTokenGivenUp::NAME => 'the same telling given up',
+    ];
+
+    /**
      * Decision 0038: the person reads on the page of their acts that an administrator read or changed them. An act of
      * the tenant alone, an initial access token or a client, is on no page of a person.
      */
     #[Test]
-    public function everyActOfAPersonThatNamesAnAdministratorIsOnTheirPage(): void
+    public function everyActOfAPersonThatNamesAnAdministratorIsOnTheirPageOrIsNamedAsOffIt(): void
     {
         // Given
-        $onThePage = [...ReadsByAnAdministrator::NAMES, ...ConsentActs::NAMES];
+        $onThePage = [...ReadsByAnAdministrator::NAMES, ...ConsentActs::NAMES, ...array_keys(self::OFF_THE_PAGE)];
 
         // When
         $named = self::actsOfAPersonNamingTheirAuthor();
