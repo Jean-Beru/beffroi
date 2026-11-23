@@ -138,7 +138,10 @@ final class TheRecordsAreChainedTest extends DatabaseTestCase
         $finding = self::finding();
 
         // Then
-        static::assertSame([false, 'The row at position 1 of the chain "journal" is not the one written there.'], [$finding->green, $finding->lines[0] ?? null]);
+        static::assertSame([false, 'The row at position 1 of the chain "journal" is not the one written there.'], [
+            $finding->green,
+            $finding->lines[0] ?? null,
+        ]);
     }
 
     #[Test]
