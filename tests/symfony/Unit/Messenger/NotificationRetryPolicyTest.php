@@ -7,7 +7,12 @@ namespace App\Tests\Symfony\Unit\Messenger;
 use App\Configuration\BackChannelLogoutSection;
 use function array_map;
 use App\Message\AdvanceKeyLifecycle;
+use App\Message\TellUserOfCredentialChange;
 use App\Messenger\NotificationRetryPolicy;
+use App\Messenger\RetrySchedule;
+use Beffroi\Core\Domain\Credential\CredentialChange;
+use Beffroi\Core\Domain\Event\CredentialEnrolled;
+use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -145,6 +150,56 @@ final class NotificationRetryPolicyTest extends TestCase
         static::assertSame(7, $policy->attempts());
     }
 
+    /**
+     * NIST SP 800-63B-4 §4.6
+     */
+    #[Test]
+    public function aNoticeToAPersonWaitsOnTheScheduleOfTheNotices(): void
+    {
+        // Given
+        $policy = new NotificationRetryPolicy(notices: new RetrySchedule(3, 60, 2, 3600, 'notices'));
+
+        // When
+        $waits = array_map(static fn (int $retry): int => $policy->getWaitingTime(self::noticeAfterRetries($retry)), [0, 1, 2]);
+
+        // Then
+        static::assertSame([60000, 120000, 240000], $waits);
+    }
+
+    /**
+     * NIST SP 800-63B-4 §4.6
+     */
+    #[Test]
+    #[DataProvider('provideRetryCountsOfANotice')]
+    public function aNoticeComesBackWhileTheScheduleOfTheNoticesStillAllowsIt(int $retries, bool $retryable): void
+    {
+        // Given
+        $policy = new NotificationRetryPolicy(notices: new RetrySchedule(10, 60, 2, 3600, 'notices'));
+
+        // When / Then
+        static::assertSame($retryable, $policy->isRetryable(self::noticeAfterRetries($retries)));
+    }
+
+    /**
+     * @return iterable<string, array{int, bool}>
+     */
+    public static function provideRetryCountsOfANotice(): iterable
+    {
+        yield 'past the retries of a logout token' => [6, true];
+        yield 'the last retry of a notice' => [9, true];
+        yield 'the retries of a notice spent' => [10, false];
+    }
+
+    #[Test]
+    public function aNoticeIsTriedAboutADayByDefault(): void
+    {
+        // When
+        $notices = new NotificationRetryPolicy()->notices;
+
+        // Then
+        static::assertSame([31, 60 + 120 + 240 + 480 + 960 + 1920 + (24 * 3600)], [$notices->attempts(), $notices->waiting()]);
+    }
+
     private static function policy(): NotificationRetryPolicy
     {
         return new NotificationRetryPolicy(
@@ -158,5 +213,13 @@ final class NotificationRetryPolicyTest extends TestCase
     private static function afterRetries(int $retries): Envelope
     {
         return new Envelope(new AdvanceKeyLifecycle(), $retries === 0 ? [] : [new RedeliveryStamp($retries)]);
+    }
+
+    private static function noticeAfterRetries(int $retries): Envelope
+    {
+        return new Envelope(
+            new TellUserOfCredentialChange(new CredentialChange(Fixtures::user(), CredentialEnrolled::NAME, Fixtures::now(), 'passkey'), 'mail'),
+            $retries === 0 ? [] : [new RedeliveryStamp($retries)],
+        );
     }
 }

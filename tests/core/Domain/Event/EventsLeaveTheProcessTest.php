@@ -21,6 +21,7 @@ use Beffroi\Core\Domain\Event\BackupCodesRenewed;
 use Beffroi\Core\Domain\Event\PasswordChanged;
 use Beffroi\Core\Domain\Event\PasswordTicketIssued;
 use Beffroi\Core\Domain\Event\TotpTicketIssued;
+use Beffroi\Core\Domain\Event\CredentialChangeNotTold;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
 use Beffroi\Core\Domain\Event\CredentialRenamed;
 use Beffroi\Core\Domain\Enrolment\EnrolmentTicket;
@@ -145,6 +146,15 @@ final class EventsLeaveTheProcessTest extends TestCase
         yield 'a person who took something back' => [new PersonDescribedThemselves($user, 'nickname', true, $now, $context)];
         yield 'a confirmation sent to an address' => [new AddressConfirmationSent($user, 'phone_number', $now, $context)];
         yield 'an address established' => [new AddressEstablished($user, 'phone_number', $now, $context)];
+        yield 'a notice of a change a channel gave up on' => [new CredentialChangeNotTold(
+            $now,
+            $tenant,
+            $context,
+            $user->subject,
+            CredentialEnrolled::NAME,
+            'mail',
+            'The mail transport did not take the message.',
+        )];
         yield 'a person an administrator described' => [new PersonDescribed(
             $tenant,
             $user->subject,

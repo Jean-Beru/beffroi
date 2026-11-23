@@ -238,27 +238,57 @@ final class MailSenderTest extends TestCase
      * Decision 0051
      */
     #[Test]
-    public function aMailThatCannotBeEncryptedAsThePersonAskedIsWrittenToNobody(): void
+    public function aMailThatCannotBeEncryptedAsThePersonAskedIsNotDelivered(): void
     {
         // Given
-        $user = self::verified();
-        $user->encryptMailTo(
-            new MailEncryptionKey('smime', 'material', 'ABCD', [new EmailAddress(self::ADDRESS)], null, new DateTimeImmutable('2026-10-01T00:00:00+00:00')),
-            Fixtures::now(),
-        );
-        $sender = new MailSender(
+        $sender = $this->encryptingSender();
+
+        // Then
+        $this->expectException(NotificationNotDeliveredException::class);
+        $this->expectExceptionMessageIsOrContains('certificate or key they gave is not valid now.');
+
+        // When
+        $sender->send(self::askingForAnExpiredCertificate(), 'A sign-in is waiting', 'Open your account to answer.');
+    }
+
+    /**
+     * Decision 0051
+     */
+    #[Test]
+    public function aMailThatCannotBeEncryptedAsThePersonAskedLeavesNothingInClear(): void
+    {
+        // Given
+        $sender = $this->encryptingSender();
+
+        // When
+        try {
+            $sender->send(self::askingForAnExpiredCertificate(), 'A sign-in is waiting', 'Open your account to answer.');
+        } catch (NotificationNotDeliveredException) {
+        }
+
+        // Then
+        static::assertSame([[], []], [$this->transport->sent, $this->transport->protected]);
+    }
+
+    private function encryptingSender(): MailSender
+    {
+        return new MailSender(
             fn (): TransportInterface => $this->transport,
             'Acme <no-reply@acme.example>',
             MailProtections::over(new InMemoryMailSigningKeyRepository(), new MockClock('2026-11-22T10:00:00+00:00')),
             new NullLogger(),
         );
+    }
 
-        // When
-        $sent = $sender->send($user, 'A sign-in is waiting', 'Open your account to answer.');
+    private static function askingForAnExpiredCertificate(): User
+    {
+        $user = self::verified();
+        $user->encryptMailTo(
+            new MailEncryptionKey('smime', 'material', 'ABCD', [new EmailAddress(self::ADDRESS)], null, new DateTimeImmutable('2026-10-01T00:00:00+00:00')),
+            Fixtures::now(),
+        );
 
-        // Then
-        static::assertFalse($sent);
-        static::assertSame([[], []], [$this->transport->sent, $this->transport->protected]);
+        return $user;
     }
 
     private function sender(?RecordingMailTransport $transport = null): MailSender

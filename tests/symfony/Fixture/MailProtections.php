@@ -16,8 +16,6 @@ use Beffroi\Core\Bridge\InMemory\InMemoryMailSigningKeyRepository;
 use Beffroi\Core\Port\MailSigningKeyRepositoryInterface;
 use Beffroi\Core\Tests\Fixture\Keys;
 use Psr\Clock\ClockInterface;
-use Psr\Log\LoggerInterface;
-use Psr\Log\NullLogger;
 use Symfony\Component\Clock\MockClock;
 
 /**
@@ -38,7 +36,6 @@ final class MailProtections
     public static function over(
         MailSigningKeyRepositoryInterface $keys,
         ClockInterface $clock,
-        ?LoggerInterface $logger = null,
         ?array $signers = null,
         ?array $encrypters = null,
     ): MailProtection {
@@ -50,7 +47,6 @@ final class MailProtections
             $keys,
             new OpenedMailSigningKeys(Keys::sealer(), $keys, $signers),
             $clock,
-            $logger ?? new NullLogger(),
         );
     }
 }

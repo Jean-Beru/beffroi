@@ -9,10 +9,13 @@ use function array_values;
 use App\Message\TellUserOfCredentialChange;
 use App\Messenger\NotificationRetryPolicy;
 use App\Tests\Symfony\Functional\Command\ConsoleTestCase;
+use App\Messenger\RetrySchedule;
 use Beffroi\Core\Domain\Credential\CredentialChange;
+use Beffroi\Core\Domain\Event\CredentialChangeNotTold;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\User;
+use Beffroi\Core\Port\ActsOfAPersonInterface;
 use Beffroi\Core\Port\CredentialChangeNotifierInterface;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use Closure;
@@ -148,7 +151,7 @@ final class CredentialChangeByMailAndSmsTest extends ConsoleTestCase
      * Architecture §5.6
      */
     #[Test]
-    public function aMailThatIsNotTakenIsWrittenAgainAsOftenAsTheLaneAllows(): void
+    public function aMailThatIsNotTakenIsWrittenAgainAsOftenAsTheScheduleOfTheNoticesAllows(): void
     {
         // Given
         $_SERVER['BEFFROI_TEST_MAIL_DSN'] = self::UNREACHABLE_MAIL_DSN;
@@ -158,7 +161,39 @@ final class CredentialChangeByMailAndSmsTest extends ConsoleTestCase
         self::work();
 
         // Then
-        static::assertCount(self::policy()->attempts(), self::mails());
+        static::assertCount(self::notices()->attempts(), self::mails());
+    }
+
+    /**
+     * NIST SP 800-63B-4 §4.6
+     */
+    #[Test]
+    public function aMailThatIsNeverTakenIsAnActOfThePersonOnceTheScheduleIsSpent(): void
+    {
+        // Given
+        $_SERVER['BEFFROI_TEST_MAIL_DSN'] = self::UNREACHABLE_MAIL_DSN;
+        $alice = self::alice(verified: true);
+        self::tell($alice);
+
+        // When
+        self::work();
+
+        // Then
+        static::assertCount(1, self::service('test.beffroi.acts', ActsOfAPersonInterface::class)->lastOf($alice, [CredentialChangeNotTold::NAME], 10));
+    }
+
+    #[Test]
+    public function aNoticeThatReachesThePersonIsNoAct(): void
+    {
+        // Given
+        $alice = self::alice(verified: true);
+        self::tell($alice);
+
+        // When
+        self::work();
+
+        // Then
+        static::assertSame([], self::service('test.beffroi.acts', ActsOfAPersonInterface::class)->lastOf($alice, [CredentialChangeNotTold::NAME], 10));
     }
 
     /**
@@ -204,7 +239,7 @@ final class CredentialChangeByMailAndSmsTest extends ConsoleTestCase
         self::mockTime();
         self::console('messenger:consume', [
             'receivers' => ['async_notifications'],
-            '--time-limit' => (string) (2 * self::policy()->waiting()),
+            '--time-limit' => (string) (2 * self::notices()->waiting()),
             '--no-reset' => null,
         ]);
     }
@@ -217,9 +252,9 @@ final class CredentialChangeByMailAndSmsTest extends ConsoleTestCase
         return $message;
     }
 
-    private static function policy(): NotificationRetryPolicy
+    private static function notices(): RetrySchedule
     {
-        return self::service(NotificationRetryPolicy::class, NotificationRetryPolicy::class);
+        return self::service(NotificationRetryPolicy::class, NotificationRetryPolicy::class)->notices;
     }
 
     /**

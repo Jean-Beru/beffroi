@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Tests\Symfony\Unit\Mail;
 
 use App\Mail\PgpMailSigner;
+use App\Messenger\NotificationNotDeliveredException;
 use App\Mail\Smime;
 use App\Mail\SmimeMailSigner;
 use App\Tests\Symfony\Fixture\MailFixtures;
 use App\Tests\Symfony\Fixture\MailProtections;
 use App\Tests\Symfony\Fixture\MailSigningKeys;
 use App\Tests\Symfony\Fixture\ScratchFiles;
-use Beffroi\Saml\Tests\Fixture\RecordingLogger;
 use Beffroi\Core\Bridge\InMemory\InMemoryMailSigningKeyRepository;
 use Beffroi\Core\Domain\Identity\EmailAddress;
 use Beffroi\Core\Domain\Identity\MailEncryptionKey;
@@ -41,11 +41,8 @@ final class MailProtectionTest extends TestCase
 
     private InMemoryMailSigningKeyRepository $keys;
 
-    private RecordingLogger $logger;
-
     protected function setUp(): void
     {
-        $this->logger = new RecordingLogger();
         $this->tenant = Fixtures::tenant();
         $this->keys = new InMemoryMailSigningKeyRepository();
     }
@@ -93,30 +90,31 @@ final class MailProtectionTest extends TestCase
     }
 
     #[Test]
-    public function aKeyPastItsCertificateLeavesTheMailUnwritten(): void
+    public function aKeyPastItsCertificateFailsTheMail(): void
     {
         // Given
         $this->keys->save(MailSigningKeys::smime($this->tenant));
 
-        // When
-        $protected = $this->protect($this->person(), self::mail(), '2126-06-01T00:00:00+00:00');
-
         // Then
-        static::assertNull($protected);
-        static::assertSame('error', $this->logger->records[0]['level'] ?? null);
+        $this->expectException(NotificationNotDeliveredException::class);
+        $this->expectExceptionMessageIsOrContains('cannot sign this one: it is past its certificate, or it was set for another sender.');
+
+        // When
+        $this->protect($this->person(), self::mail(), '2126-06-01T00:00:00+00:00');
     }
 
     #[Test]
-    public function aKeySetForAnotherSenderLeavesTheMailUnwritten(): void
+    public function aKeySetForAnotherSenderFailsTheMail(): void
     {
         // Given
         $this->keys->save(MailSigningKeys::smime($this->tenant));
 
-        // When
-        $protected = $this->protect($this->person(), self::mail(), sender: 'alerts@acme.example');
-
         // Then
-        static::assertNull($protected);
+        $this->expectException(NotificationNotDeliveredException::class);
+        $this->expectExceptionMessageIsOrContains('cannot sign this one: it is past its certificate, or it was set for another sender.');
+
+        // When
+        $this->protect($this->person(), self::mail(), sender: 'alerts@acme.example');
     }
 
     #[Test]
@@ -130,7 +128,7 @@ final class MailProtectionTest extends TestCase
         $protected = $this->protect($this->person(), self::mail());
 
         // Then
-        static::assertStringContainsString('protocol="application/pkcs7-signature"', (string) $protected?->toString());
+        static::assertStringContainsString('protocol="application/pkcs7-signature"', $protected->toString());
     }
 
     #[Test]
@@ -150,7 +148,7 @@ final class MailProtectionTest extends TestCase
         ])->of($person, new EmailAddress(MailSigningKeys::SENDER), self::mail());
 
         // Then
-        static::assertStringContainsString('protocol="application/pkcs7-signature"', self::decrypted((string) $protected?->toString()));
+        static::assertStringContainsString('protocol="application/pkcs7-signature"', self::decrypted($protected->toString()));
     }
 
     #[Test]
@@ -162,7 +160,7 @@ final class MailProtectionTest extends TestCase
         $person->encryptMailTo(new Smime()->read(MailFixtures::read('person-certificate.pem')), new DateTimeImmutable(self::NOW));
 
         // When
-        $protected = (string) $this->protect($person, self::mail())?->toString();
+        $protected = $this->protect($person, self::mail())->toString();
 
         // Then
         static::assertStringContainsString('application/pkcs7-mime', $protected);
@@ -182,16 +180,16 @@ final class MailProtectionTest extends TestCase
         $person->encryptMailTo(new Smime()->read(MailFixtures::read('person-certificate.pem')), new DateTimeImmutable(self::NOW));
 
         // When
-        $protected = (string) MailProtections::over($this->keys, new MockClock(self::NOW), $this->logger)
+        $protected = MailProtections::over($this->keys, new MockClock(self::NOW))
             ->ofAConfirmation($person, new EmailAddress(MailSigningKeys::SENDER), self::mail())
-            ?->toString();
+            ->toString();
 
         // Then
         static::assertStringContainsString('protocol="application/pkcs7-signature"', $protected);
         static::assertStringNotContainsString('application/pkcs7-mime', $protected);
         static::assertSame(
             'sender',
-            self::signerOf(MailProtections::over($this->keys, new MockClock(self::NOW), $this->logger)->ofAConfirmation(
+            self::signerOf(MailProtections::over($this->keys, new MockClock(self::NOW))->ofAConfirmation(
                 $person,
                 new EmailAddress(MailSigningKeys::SENDER),
                 self::mail(),
@@ -203,39 +201,40 @@ final class MailProtectionTest extends TestCase
      * NIST SP 800-63B-4 §4.2.1.2
      */
     #[Test]
-    public function theConfirmationOfATenantThatSignsAndCannotSignItIsWrittenToNobody(): void
+    public function theConfirmationOfATenantThatSignsAndCannotSignItFails(): void
     {
         // Given
         $this->keys->save(MailSigningKeys::smime($this->tenant));
 
+        // Then
+        $this->expectException(NotificationNotDeliveredException::class);
+        $this->expectExceptionMessageIsOrContains('cannot sign this one: it is past its certificate, or it was set for another sender.');
+
         // When
-        $protected = MailProtections::over($this->keys, new MockClock(self::NOW), $this->logger)->ofAConfirmation(
+        MailProtections::over($this->keys, new MockClock(self::NOW))->ofAConfirmation(
             $this->person(),
             new EmailAddress('someone-else@acme.example'),
             self::mail(),
         );
-
-        // Then
-        static::assertNull($protected);
     }
 
     #[Test]
-    public function aPersonWhoseCertificateIsNoLongerValidIsWrittenNothing(): void
+    public function aMailToAPersonWhoseCertificateIsNoLongerValidFails(): void
     {
         // Given
         $person = $this->person();
         $person->encryptMailTo(new Smime()->read(MailFixtures::read('person-certificate.pem')), new DateTimeImmutable(self::NOW));
 
-        // When
-        $protected = $this->protect($person, self::mail(), '2126-06-01T00:00:00+00:00');
-
         // Then
-        static::assertNull($protected);
-        static::assertSame('warning', $this->logger->records[0]['level'] ?? null);
+        $this->expectException(NotificationNotDeliveredException::class);
+        $this->expectExceptionMessageIsOrContains('certificate or key they gave is not valid now.');
+
+        // When
+        $this->protect($person, self::mail(), '2126-06-01T00:00:00+00:00');
     }
 
     #[Test]
-    public function aPersonWhoseKeyNoWiredFormatWritesIsWrittenNothing(): void
+    public function aMailToAPersonWhoseKeyNoWiredFormatWritesFails(): void
     {
         // Given
         $person = $this->person();
@@ -246,16 +245,17 @@ final class MailProtectionTest extends TestCase
             [new EmailAddress('alice@acme.example')],
         ), new DateTimeImmutable(self::NOW));
 
-        // When
-        $protected = $this->protect($person, self::mail());
-
         // Then
-        static::assertNull($protected);
+        $this->expectException(NotificationNotDeliveredException::class);
+        $this->expectExceptionMessageIsOrContains('in the format elsewhere, which this deployment does not write.');
+
+        // When
+        $this->protect($person, self::mail());
     }
 
-    private function protect(User $user, Email $mail, string $now = self::NOW, string $sender = MailSigningKeys::SENDER): ?Message
+    private function protect(User $user, Email $mail, string $now = self::NOW, string $sender = MailSigningKeys::SENDER): Message
     {
-        return MailProtections::over($this->keys, new MockClock($now), $this->logger)->of($user, new EmailAddress($sender), $mail);
+        return MailProtections::over($this->keys, new MockClock($now))->of($user, new EmailAddress($sender), $mail);
     }
 
     private function person(): User
@@ -278,11 +278,11 @@ final class MailProtectionTest extends TestCase
     /**
      * The name of the fixture whose certificate signed it.
      */
-    private static function signerOf(?Message $message): string
+    private static function signerOf(Message $message): string
     {
         $files = new ScratchFiles();
         $signer = $files->holding();
-        openssl_pkcs7_verify($files->holding((string) $message?->toString()), PKCS7_DETACHED | PKCS7_NOVERIFY, $signer);
+        openssl_pkcs7_verify($files->holding($message->toString()), PKCS7_DETACHED | PKCS7_NOVERIFY, $signer);
         $certificate = ScratchFiles::read($signer);
         foreach (['sender', 'sender-next'] as $name) {
             if (openssl_x509_fingerprint($certificate, 'sha256') === openssl_x509_fingerprint(MailFixtures::read($name . '-certificate.pem'), 'sha256')) {

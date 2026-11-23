@@ -48,6 +48,10 @@ final class SettingsFromTheEnvironmentTest extends KernelTestCase
         'BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_DELAY',
         'BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_MULTIPLIER',
         'BEFFROI_TEST_BACK_CHANNEL_LOGOUT_RETRY_MAX_DELAY',
+        'BEFFROI_TEST_NOTICE_RETRIES',
+        'BEFFROI_TEST_NOTICE_RETRY_DELAY',
+        'BEFFROI_TEST_NOTICE_RETRY_MULTIPLIER',
+        'BEFFROI_TEST_NOTICE_RETRY_MAX_DELAY',
         'BEFFROI_TEST_CLIENT_NOTIFICATION_TIMEOUT',
         'BEFFROI_TEST_WEB_PUSH_TIMEOUT',
         'BEFFROI_TEST_BREACHED_PASSWORDS_TIMEOUT',
@@ -332,6 +336,34 @@ final class SettingsFromTheEnvironmentTest extends KernelTestCase
             'test.beffroi.notification_retry_policy',
             InvalidConfigurationException::class,
             'The "beffroi" configuration key "back_channel_logout.retry_max_delay" is a number of seconds of at least 1, 0 given.',
+        ];
+        yield 'fewer than no retry of a notice' => [
+            'BEFFROI_TEST_NOTICE_RETRIES',
+            '-1',
+            'test.beffroi.notification_retry_policy',
+            InvalidConfigurationException::class,
+            'The "beffroi" configuration key "notices.retries" is a number of retries of at least 0, -1 given.',
+        ];
+        yield 'a first retry of a notice at once' => [
+            'BEFFROI_TEST_NOTICE_RETRY_DELAY',
+            '0',
+            'test.beffroi.notification_retry_policy',
+            InvalidConfigurationException::class,
+            'The "beffroi" configuration key "notices.retry_delay" is a number of seconds of at least 1, 0 given.',
+        ];
+        yield 'waits of the retries of a notice multiplied by nothing' => [
+            'BEFFROI_TEST_NOTICE_RETRY_MULTIPLIER',
+            '0',
+            'test.beffroi.notification_retry_policy',
+            InvalidConfigurationException::class,
+            'The "beffroi" configuration key "notices.retry_multiplier" is a number of times of at least 1, 0 given.',
+        ];
+        yield 'a ceiling of the waits of a notice of nothing' => [
+            'BEFFROI_TEST_NOTICE_RETRY_MAX_DELAY',
+            '0',
+            'test.beffroi.notification_retry_policy',
+            InvalidConfigurationException::class,
+            'The "beffroi" configuration key "notices.retry_max_delay" is a number of seconds of at least 1, 0 given.',
         ];
         yield 'a client notification given no time' => [
             'BEFFROI_TEST_CLIENT_NOTIFICATION_TIMEOUT',
