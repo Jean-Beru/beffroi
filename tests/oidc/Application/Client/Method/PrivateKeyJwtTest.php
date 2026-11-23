@@ -31,6 +31,7 @@ use Beffroi\Oidc\Tests\Fixture\FakeClientLoadBudget;
 use Beffroi\Oidc\Tests\Fixture\Grants;
 use Beffroi\Oidc\Tests\Fixture\Methods;
 use Jose\Component\Core\JWK;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -195,6 +196,115 @@ final class PrivateKeyJwtTest extends TestCase
 
         // Then
         $this->assertRefused(ClientAuthenticationFailureReason::InvalidAssertion);
+    }
+
+    /**
+     * RFC 7523 §3, RFC 7519 §4.1.5
+     */
+    #[Test]
+    #[DataProvider('provideStartsToCome')]
+    public function itRefusesAnAssertionBeforeItsNotBefore(int $secondsAhead): void
+    {
+        // When
+        $this->failToAuthenticate($this->assertion([
+            'nbf' => $this->context->receivedAt->getTimestamp() + $secondsAhead,
+        ]));
+
+        // Then
+        $this->assertRefused(ClientAuthenticationFailureReason::InvalidAssertion);
+    }
+
+    /**
+     * @return iterable<string, array{int}>
+     */
+    public static function provideStartsToCome(): iterable
+    {
+        yield 'an hour ahead' => [3600];
+        yield 'a second beyond the leeway' => [31];
+    }
+
+    /**
+     * RFC 7519 §2, §4.1.5
+     */
+    #[Test]
+    #[DataProvider('provideStartsThatAreNoNumericDate')]
+    public function itRefusesAnAssertionWhoseNotBeforeIsNoNumericDate(mixed $notBefore): void
+    {
+        // When
+        $this->failToAuthenticate($this->assertion([
+            'nbf' => $notBefore,
+        ]));
+
+        // Then
+        $this->assertRefused(ClientAuthenticationFailureReason::InvalidAssertion);
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function provideStartsThatAreNoNumericDate(): iterable
+    {
+        yield 'a date written as text' => ['2026-09-15T10:00:00+00:00'];
+        yield 'a number written as text' => ['1757930400'];
+        yield 'a null' => [null];
+    }
+
+    /**
+     * RFC 7523 §3, RFC 7519 §4.1.5
+     */
+    #[Test]
+    #[DataProvider('provideStartsThatHaveCome')]
+    public function itAuthenticatesAClientWhoseAssertionHasStarted(int $secondsAhead): void
+    {
+        // When
+        $authenticated = $this->authenticate($this->assertion([
+            'nbf' => $this->context->receivedAt->getTimestamp() + $secondsAhead,
+        ]));
+
+        // Then
+        static::assertSame($this->client, $authenticated->client);
+    }
+
+    /**
+     * @return iterable<string, array{int}>
+     */
+    public static function provideStartsThatHaveCome(): iterable
+    {
+        yield 'a minute ago' => [-60];
+        yield 'now' => [0];
+        yield 'inside the leeway' => [30];
+    }
+
+    /**
+     * RFC 7519 §4.1.3, FAPI 2.0 Security Profile §5.3.2.1 clause 8
+     */
+    #[Test]
+    #[DataProvider('provideAudiencesThatAreNeitherAStringNorAListOfThem')]
+    public function itRefusesAnAudienceThatIsNeitherAStringNorAListOfThem(mixed $audience): void
+    {
+        // When
+        $this->failToAuthenticate($this->assertion([
+            'aud' => $audience,
+        ]));
+
+        // Then
+        $this->assertRefused(ClientAuthenticationFailureReason::InvalidAssertion);
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function provideAudiencesThatAreNeitherAStringNorAListOfThem(): iterable
+    {
+        $issuer = Fixtures::tenant()->issuer->value;
+
+        yield 'the issuer beside a number' => [[$issuer, 5]];
+        yield 'the issuer beside a boolean and a null' => [[$issuer, true, null]];
+        yield 'the issuer inside an object' => [
+            [
+                'x' => $issuer,
+            ],
+        ];
     }
 
     /**

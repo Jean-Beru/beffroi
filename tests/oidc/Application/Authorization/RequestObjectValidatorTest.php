@@ -132,6 +132,15 @@ final class RequestObjectValidatorTest extends TestCase
             ],
             'The aud of a request object names the issuer of this provider',
         ];
+        yield 'addressed to this provider beside a number' => [
+            [
+                'iss' => 'oidc-demo',
+                'aud' => ['https://id.acme.example', 5],
+                'nbf' => $now,
+                'exp' => $now + 300,
+            ],
+            'The aud of a request object names the issuer of this provider',
+        ];
         yield 'no audience at all' => [
             [
                 'iss' => 'oidc-demo',
@@ -166,6 +175,15 @@ final class RequestObjectValidatorTest extends TestCase
                 'exp' => $now + 300,
             ],
             'The request object is not valid yet',
+        ];
+        yield 'an "nbf" that is not a number of seconds' => [
+            [
+                'iss' => 'oidc-demo',
+                'aud' => 'https://id.acme.example',
+                'nbf' => (string) $now,
+                'exp' => $now + 300,
+            ],
+            'A request object carries an nbf',
         ];
         yield 'without an "exp"' => [
             [

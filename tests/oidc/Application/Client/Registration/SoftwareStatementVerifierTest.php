@@ -19,6 +19,7 @@ use Beffroi\Oidc\Tests\Fixture\ClientAssertions;
 use Beffroi\Oidc\Tests\Fixture\Policies;
 use Beffroi\Oidc\Tests\Fixture\SoftwareStatements;
 use Jose\Component\Core\JWK;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -190,6 +191,107 @@ final class SoftwareStatementVerifierTest extends TestCase
 
         // When
         $this->verifier->verify($this->tenant, $this->policy, $statement, Fixtures::now());
+    }
+
+    /**
+     * RFC 7519 §4.1.5
+     */
+    #[Test]
+    #[DataProvider('provideStartsToCome')]
+    public function itRefusesAStatementBeforeItsNotBefore(int $secondsAhead): void
+    {
+        // Given
+        $statement = SoftwareStatements::statement((string) $this->tenant->issuer, Fixtures::now(), [
+            'nbf' => Fixtures::now()->getTimestamp() + $secondsAhead,
+        ]);
+
+        // Then
+        $this->expectException(InvalidSoftwareStatementException::class);
+        $this->expectExceptionMessageIs(self::REFUSED);
+
+        // When
+        $this->verifier->verify($this->tenant, $this->policy, $statement, Fixtures::now());
+    }
+
+    /**
+     * @return iterable<string, array{int}>
+     */
+    public static function provideStartsToCome(): iterable
+    {
+        yield 'an hour ahead' => [3600];
+        yield 'a second beyond the leeway' => [31];
+    }
+
+    /**
+     * RFC 7519 §2, §4.1.5
+     */
+    #[Test]
+    public function itRefusesAStatementWhoseNotBeforeIsNoNumericDate(): void
+    {
+        // Given
+        $statement = SoftwareStatements::statement((string) $this->tenant->issuer, Fixtures::now(), [
+            'nbf' => (string) Fixtures::now()->getTimestamp(),
+        ]);
+
+        // Then
+        $this->expectException(InvalidSoftwareStatementException::class);
+        $this->expectExceptionMessageIs(self::REFUSED);
+
+        // When
+        $this->verifier->verify($this->tenant, $this->policy, $statement, Fixtures::now());
+    }
+
+    /**
+     * RFC 7519 §4.1.5
+     */
+    #[Test]
+    public function itAcceptsAStatementThatStartsInsideTheLeeway(): void
+    {
+        // Given
+        $statement = SoftwareStatements::statement((string) $this->tenant->issuer, Fixtures::now(), [
+            'nbf' => Fixtures::now()->getTimestamp() + 30,
+        ]);
+
+        // When
+        $members = $this->verifier->verify($this->tenant, $this->policy, $statement, Fixtures::now());
+
+        // Then
+        static::assertSame('Invoice reader, attested', $members->members()['client_name']);
+    }
+
+    /**
+     * RFC 7519 §4.1.3
+     */
+    #[Test]
+    #[DataProvider('provideAudiencesThatAreNeitherAStringNorAListOfThem')]
+    public function itRefusesAnAudienceThatIsNeitherAStringNorAListOfThem(mixed $audience): void
+    {
+        // Given
+        $statement = SoftwareStatements::statement((string) $this->tenant->issuer, Fixtures::now(), [
+            'aud' => $audience,
+        ]);
+
+        // Then
+        $this->expectException(InvalidSoftwareStatementException::class);
+        $this->expectExceptionMessageIs(self::REFUSED);
+
+        // When
+        $this->verifier->verify($this->tenant, $this->policy, $statement, Fixtures::now());
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function provideAudiencesThatAreNeitherAStringNorAListOfThem(): iterable
+    {
+        $issuer = (string) Fixtures::tenant()->issuer;
+
+        yield 'the issuer beside a number' => [[$issuer, 5]];
+        yield 'the issuer inside an object' => [
+            [
+                'x' => $issuer,
+            ],
+        ];
     }
 
     #[Test]

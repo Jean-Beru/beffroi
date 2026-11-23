@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Beffroi\Oidc\Tests\Domain\Token;
 
 use Beffroi\Oidc\Domain\Token\UnverifiedJwt;
+use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -140,8 +141,106 @@ final class UnverifiedJwtTest extends TestCase
             ['https://id.acme.example', 'https://other.example'],
             ['https://id.acme.example', 'https://other.example'],
         ];
-        yield 'a list with something that is not a string' => [['https://id.acme.example', 42], ['https://id.acme.example']];
+        yield 'a list naming one twice' => [
+            ['https://id.acme.example', 'https://id.acme.example'],
+            ['https://id.acme.example', 'https://id.acme.example'],
+        ];
         yield 'nothing at all' => [null, []];
+    }
+
+    /**
+     * RFC 7519 §4.1.3, decision 0016
+     */
+    #[Test]
+    #[DataProvider('provideClaimsThatAreNotAnAudience')]
+    public function anAudienceThatIsNeitherAStringNorAListOfThemNamesNone(mixed $audience): void
+    {
+        // Given
+        $jwt = new UnverifiedJwt(
+            'the.compact.jws',
+            [],
+            [
+                'aud' => $audience,
+            ],
+        );
+
+        // When / Then
+        static::assertSame([], $jwt->audiences());
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function provideClaimsThatAreNotAnAudience(): iterable
+    {
+        yield 'a list holding a number' => [['https://id.acme.example', 5]];
+        yield 'a list holding a boolean and a null' => [['https://id.acme.example', true, null]];
+        yield 'an object' => [
+            [
+                'x' => 'https://id.acme.example',
+            ],
+        ];
+        yield 'a number' => [42];
+    }
+
+    /**
+     * RFC 7519 §4.1.5
+     *
+     * @param array<string, mixed> $claims
+     */
+    #[Test]
+    #[DataProvider('provideStarts')]
+    public function itStartsAtItsNotBefore(array $claims, bool $startsAfter): void
+    {
+        // Given
+        $jwt = new UnverifiedJwt('the.compact.jws', [], $claims);
+
+        // When / Then
+        static::assertSame($startsAfter, $jwt->startsAfter(new DateTimeImmutable('@1790078400')));
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>, bool}>
+     */
+    public static function provideStarts(): iterable
+    {
+        yield 'no "nbf"' => [[], false];
+        yield 'an "nbf" passed' => [
+            [
+                'nbf' => 1_790_078_399,
+            ],
+            false,
+        ];
+        yield 'an "nbf" at the instant' => [
+            [
+                'nbf' => 1_790_078_400,
+            ],
+            false,
+        ];
+        yield 'an "nbf" a second later' => [
+            [
+                'nbf' => 1_790_078_401,
+            ],
+            true,
+        ];
+        yield 'an "nbf" written as text' => [
+            [
+                'nbf' => '1790078399',
+            ],
+            true,
+        ];
+        yield 'an "nbf" with a fraction' => [
+            [
+                'nbf' => 1_790_078_399.5,
+            ],
+            true,
+        ];
+        yield 'a null "nbf"' => [
+            [
+                'nbf' => null,
+            ],
+            true,
+        ];
     }
 
     #[Test]

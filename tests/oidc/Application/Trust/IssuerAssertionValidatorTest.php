@@ -83,6 +83,24 @@ final class IssuerAssertionValidatorTest extends TestCase
     }
 
     /**
+     * RFC 7523 §3, RFC 7519 §4.1.5
+     */
+    #[Test]
+    public function itAcceptsAnAssertionThatStartsInsideTheLeeway(): void
+    {
+        // Given
+        $assertion = TrustedIssuers::assertion('employee-42', (string) $this->tenant->issuer, Fixtures::now(), [
+            'nbf' => Fixtures::now()->getTimestamp() + 30,
+        ]);
+
+        // When
+        $verified = $this->validator->validate($this->tenant, $this->client, $assertion, Fixtures::now());
+
+        // Then
+        static::assertSame('employee-42', $verified->subject);
+    }
+
+    /**
      * RFC 7523 §3, §4
      */
     #[Test]
@@ -246,6 +264,28 @@ final class IssuerAssertionValidatorTest extends TestCase
         yield 'no iat' => [
             static fn (Tenant $tenant): string => TrustedIssuers::assertion('employee-42', (string) $tenant->issuer, Fixtures::now(), [
                 'iat' => null,
+            ]),
+        ];
+        yield 'valid only beyond the leeway' => [
+            static fn (Tenant $tenant): string => TrustedIssuers::assertion('employee-42', (string) $tenant->issuer, Fixtures::now(), [
+                'nbf' => Fixtures::now()->getTimestamp() + 31,
+            ]),
+        ];
+        yield 'an nbf that is no numeric date' => [
+            static fn (Tenant $tenant): string => TrustedIssuers::assertion('employee-42', (string) $tenant->issuer, Fixtures::now(), [
+                'nbf' => (string) Fixtures::now()->getTimestamp(),
+            ]),
+        ];
+        yield 'this provider beside a number' => [
+            static fn (Tenant $tenant): string => TrustedIssuers::assertion('employee-42', (string) $tenant->issuer, Fixtures::now(), [
+                'aud' => [(string) $tenant->issuer, 5],
+            ]),
+        ];
+        yield 'this provider inside an object' => [
+            static fn (Tenant $tenant): string => TrustedIssuers::assertion('employee-42', (string) $tenant->issuer, Fixtures::now(), [
+                'aud' => [
+                    'x' => (string) $tenant->issuer,
+                ],
             ]),
         ];
         yield 'no jti' => [

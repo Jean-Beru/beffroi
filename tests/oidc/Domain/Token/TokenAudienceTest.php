@@ -132,6 +132,40 @@ final class TokenAudienceTest extends TestCase
         yield 'a list holding a number' => [['spa', 1]];
     }
 
+    /**
+     * RFC 7519 §4.1.3
+     *
+     * @param list<string> $values
+     */
+    #[Test]
+    #[DataProvider('provideListedClaims')]
+    public function itListsTheValuesOfAClaimAsTheClaimListsThem(mixed $claim, array $values): void
+    {
+        // When / Then
+        static::assertSame($values, TokenAudience::valuesOf($claim));
+    }
+
+    /**
+     * @return iterable<string, array{mixed, list<string>}>
+     */
+    public static function provideListedClaims(): iterable
+    {
+        yield 'a string' => ['spa', ['spa']];
+        yield 'a list naming one twice' => [['spa', 'spa'], ['spa', 'spa']];
+        yield 'an empty list' => [[], []];
+    }
+
+    /**
+     * RFC 7519 §4.1.3
+     */
+    #[Test]
+    #[DataProvider('provideClaimsThatAreNotAnAudience')]
+    public function aClaimThatIsNeitherAStringNorAListOfThemListsNothing(mixed $claim): void
+    {
+        // When / Then
+        static::assertNull(TokenAudience::valuesOf($claim));
+    }
+
     #[Test]
     public function itRefusesAnEmptyAudience(): void
     {
