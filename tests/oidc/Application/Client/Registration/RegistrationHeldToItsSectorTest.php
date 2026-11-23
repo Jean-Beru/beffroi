@@ -66,7 +66,9 @@ final class RegistrationHeldToItsSectorTest extends TestCase
         // Given
         $documents = new FakeSectorIdentifierDocumentFetcher([]);
         $documents->failure = new SectorIdentifierUnavailableException($met);
-        $held = new RegistrationHeldToItsSector($documents, static::createStub(SectorIdentifiersInterface::class));
+        $sectors = static::createStub(SectorIdentifiersInterface::class);
+        $sectors->method('publishedUris')->willReturn(['https://rp.example/cb']);
+        $held = new RegistrationHeldToItsSector($documents, $sectors);
 
         // Then
         $this->expectException(InvalidClientMetadataException::class);
