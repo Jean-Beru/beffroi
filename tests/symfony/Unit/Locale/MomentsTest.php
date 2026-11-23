@@ -37,5 +37,6 @@ final class MomentsTest extends TestCase
     {
         yield 'English, as British English writes it' => ['en', '23 Nov 2026, 14:05 UTC'];
         yield 'French' => ['fr', '23 nov. 2026, 14:05 UTC'];
+        yield 'Portuguese, as Portugal writes it' => ['pt', '23/11/2026, 14:05 UTC'];
     }
 }

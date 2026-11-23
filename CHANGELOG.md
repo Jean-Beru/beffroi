@@ -35,9 +35,9 @@ only as pre-releases until Symfony 8.2.0 is out: until then, a project that requ
 - `beffroi/saml`, SAML 2.0: the identity provider of a tenant, and its service provider toward an upstream identity
   provider, on `beffroi/saml2-bindings` (HTTP-Redirect and HTTP-POST), `beffroi/saml2-model` (messages, assertions and
   metadata) and `beffroi/xml-security` (a safe DOM, XML Signature and XML Encryption).
-- The pages of a tenant and the account of a person, in English, French, German, Spanish, Italian, Dutch and Polish:
-  their sessions, the applications that hold something of them, the information they may change, the history of their
-  record, and an archive of everything the provider holds about them.
+- The pages of a tenant and the account of a person, in 31 languages of Europe, every member state of the European
+  Union in its national language: their sessions, the applications that hold something of them, the information they
+  may change, the history of their record, and an archive of everything the provider holds about them.
 - The administration API of an instance, served apart from its endpoints and its pages, and `beffroi/tui`, its terminal
   client. Each release carries the client as `beffroi-tui.phar` and as executables for Linux x86_64, Linux arm64 and
   macOS on Apple silicon, with `SHA256SUMS` and its signature.
