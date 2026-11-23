@@ -168,8 +168,8 @@ final class AuthorizationHandlerTest extends TestCase
         $users->save($this->bob);
         $this->subjects = Subjects::bothKinds($users);
         $jws = new FakeJwsVerifier();
-        $jws->knows($this->tenant, self::ALICE_HINT, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"oidc-demo"}');
-        $jws->knows($this->tenant, self::BOB_HINT, '{"iss":"https://id.acme.example","sub":"bob-subject","aud":"oidc-demo"}');
+        $jws->knows($this->tenant, self::ALICE_HINT, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"oidc-demo","exp":1,"iat":1,"auth_time":1}');
+        $jws->knows($this->tenant, self::BOB_HINT, '{"iss":"https://id.acme.example","sub":"bob-subject","aud":"oidc-demo","exp":1,"iat":1,"auth_time":1}');
         $this->handler = $this->handlerWith(hints: new IdTokenHintVerifier($jws));
     }
 
@@ -2213,6 +2213,9 @@ final class AuthorizationHandlerTest extends TestCase
             'iss' => 'https://id.acme.example',
             'sub' => $subject->value,
             'aud' => $client->registration->clientId,
+            'exp' => 1,
+            'iat' => 1,
+            'auth_time' => 1,
         ], JSON_THROW_ON_ERROR));
 
         return new IdTokenHintVerifier($jws);

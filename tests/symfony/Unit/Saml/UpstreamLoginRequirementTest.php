@@ -58,7 +58,7 @@ final class UpstreamLoginRequirementTest extends TestCase
         $this->now = new DateTimeImmutable('2026-09-15T12:00:00+00:00');
         $this->credentials = new InMemoryCredentialRepository();
         $hints = new FakeJwsVerifier();
-        $hints->knows($this->tenant, self::BOB_HINT, '{"iss":"https://id.acme.example","sub":"bob-subject","aud":"oidc-demo"}');
+        $hints->knows($this->tenant, self::BOB_HINT, '{"iss":"https://id.acme.example","sub":"bob-subject","aud":"oidc-demo","exp":1,"iat":1,"auth_time":1}');
         $users = new InMemoryUserRepository();
         $users->save(Fixtures::user($this->tenant, 'bob', 'bob-subject'));
         $this->requirement = new UpstreamLoginRequirement(

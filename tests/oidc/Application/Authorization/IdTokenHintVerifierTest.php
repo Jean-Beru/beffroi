@@ -66,9 +66,11 @@ final class IdTokenHintVerifierTest extends TestCase
      */
     public static function provideValidHints(): iterable
     {
-        yield 'single audience' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","exp":1}'];
-        yield 'audience list' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":["other","spa"],"exp":1}'];
-        yield 'profile claims' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","address":{"country":"FR"}}'];
+        yield 'single audience' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","exp":1,"iat":1,"auth_time":1}'];
+        yield 'audience list' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":["other","spa"],"exp":1,"iat":1,"auth_time":1}'];
+        yield 'profile claims' => [
+            '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","address":{"country":"FR"},"exp":1,"iat":1,"auth_time":1}',
+        ];
     }
 
     /**
@@ -109,13 +111,21 @@ final class IdTokenHintVerifierTest extends TestCase
         yield 'a list' => ['["https://id.acme.example"]'];
         yield 'a string' => ['"https://id.acme.example"'];
         yield 'null' => ['null'];
-        yield 'too deep' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","a":{"b":{"c":{"d":1}}}}', JsonException::class];
-        yield 'no issuer' => ['{"sub":"alice-subject","aud":"spa"}'];
-        yield 'other issuer' => ['{"iss":"https://id.other.example","sub":"alice-subject","aud":"spa"}'];
-        yield 'issuer not a string' => ['{"iss":["https://id.acme.example"],"sub":"alice-subject","aud":"spa"}'];
-        yield 'no subject' => ['{"iss":"https://id.acme.example","aud":"spa"}'];
-        yield 'subject not a string' => ['{"iss":"https://id.acme.example","sub":42,"aud":"spa"}'];
-        yield 'subject empty' => ['{"iss":"https://id.acme.example","sub":"","aud":"spa"}'];
+        yield 'too deep' => [
+            '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","a":{"b":{"c":{"d":1}}},"exp":1,"iat":1,"auth_time":1}',
+            JsonException::class,
+        ];
+        yield 'no issuer' => ['{"sub":"alice-subject","aud":"spa","exp":1,"iat":1,"auth_time":1}'];
+        yield 'other issuer' => ['{"iss":"https://id.other.example","sub":"alice-subject","aud":"spa","exp":1,"iat":1,"auth_time":1}'];
+        yield 'issuer not a string' => ['{"iss":["https://id.acme.example"],"sub":"alice-subject","aud":"spa","exp":1,"iat":1,"auth_time":1}'];
+        yield 'no subject' => ['{"iss":"https://id.acme.example","aud":"spa","exp":1,"iat":1,"auth_time":1}'];
+        yield 'subject not a string' => ['{"iss":"https://id.acme.example","sub":42,"aud":"spa","exp":1,"iat":1,"auth_time":1}'];
+        yield 'subject empty' => ['{"iss":"https://id.acme.example","sub":"","aud":"spa","exp":1,"iat":1,"auth_time":1}'];
+        yield 'a signed UserInfo response (OIDC Core §5.3.2)' => ['{"sub":"alice-subject","name":"Alice","iss":"https://id.acme.example","aud":"spa"}'];
+        yield 'no exp (OIDC Core §2)' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","iat":1,"auth_time":1}'];
+        yield 'no iat (OIDC Core §2)' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","exp":1,"auth_time":1}'];
+        yield 'no auth_time' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","exp":1,"iat":1}'];
+        yield 'exp not a number' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","exp":"1","iat":1,"auth_time":1}'];
     }
 
     #[Test]
@@ -141,14 +151,14 @@ final class IdTokenHintVerifierTest extends TestCase
      */
     public static function provideOtherClientHints(): iterable
     {
-        yield 'no audience' => ['{"iss":"https://id.acme.example","sub":"alice-subject"}'];
-        yield 'other audience' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"other"}'];
-        yield 'other audiences' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":["other","another"]}'];
-        yield 'audience map' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":{"a":"spa"}}'];
+        yield 'no audience' => ['{"iss":"https://id.acme.example","sub":"alice-subject","exp":1,"iat":1,"auth_time":1}'];
+        yield 'other audience' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"other","exp":1,"iat":1,"auth_time":1}'];
+        yield 'other audiences' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":["other","another"],"exp":1,"iat":1,"auth_time":1}'];
+        yield 'audience map' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":{"a":"spa"},"exp":1,"iat":1,"auth_time":1}'];
         yield 'audience under the key 0 of an object' => [
             '{"iss":"https://id.acme.example","sub":"alice-subject","aud":{"0":"spa"},"exp":1,"iat":1,"auth_time":1}',
         ];
-        yield 'audience not a string' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":42}'];
+        yield 'audience not a string' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":42,"exp":1,"iat":1,"auth_time":1}'];
     }
 
     /**
@@ -159,7 +169,7 @@ final class IdTokenHintVerifierTest extends TestCase
     public function itRefusesATokenThatNamesAType(string $type): void
     {
         // Given
-        $this->jws->knows($this->tenant, self::TOKEN, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa"}', [
+        $this->jws->knows($this->tenant, self::TOKEN, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","exp":1,"iat":1,"auth_time":1}', [
             'typ' => $type,
         ]);
 
@@ -193,7 +203,7 @@ final class IdTokenHintVerifierTest extends TestCase
         $this->jws->knows(
             Fixtures::tenant('other', 'https://id.other.example'),
             self::TOKEN,
-            '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa"}',
+            '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","exp":1,"iat":1,"auth_time":1}',
         );
 
         // Then
@@ -231,12 +241,24 @@ final class IdTokenHintVerifierTest extends TestCase
      */
     public static function provideReadableHints(): iterable
     {
-        yield 'as issued here' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","exp":1,"sid":"' . self::SID . '"}', ['spa'], self::SID];
-        yield 'audience list' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":["spa","another"]}', ['spa', 'another'], null];
-        yield 'no audience' => ['{"iss":"https://id.acme.example","sub":"alice-subject"}', [], null];
-        yield 'audience map' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":{"a":"spa"}}', [], null];
-        yield 'audience not a string' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":42}', [], null];
-        yield 'audience list with a number' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":["spa",42]}', [], null];
+        yield 'as issued here' => [
+            '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","exp":1,"iat":1,"auth_time":1,"sid":"' . self::SID . '"}',
+            ['spa'],
+            self::SID,
+        ];
+        yield 'audience list' => [
+            '{"iss":"https://id.acme.example","sub":"alice-subject","aud":["spa","another"],"exp":1,"iat":1,"auth_time":1}',
+            ['spa', 'another'],
+            null,
+        ];
+        yield 'no audience' => ['{"iss":"https://id.acme.example","sub":"alice-subject","exp":1,"iat":1,"auth_time":1}', [], null];
+        yield 'audience map' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":{"a":"spa"},"exp":1,"iat":1,"auth_time":1}', [], null];
+        yield 'audience not a string' => ['{"iss":"https://id.acme.example","sub":"alice-subject","aud":42,"exp":1,"iat":1,"auth_time":1}', [], null];
+        yield 'audience list with a number' => [
+            '{"iss":"https://id.acme.example","sub":"alice-subject","aud":["spa",42],"exp":1,"iat":1,"auth_time":1}',
+            [],
+            null,
+        ];
     }
 
     #[Test]
@@ -244,7 +266,11 @@ final class IdTokenHintVerifierTest extends TestCase
     public function itRefusesASessionIdentifierItDidNotWrite(string $sid): void
     {
         // Given
-        $this->jws->knows($this->tenant, self::TOKEN, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","sid":' . $sid . '}');
+        $this->jws->knows(
+            $this->tenant,
+            self::TOKEN,
+            '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","exp":1,"iat":1,"auth_time":1,"sid":' . $sid . '}',
+        );
 
         // When
         try {
@@ -265,9 +291,14 @@ final class IdTokenHintVerifierTest extends TestCase
     public function itReadsNoSessionFromATokenThatNamesAType(string $type): void
     {
         // Given
-        $this->jws->knows($this->tenant, self::TOKEN, '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","sid":"' . self::SID . '"}', [
-            'typ' => $type,
-        ]);
+        $this->jws->knows(
+            $this->tenant,
+            self::TOKEN,
+            '{"iss":"https://id.acme.example","sub":"alice-subject","aud":"spa","exp":1,"iat":1,"auth_time":1,"sid":"' . self::SID . '"}',
+            [
+                'typ' => $type,
+            ],
+        );
 
         // When
         try {
