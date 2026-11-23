@@ -46,16 +46,14 @@ name: TUI
 # three platforms of a run carry the same PHP. GitHub lets a run read the entries of its own ref and of the default
 # branch: a release reads the micro a dispatch from the default branch left there.
 #
-# The two Linux executables are built natively on a runner of their architecture, X64 on kloude, ARM64 on the Swarm
-# runners, in Alpine, where the C library static-php-cli links statically is the system's. It is Alpine 3.22, whose GCC
-# is 14: the GCC 15 of Alpine 3.24 builds an ICU whose first call crashes the PHP it is linked into. Alpine is pulled
-# from Docker Hub under the account of the secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN and not against the address of
-# the runner, which the pool shares (gitsplit.yml). The macOS executable is built on a runner GitHub hosts, the only
-# macOS this organisation runs on, with the tools static-php-cli installs there through Homebrew.
+# Each executable is built natively, on a runner GitHub hosts of its platform. The two Linux ones are built in Alpine,
+# where the C library static-php-cli links statically is the system's. It is Alpine 3.22, whose GCC is 14: the GCC 15
+# of Alpine 3.24 builds an ICU whose first call crashes the PHP it is linked into. Alpine is pulled from Docker Hub under
+# the account of the secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN and not against the address of the runner, which the
+# pool shares (gitsplit.yml). The macOS one is built with the tools static-php-cli installs there through Homebrew.
 #
-# Provenance attestations of the files are written once this repository is public: GitHub keeps them for a private
-# repository on GitHub Enterprise Cloud only, which is not the plan of this organisation. Until then the step is
-# skipped.
+# Provenance attestations of the files are written for a public repository only: GitHub keeps them for a private one
+# on GitHub Enterprise Cloud alone, which is not the plan of this organisation.
 
 on:
   workflow_dispatch: ~
@@ -82,7 +80,7 @@ env:
 jobs:
   prepare:
     name: "What is built, and where it goes"
-    runs-on: [self-hosted, kloude-light]
+    runs-on: ubuntu-24.04
     outputs:
       tag: ${{ steps.release.outputs.tag }}
       build: ${{ steps.release.outputs.build }}
@@ -119,7 +117,7 @@ jobs:
   phar:
     name: "The PHAR"
     needs: prepare
-    runs-on: [self-hosted, kloude-light]
+    runs-on: ubuntu-24.04
     container:
       image: ghcr.io/spomky-labs/phpqa:8.5
     steps:
@@ -175,11 +173,11 @@ jobs:
       matrix:
         include:
           - platform: linux-x86_64
-            runs-on: [self-hosted, X64]
+            runs-on: ubuntu-24.04
             spc: spc-linux-x86_64.tar.gz
             spc-sha256: 523ba4279c54c7a377156c0dd3a36adf92ee64b01e9a7f5e9e2ec084b8e458e5
           - platform: linux-aarch64
-            runs-on: [self-hosted, ARM64]
+            runs-on: ubuntu-24.04-arm
             spc: spc-linux-aarch64.tar.gz
             spc-sha256: 675a3840dcdc4ed041fe20eaa54310ce019a9984c1c03951df9ec66df5795213
           - platform: macos-aarch64
@@ -281,7 +279,7 @@ jobs:
     name: "The assets of the release"
     needs: [prepare, phar, executable]
     if: needs.prepare.outputs.tag != ''
-    runs-on: [self-hosted, kloude-light]
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       id-token: write

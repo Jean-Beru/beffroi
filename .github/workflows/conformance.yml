@@ -47,7 +47,7 @@ concurrency:
 jobs:
   conformance:
     name: "OpenID Conformance (Basic, Config, Form Post, the three logout profiles, the four FAPI 2 runs, the two FAPI-CIBA runs, Dynamic OP and 3rd Party-Init OP)"
-    runs-on: [self-hosted, kloude, X64]
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
@@ -58,8 +58,6 @@ jobs:
         with:
           php-version: '8.5'
           coverage: none
-        env:
-          runner: self-hosted
       # The application is pinned by its own lock, the way a developer runs it; the jobs of "ci.yml" are the
       # ones that follow the dev branches of Symfony.
       - uses: ramsey/composer-install@v4

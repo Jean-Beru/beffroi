@@ -52,9 +52,9 @@ concurrency:
 jobs:
   mutation:
     name: "Mutation Testing (beffroi/core and beffroi/oidc, the whole source)"
-    runs-on: [self-hosted, kloude]
-    # Six hours, the ceiling GitHub gives a job on a hosted runner, kept on the self-hosted one. What the
-    # run costs of it is one of the things these runs are here to tell.
+    runs-on: ubuntu-24.04
+    # Six hours, the ceiling GitHub gives a job on a hosted runner. What the run costs of it is one of the
+    # things these runs are here to tell.
     timeout-minutes: 360
     container:
       image: ghcr.io/spomky-labs/phpqa:8.5

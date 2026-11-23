@@ -17,10 +17,9 @@ name: Image
 # repositories of apps/beffroi/composer.json resolve beffroi/* to src/, which beffroi-auth/application does not carry; and a
 # commit that touches only the packages changes the image while it pushes nothing to the mirror.
 #
-# Each platform is built natively, on a runner of its architecture, with no emulation: X64 on kloude, ARM64
-# on the Swarm runners. Each build pushes its image by digest and under no tag, and the last job writes the
-# index of the two and gives it its tags, so that a tag never names one platform alone and a platform that
-# fails moves no tag.
+# Each platform is built natively, on a runner GitHub hosts of its architecture, with no emulation. Each build
+# pushes its image by digest and under no tag, and the last job writes the index of the two and gives it its
+# tags, so that a tag never names one platform alone and a platform that fails moves no tag.
 #
 # The tags. A build of a maintenance branch A.B.x tags "A.B.x", which follows the branch, and
 # "A.B.x-<commit>", which stays on the build of that commit. A release A.B.C tags "A.B.C", then "A.B", "A"
@@ -58,7 +57,7 @@ env:
 jobs:
   prepare:
     name: "What is published, and under which tags"
-    runs-on: [self-hosted, kloude-light]
+    runs-on: ubuntu-24.04
     outputs:
       push: ${{ steps.tags.outputs.push }}
       tags: ${{ steps.tags.outputs.tags }}
@@ -116,11 +115,11 @@ jobs:
         include:
           - platform: linux/amd64
             arch: amd64
-            runner: X64
+            runner: ubuntu-24.04
           - platform: linux/arm64
             arch: arm64
-            runner: ARM64
-    runs-on: [self-hosted, "${{ matrix.runner }}"]
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     # Each platform names its digest as an output of its own, and GitHub combines the outputs of the jobs of a
     # matrix, an empty value replacing none. No artifact carries them: the storage of artifacts is counted for
     # the whole organisation and capped, and a digest is a line.
@@ -136,8 +135,7 @@ jobs:
           persist-credentials: false
       # The base image, the frontend of the Dockerfile and BuildKit itself are pulled from Docker Hub under the
       # account of the secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN of this repository, and not against the
-      # address of the runner, which the pool shares (gitsplit.yml). The action logs out when the job ends,
-      # and a Swarm runner keeps its home from one job to the next.
+      # address of the runner, which the pool shares (gitsplit.yml).
       - name: "Docker Hub, under the account of the repository"
         uses: docker/login-action@v4
         with:
@@ -191,7 +189,7 @@ jobs:
     name: "The index of both platforms, under its tags"
     needs: [prepare, build]
     if: needs.prepare.outputs.push == 'true'
-    runs-on: [self-hosted, kloude-light]
+    runs-on: ubuntu-24.04
     permissions:
       packages: write
     steps:
