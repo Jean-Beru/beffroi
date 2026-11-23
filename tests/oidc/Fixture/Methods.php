@@ -28,6 +28,7 @@ use Beffroi\Oidc\Bridge\InMemory\InMemoryClientJwksCache;
 use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryClientAssertionSecretVerifier;
 use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryCompactJwtReader;
 use Beffroi\Oidc\Bridge\JwtLibrary\JwtLibraryJwtKeyVerifier;
+use Beffroi\Oidc\Bridge\Pki\PkiFrameworkCertificateAuthorities;
 use Beffroi\Oidc\Bridge\Pki\PkiFrameworkCertificateReader;
 use Beffroi\Oidc\Port\ClientAssertionReplayGuardInterface;
 use Beffroi\Oidc\Port\ServedGrantsInterface;
@@ -79,7 +80,10 @@ final class Methods
 
     public static function tlsClientAuth(): TlsClientAuth
     {
-        return new TlsClientAuth(new PkiFrameworkCertificateReader());
+        return new TlsClientAuth(
+            new PkiFrameworkCertificateReader(),
+            new PkiFrameworkCertificateAuthorities([Certificates::AUTHORITY_PEM]),
+        );
     }
 
     public static function selfSignedTlsClientAuth(?ClientKeySetProvider $keys = null): SelfSignedTlsClientAuth

@@ -31,6 +31,7 @@ use Beffroi\Oidc\Tests\Fixture\Certificates;
 use Beffroi\Oidc\Tests\Fixture\Clients;
 use Beffroi\Oidc\Tests\Fixture\FakeClientLoadBudget;
 use Beffroi\Oidc\Tests\Fixture\Methods;
+use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -101,6 +102,63 @@ final class TlsClientAuthTest extends TestCase
         $event = $this->events->events[0] ?? static::fail('A refusal is recorded.');
         static::assertInstanceOf(ClientAuthenticationFailed::class, $event);
         static::assertSame(ClientAuthenticationFailureReason::UnexpectedCertificate, $event->reason);
+    }
+
+    /**
+     * RFC 8705 §2.1, §7.4
+     */
+    #[Test]
+    #[DataProvider('provideCertificatesNoTrustedAuthorityIssued')]
+    public function aCertificateCarryingTheRegisteredNameThatNoTrustedAuthorityIssuedIsRefused(ClientCertificate $certificate): void
+    {
+        // Then
+        $this->expectException(InvalidClientException::class);
+        $this->expectExceptionMessageIs('invalid_client: Client authentication failed.');
+
+        // When
+        $this->authenticate($certificate);
+    }
+
+    /**
+     * @return iterable<string, array{ClientCertificate}>
+     */
+    public static function provideCertificatesNoTrustedAuthorityIssued(): iterable
+    {
+        yield 'self-signed' => [Certificates::selfSigned()];
+
+        yield 'issued by another authority' => [Certificates::ofAnotherAuthority()];
+    }
+
+    /**
+     * RFC 8705 §2.1
+     */
+    #[Test]
+    public function aCertificateNoTrustedAuthorityIssuedIsRecordedAsUntrusted(): void
+    {
+        // When
+        $this->failToAuthenticate(Certificates::selfSigned());
+
+        // Then
+        $event = $this->events->events[0] ?? static::fail('A refusal is recorded.');
+        static::assertInstanceOf(ClientAuthenticationFailed::class, $event);
+        static::assertSame(ClientAuthenticationFailureReason::UntrustedCertificate, $event->reason);
+    }
+
+    /**
+     * RFC 5280 §6.1.3
+     */
+    #[Test]
+    public function aCertificatePresentedOnceExpiredIsRefused(): void
+    {
+        // Given
+        $this->context = Fixtures::context(new DateTimeImmutable('2126-01-01T00:00:01+00:00'));
+
+        // Then
+        $this->expectException(InvalidClientException::class);
+        $this->expectExceptionMessageIs('invalid_client: Client authentication failed.');
+
+        // When
+        $this->authenticate(Certificates::client());
     }
 
     /**
