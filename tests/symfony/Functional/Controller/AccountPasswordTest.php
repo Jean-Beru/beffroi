@@ -6,6 +6,7 @@ namespace App\Tests\Symfony\Functional\Controller;
 
 use DateInterval;
 use App\Http\RecentLogin;
+use App\Security\RateLimitedAttempts;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
 use Beffroi\Core\Domain\Credential\PlainPassword;
 use Beffroi\Core\Domain\Event\PasswordChanged;
@@ -16,6 +17,7 @@ use Beffroi\Core\Domain\Session\SingleFactor;
 use Beffroi\Core\Domain\Session\TwoFactors;
 use Beffroi\Core\Port\AuthenticationSessionRepositoryInterface;
 use Beffroi\Core\Port\CredentialRepositoryInterface;
+use Beffroi\Core\Port\PasswordAttemptLimiterInterface;
 use Beffroi\Core\Port\PasswordHasherInterface;
 use Beffroi\Core\Port\UserRepositoryInterface;
 use Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord;
@@ -125,6 +127,43 @@ final class AccountPasswordTest extends BrowserTestCase
         // Then
         static::assertCount(1, $this->afterTheForm()->filter('p[data-error="wrong_password"]'));
         static::assertTrue(self::hasher()->verify(self::passwordOf($alice)->hash, self::IN_USE));
+    }
+
+    /**
+     * Decision 0014
+     */
+    #[Test]
+    public function thePasswordInUseTypedBeyondTheLimitIsRefusedAndSaidOnThePage(): void
+    {
+        // Given
+        $alice = self::userWithPassword('alice', self::IN_USE);
+        $this->signIn($alice);
+        $this->guessThePasswordInUseUpToTheLimit();
+
+        // When
+        $this->change(self::IN_USE, self::POSED);
+
+        // Then
+        static::assertCount(1, $this->afterTheForm()->filter('p[data-error="too_many_attempts"]'));
+        static::assertTrue(self::hasher()->verify(self::passwordOf($alice)->hash, self::IN_USE));
+    }
+
+    /**
+     * Decision 0014
+     */
+    #[Test]
+    public function guessesAtThePasswordInUseLeaveTheLoginOfThePersonOpen(): void
+    {
+        // Given
+        $alice = self::userWithPassword('alice', self::IN_USE);
+        $this->signIn($alice);
+        $this->guessThePasswordInUseUpToTheLimit();
+
+        // When
+        $accepted = self::service('test.beffroi.password_attempts', PasswordAttemptLimiterInterface::class)->attempt($alice);
+
+        // Then
+        static::assertTrue($accepted);
     }
 
     #[Test]
@@ -400,6 +439,13 @@ final class AccountPasswordTest extends BrowserTestCase
             'new_password' => $posed,
             'new_password_again' => $again ?? $posed,
         ]);
+    }
+
+    private function guessThePasswordInUseUpToTheLimit(): void
+    {
+        for ($guess = 1; $guess <= RateLimitedAttempts::LIMIT; ++$guess) {
+            $this->change('not the password', self::POSED);
+        }
     }
 
     private static function breaches(): BreachedPasswordsOfARecord

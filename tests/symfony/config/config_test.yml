@@ -1004,6 +1004,9 @@ services:
     test.beffroi.code_attempts:
         alias: Beffroi\Core\Port\CodeAttemptLimiterInterface
         public: true
+    test.beffroi.password_attempts:
+        alias: Beffroi\Core\Port\PasswordAttemptLimiterInterface
+        public: true
     test.beffroi.kms_unavailable_listener:
         alias: App\Key\KmsUnavailableListener
         public: true

@@ -22,6 +22,7 @@ use Beffroi\Core\Domain\Identity\User;
 use Beffroi\Core\Exception\PasswordChangeRefusedException;
 use Beffroi\Core\Exception\PasswordRefusedException;
 use Beffroi\Core\Tests\Fixture\BreachedPasswordsOfARecord;
+use Beffroi\Core\Tests\Fixture\FakeAttemptLimiter;
 use Beffroi\Core\Tests\Fixture\FakePasswordHasher;
 use Beffroi\Core\Tests\Fixture\Fixtures;
 use Beffroi\Core\Tests\Fixture\RecordingCredentialChangeNotifier;
@@ -60,6 +61,8 @@ final class PasswordChangeTest extends TestCase
 
     private InMemoryUpstreamProviders $upstreamProviders;
 
+    private FakeAttemptLimiter $attempts;
+
     protected function setUp(): void
     {
         $this->alice = Fixtures::user();
@@ -70,6 +73,7 @@ final class PasswordChangeTest extends TestCase
         $this->clock = new MockClock('2026-09-15T13:00:00+00:00');
         $this->breaches = BreachedPasswordsOfARecord::holding([self::BREACHED]);
         $this->upstreamProviders = new InMemoryUpstreamProviders();
+        $this->attempts = new FakeAttemptLimiter();
         $this->change = $this->changeAsking($this->breaches);
     }
 
@@ -337,7 +341,87 @@ final class PasswordChangeTest extends TestCase
         }
     }
 
-    private function changeAsking(BreachedPasswordsOfARecord $breaches): PasswordChange
+    /**
+     * Decision 0014
+     */
+    #[Test]
+    public function anAttemptAtThePasswordInUseIsCounted(): void
+    {
+        // Given
+        $this->passwordInUse();
+
+        // When
+        try {
+            $this->change->change($this->alice, 'not the password', Fixtures::plainPassword(self::POSED), Fixtures::context());
+        } catch (PasswordChangeRefusedException) {
+        }
+
+        // Then
+        static::assertSame([$this->alice->id->toRfc4122()], $this->attempts->attempts);
+    }
+
+    /**
+     * Decision 0014
+     */
+    #[Test]
+    public function thePasswordInUseTypedBeyondTheLimitIsRefusedAsSuch(): void
+    {
+        // Given
+        $this->passwordInUse();
+        $change = $this->changeAsking($this->breaches, new FakeAttemptLimiter(allowed: 0));
+
+        // When
+        try {
+            $change->change($this->alice, self::IN_USE, Fixtures::plainPassword(self::POSED), Fixtures::context());
+            static::fail('An attempt beyond the limit should have been refused.');
+        } catch (PasswordChangeRefusedException $exception) {
+            // Then
+            static::assertSame(PasswordChangeRefusal::TooManyAttempts, $exception->refusal);
+        }
+    }
+
+    /**
+     * Decision 0014
+     */
+    #[Test]
+    public function thePasswordInUseTypedBeyondTheLimitLeavesTheOneHeld(): void
+    {
+        // Given
+        $credential = $this->passwordInUse();
+        $change = $this->changeAsking($this->breaches, new FakeAttemptLimiter(allowed: 0));
+
+        // When
+        try {
+            $change->change($this->alice, self::IN_USE, Fixtures::plainPassword(self::POSED), Fixtures::context());
+        } catch (PasswordChangeRefusedException) {
+        }
+
+        // Then
+        static::assertTrue($this->hasher->verify($credential->hash, self::IN_USE));
+        static::assertSame([], $this->events->events);
+    }
+
+    /**
+     * Decision 0014
+     */
+    #[Test]
+    public function thePasswordInUseTypedRightForgetsTheAttemptsBefore(): void
+    {
+        // Given
+        $this->passwordInUse();
+        try {
+            $this->change->change($this->alice, 'not the password', Fixtures::plainPassword(self::POSED), Fixtures::context());
+        } catch (PasswordChangeRefusedException) {
+        }
+
+        // When
+        $this->change->change($this->alice, self::IN_USE, Fixtures::plainPassword(self::POSED), Fixtures::context());
+
+        // Then
+        static::assertSame([], $this->attempts->attempts);
+    }
+
+    private function changeAsking(BreachedPasswordsOfARecord $breaches, ?FakeAttemptLimiter $attempts = null): PasswordChange
     {
         return new PasswordChange(
             $this->credentials,
@@ -348,6 +432,7 @@ final class PasswordChangeTest extends TestCase
             $this->events,
             new FederatedDomains($this->upstreamProviders),
             $this->notifier,
+            $attempts ?? $this->attempts,
         );
     }
 
