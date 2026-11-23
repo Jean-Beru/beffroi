@@ -7,6 +7,7 @@ namespace App\Tests\Symfony\Unit\Client;
 use App\Http\ByteLimit;
 use App\Http\Timeout;
 use App\Client\ClientJwksFetcher;
+use Beffroi\Core\Tests\Fixture\RsaModuli;
 use Beffroi\Oidc\Domain\Client\ClientUri;
 use Beffroi\Oidc\Exception\ClientKeysUnavailableException;
 use function json_encode;
@@ -135,6 +136,30 @@ final class ClientJwksFetcherTest extends TestCase
         // Then
         $this->expectException(ClientKeysUnavailableException::class);
         $this->expectExceptionMessageIsOrContains('does not answer a JWK Set');
+
+        // When
+        $fetcher->fetch(new ClientUri(self::JWKS_URI));
+    }
+
+    /**
+     * RFC 7518 §3.3, §4.3
+     */
+    #[Test]
+    public function itRefusesASetThatHoldsAnRsaKeyOfFewerThan2048Bits(): void
+    {
+        // Given
+        $fetcher = $this->fetcher(new MockResponse(json_encode([
+            'keys' => [[
+                'kty' => 'RSA',
+                'kid' => 'weak',
+                'n' => RsaModuli::ofBits(1024),
+                'e' => 'AQAB',
+            ]],
+        ], JSON_THROW_ON_ERROR)));
+
+        // Then
+        $this->expectException(ClientKeysUnavailableException::class);
+        $this->expectExceptionMessageIsOrContains('carries a modulus "n" of 2048 bits at least');
 
         // When
         $fetcher->fetch(new ClientUri(self::JWKS_URI));
