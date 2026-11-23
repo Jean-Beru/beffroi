@@ -269,6 +269,44 @@ final class GroupsSectionTest extends TestCase
     }
 
     #[Test]
+    public function theLastPageIsReadWhenAsked(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/groups' => self::tenantGroups(),
+            '/groups/g-administrators/members?page=1' => self::members(page: 1, pages: 2),
+            '/groups/g-administrators/members?page=2' => self::members('bob', page: 2, pages: 2),
+        ]);
+        $this->screen->open('section.groups');
+        $this->screen->press(["\r", "\r"]);
+
+        // When
+        $this->screen->press(']');
+
+        // Then
+        static::assertStringContainsString('Members of administrators · page 2 of 2', $this->screen->screen());
+    }
+
+    #[Test]
+    public function thePreviousPageIsReadWhenAsked(): void
+    {
+        // Given
+        $this->screen = new SignedInScreen([
+            '/groups' => self::tenantGroups(),
+            '/groups/g-administrators/members?page=1' => self::members(page: 1, pages: 2),
+            '/groups/g-administrators/members?page=2' => self::members('bob', page: 2, pages: 2),
+        ]);
+        $this->screen->open('section.groups');
+        $this->screen->press(["\r", "\r", ']']);
+
+        // When
+        $this->screen->press('[');
+
+        // Then
+        static::assertSame(2, $this->screen->requestsTo('/groups/g-administrators/members?page=1'));
+    }
+
+    #[Test]
     public function noPageIsAskedForBeforeTheFirstOne(): void
     {
         // Given
