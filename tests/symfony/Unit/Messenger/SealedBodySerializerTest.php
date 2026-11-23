@@ -24,6 +24,7 @@ use App\Tests\Symfony\Fixture\AmbientTenant;
 use App\Tests\Symfony\Fixture\AskWhatIsKnown;
 use App\Tests\Symfony\Fixture\EnrichTheProvenance;
 use App\Tests\Symfony\Fixture\SomethingHappened;
+use App\Tests\Symfony\Fixture\WokenWhenRead;
 use App\Tests\Symfony\Fixture\WriteBeforeAnswering;
 use Beffroi\Core\Bridge\InMemory\InMemoryTenantKeyRepository;
 use Beffroi\Core\Bridge\JwtLibrary\JwtLibraryMessageBodyOpener;
@@ -327,6 +328,57 @@ final class SealedBodySerializerTest extends TestCase
             static fn (ErrorDetailsStamp $stamp): string => $stamp->getExceptionMessage(),
             self::stampsOf(ErrorDetailsStamp::class, $written['headers'][SealedBodySerializer::STAMP_HEADER_PREFIX . ErrorDetailsStamp::class] ?? ''),
         ));
+    }
+
+    #[Test]
+    public function aFailedMessageReadBackKeepsWhenItWasRetriedAndWhatFailed(): void
+    {
+        // Given
+        $encoded = $this->serializer->encode(new Envelope(new SomethingHappened('a page was rendered')));
+        $refused = $this->serializerOf($this->tenant, new SealedKeyProvider(new InMemoryTenantKeyRepository(), Keys::opened()));
+        $written = $refused->encode($refused->decode($encoded)->with(
+            new RedeliveryStamp(1, new DateTimeImmutable('2026-10-09T12:00:00+00:00')),
+            ErrorDetailsStamp::create(new KmsUnavailableException('the vault did not answer')),
+        ));
+
+        // When
+        $read = $refused->decode($written);
+
+        // Then
+        static::assertSame('2026-10-09T12:00:00+00:00', $read->last(RedeliveryStamp::class)?->getRedeliveredAt()->format(DateTimeImmutable::RFC3339));
+        static::assertSame('the vault did not answer', $read->last(ErrorDetailsStamp::class)?->getFlattenException()?->getMessage());
+    }
+
+    #[Test]
+    public function aHeaderThatNamesAClassThatIsNoStampBuildsNothing(): void
+    {
+        // Given
+        WokenWhenRead::$woken = 0;
+        $encoded = $this->serializer->encode(new Envelope(new SomethingHappened('a page was rendered')));
+        $encoded['headers'][SealedBodySerializer::STAMP_HEADER_PREFIX . WokenWhenRead::class] = base64_encode(serialize([new WokenWhenRead()]));
+
+        // When
+        $decoded = $this->serializer->decode($encoded);
+
+        // Then
+        static::assertSame(0, WokenWhenRead::$woken);
+        static::assertStringContainsString('does not read back', self::failureOf($decoded)->getMessage());
+    }
+
+    #[Test]
+    public function aHeaderOfAStampThatHoldsAnotherObjectBuildsNothing(): void
+    {
+        // Given
+        WokenWhenRead::$woken = 0;
+        $encoded = $this->serializer->encode(new Envelope(new SomethingHappened('a page was rendered')));
+        $encoded['headers'][SealedBodySerializer::STAMP_HEADER_PREFIX . RedeliveryStamp::class] = base64_encode(serialize([new WokenWhenRead()]));
+
+        // When
+        $decoded = $this->serializer->decode($encoded);
+
+        // Then
+        static::assertSame(0, WokenWhenRead::$woken);
+        static::assertStringContainsString('carries something else', self::failureOf($decoded)->getMessage());
     }
 
     #[Test]
