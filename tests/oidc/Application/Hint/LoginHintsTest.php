@@ -85,6 +85,65 @@ final class LoginHintsTest extends TestCase
     }
 
     /**
+     * OIDC Core §3.1.2.1, decision 0006
+     */
+    #[Test]
+    #[DataProvider('provideUsernamesWhetherAnAccountHoldsThemOrNot')]
+    public function aHintReadAsAUsernameIsOfferedAsTheClientSentIt(string $value): void
+    {
+        // Given
+        $hints = $this->hints([new UsernameLoginHint($this->users)]);
+
+        // When
+        $offered = $hints->usernameToShow(Requests::authorization($this->client, loginHint: $value));
+
+        // Then
+        static::assertSame($value, $offered);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideUsernamesWhetherAnAccountHoldsThemOrNot(): iterable
+    {
+        yield 'the username of an account' => ['alice'];
+        yield 'a username no account holds' => ['mallory'];
+    }
+
+    /**
+     * OIDC Core §3.1.2.1, §4
+     */
+    #[Test]
+    public function aHintReadAsASubjectOffersTheUsernameOfItsUser(): void
+    {
+        // Given
+        $hints = $this->hints([new SubjectLoginHint(Subjects::ofAProvider($this->users))]);
+
+        // When
+        $offered = $hints->usernameToShow(Requests::authorization($this->client, loginHint: 'alice-subject'));
+
+        // Then
+        static::assertSame('alice', $offered);
+    }
+
+    /**
+     * OIDC Core §3.1.2.1
+     */
+    #[Test]
+    #[DataProvider('provideHintsNamingNobody')]
+    public function aHintThatNamesNobodyOffersNobody(?string $value): void
+    {
+        // Given
+        $hints = $this->hints([new SubjectLoginHint(Subjects::ofAProvider($this->users))]);
+
+        // When
+        $offered = $hints->usernameToShow(Requests::authorization($this->client, loginHint: $value));
+
+        // Then
+        static::assertNull($offered);
+    }
+
+    /**
      * OIDC Core §3.1.2.1
      */
     #[Test]
