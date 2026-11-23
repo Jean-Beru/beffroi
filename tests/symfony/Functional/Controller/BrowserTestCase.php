@@ -13,6 +13,7 @@ use Closure;
 use DateTimeImmutable;
 use function explode;
 use function hash;
+use function hash_pbkdf2;
 use App\Http\BrowserSession;
 use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
 use App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler;
@@ -22,6 +23,8 @@ use Beffroi\Core\Application\Key\KeyTakeOver;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
 use Beffroi\Core\Domain\Credential\PasswordAlgorithmInterface;
 use Beffroi\Core\Bridge\Password\Algorithm\Bcrypt;
+use Beffroi\Core\Bridge\Password\Algorithm\Pbkdf2Sha256;
+use Beffroi\Core\Bridge\Password\Algorithm\Pbkdf2Sha512;
 use Beffroi\Core\Domain\Credential\PasswordCredential;
 use Beffroi\Core\Domain\Credential\PasswordHash;
 use Beffroi\Core\Domain\Identity\User;
@@ -47,6 +50,7 @@ use function parse_str;
 use function parse_url;
 use const PASSWORD_BCRYPT;
 use function password_hash;
+use SensitiveParameter;
 use const PHP_URL_QUERY;
 use function rtrim;
 use function sprintf;
@@ -137,11 +141,30 @@ abstract class BrowserTestCase extends DatabaseTestCase
             Bcrypt::NAME => new PasswordHash(new Bcrypt(), password_hash($password, PASSWORD_BCRYPT, [
                 'cost' => 4,
             ])),
+            Pbkdf2Sha256::NAME => self::pbkdf2($algorithm, 'sha256', $password),
+            Pbkdf2Sha512::NAME => self::pbkdf2($algorithm, 'sha512', $password),
             default => static::fail(sprintf('No fixture hashes with %s.', $algorithm->name())),
         };
         self::service('test.beffroi.credentials', CredentialRepositoryInterface::class)->save(new PasswordCredential(Uuid::v7(), $user, $hash, self::now()));
 
         return $user;
+    }
+
+    /**
+     * RFC 8018 §5.2
+     *
+     * As Keycloak stores one: the derived key and the salt in base64, the iterations beside them.
+     *
+     * @param non-falsy-string $digest
+     */
+    private static function pbkdf2(PasswordAlgorithmInterface $algorithm, string $digest, #[SensitiveParameter] string $password): PasswordHash
+    {
+        $salt = 'sixteen octets!!';
+
+        return new PasswordHash($algorithm, base64_encode(hash_pbkdf2($digest, $password, $salt, 1000, 64, true)), [
+            'salt' => base64_encode($salt),
+            'iterations' => 1000,
+        ]);
     }
 
     protected function signIn(User $user, ?DateTimeImmutable $establishedAt = null): AuthenticationSession

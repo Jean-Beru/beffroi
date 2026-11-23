@@ -13,7 +13,10 @@ use App\Tests\Symfony\Functional\Doctrine\DatabaseTestCase;
 use App\Tests\Symfony\Functional\MessageHandler\RecordingEventHandler;
 use Beffroi\Core\Application\Key\KeyTakeOver;
 use Beffroi\Core\Bridge\Password\Algorithm\Argon2id;
+use Beffroi\Core\Domain\Credential\PasswordAlgorithmInterface;
+use Beffroi\Core\Domain\Credential\PasswordHash;
 use Beffroi\Core\Domain\Session\RequestContext;
+use Beffroi\Core\Port\PasswordAlgorithmsInterface;
 use Beffroi\Core\Port\PasswordHasherInterface;
 use Beffroi\Core\Tests\Fixture\Algorithms;
 use Beffroi\Oidc\Application\Client\ClientAuthenticator;
@@ -22,6 +25,9 @@ use Beffroi\Oidc\Domain\Client\HashedClientSecret;
 use Beffroi\Oidc\Domain\Event\ClientAuthenticationFailed;
 use Beffroi\Oidc\Exception\InvalidClientException;
 use Beffroi\Oidc\Port\ClientRepositoryInterface;
+use function array_fill;
+use function array_map;
+use function count;
 use function json_decode;
 use const JSON_THROW_ON_ERROR;
 use PHPUnit\Framework\Attributes\Test;
@@ -112,6 +118,26 @@ final class ProviderBootTest extends DatabaseTestCase
         static::assertInstanceOf(HashedClientSecret::class, $demo->secret);
         static::assertSame(Argon2id::NAME, $demo->secret->hash->algorithm->name());
         static::assertTrue($hasher->verify($demo->secret->hash, 'demo-secret-of-at-least-32-characters-long'));
+    }
+
+    /**
+     * Decision 0002
+     */
+    #[Test]
+    public function everyPasswordAlgorithmTheProviderReadsIsVerifiedByAHasher(): void
+    {
+        // Given
+        $hasher = self::service('test.beffroi.password_hasher', PasswordHasherInterface::class);
+        $algorithms = self::service('beffroi.password_algorithms', PasswordAlgorithmsInterface::class)->all();
+
+        // When
+        $verified = array_map(
+            static fn (PasswordAlgorithmInterface $algorithm): bool => $hasher->verify(new PasswordHash($algorithm, 'no hash of it'), 'passwd'),
+            $algorithms,
+        );
+
+        // Then
+        static::assertSame(array_fill(0, count($algorithms), false), $verified);
     }
 
     #[Test]
