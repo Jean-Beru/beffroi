@@ -188,6 +188,30 @@ final class ThirdPartyInitiatedLoginTest extends BrowserTestCase
         static::assertSame($alice->subject->value, $named?->subject->value);
     }
 
+    /**
+     * OIDC Core §8, decision 0006
+     */
+    #[Test]
+    public function aClientThePersonGaveNoConsentIsSentNoHint(): void
+    {
+        // Given
+        $this->issue();
+        $registered = $this->register([
+            'redirect_uris' => ['https://registered.test/callback'],
+            'initiate_login_uri' => 'https://registered.test/start',
+        ]);
+        $this->signIn(self::user('alice'));
+
+        // When
+        $this->begin(self::string($registered['client_id']));
+
+        // Then
+        static::assertSame(
+            'https://registered.test/start' . self::ISSUED_BY_THIS_PROVIDER,
+            $this->browser->getResponse()->headers->get('Location'),
+        );
+    }
+
     #[Test]
     public function theRegistrationAndTheConfigurationEndpointBothAnswerTheUri(): void
     {
