@@ -66,6 +66,26 @@ final class AdministrationApiWriteTest extends AdministrationTestCase
         ));
     }
 
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    public function theLogoutTokenOfASessionAnAdministratorEndedIsAnActThatNamesThem(): void
+    {
+        // Given
+        $bob = self::user('bob', 'bob-subject');
+        $session = $this->signIn($bob);
+        self::signingKey();
+        $this->signInClient('oidc-demo', 'https://demo.test/login/check', 'demo-secret-of-at-least-32-characters-long');
+        $token = $this->administratorToken(self::user('alice'));
+
+        // When
+        $this->api(self::sessionPath($bob, $session), $token, method: 'DELETE');
+
+        // Then
+        static::assertSame([['bob-subject', 'alice-subject']], self::authored(LogoutTokenIssued::NAME));
+    }
+
     #[Test]
     public function theEndOfASessionIsAnActOfThePersonThatNamesTheAdministrator(): void
     {
