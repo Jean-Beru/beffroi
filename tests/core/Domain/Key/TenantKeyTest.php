@@ -168,6 +168,36 @@ final class TenantKeyTest extends TestCase
     }
 
     #[Test]
+    #[DataProvider('provideCreationsOfAnotherKey')]
+    public function aKeyWasCreatedBeforeAnotherOnlyWhenItsCreationComesFirst(string $other, bool $before): void
+    {
+        // Given
+        $key = self::key();
+        $another = new TenantKey(
+            Keys::otherPair()->kid,
+            Fixtures::tenant(),
+            Algorithms::rs256(),
+            Keys::otherPair()->publicJwk,
+            'sealed',
+            Fixtures::now()->modify($other),
+            Fixtures::now()->modify($other),
+        );
+
+        // When / Then
+        static::assertSame($before, $key->wasCreatedBefore($another));
+    }
+
+    /**
+     * @return iterable<string, array{string, bool}>
+     */
+    public static function provideCreationsOfAnotherKey(): iterable
+    {
+        yield 'a second later' => ['+1 second', true];
+        yield 'at the same moment' => ['+0 seconds', false];
+        yield 'a second earlier' => ['-1 second', false];
+    }
+
+    #[Test]
     public function aRetirementIsNotDueBeforeItsDate(): void
     {
         // Given
@@ -231,26 +261,41 @@ final class TenantKeyTest extends TestCase
     }
 
     #[Test]
+    public function aStagedKeyStartsRetiringWithoutEverBeingActive(): void
+    {
+        // Given
+        $key = self::key();
+
+        // When
+        $key->startRetiring(Fixtures::now(), Fixtures::now()->modify('+1 hour'));
+
+        // Then
+        static::assertSame(KeyStatus::Retiring, $key->status);
+        static::assertNull($key->activatedAt);
+        static::assertTrue($key->isPublished());
+    }
+
+    #[Test]
     #[DataProvider('provideKeysThatCannotStartRetiring')]
-    public function onlyAnActiveKeyStartsRetiring(TenantKey $key): void
+    public function aKeyThatLeftServiceOrIsLeavingItDoesNotStartRetiring(TenantKey $key, string $message): void
     {
         // Then
         $this->expectException(LogicException::class);
+        $this->expectExceptionMessageIs($message);
 
         // When
         $key->startRetiring(Fixtures::now(), Fixtures::now());
     }
 
     /**
-     * @return iterable<string, array{TenantKey}>
+     * @return iterable<string, array{TenantKey, string}>
      */
     public static function provideKeysThatCannotStartRetiring(): iterable
     {
-        yield 'staged' => [self::key()];
         $retiring = self::activeKey();
         $retiring->startRetiring(Fixtures::now(), Fixtures::now());
-        yield 'retiring' => [$retiring];
-        yield 'retired' => [self::retiredKey()];
+        yield 'retiring' => [$retiring, 'Only an active or a staged key can start retiring; this one is retiring.'];
+        yield 'retired' => [self::retiredKey(), 'Only an active or a staged key can start retiring; this one is retired.'];
     }
 
     #[Test]

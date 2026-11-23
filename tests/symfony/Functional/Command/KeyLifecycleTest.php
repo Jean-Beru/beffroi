@@ -610,7 +610,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
     public function theScheduledStepActivatesAStagedKeyWhoseDelayElapsed(): void
     {
         // Given
-        $previous = self::displayed(self::console('beffroi:keys:rotate'), 'Key identifier');
+        $previous = self::activeKeyCreatedTenMinutesAgo();
         $due = self::stagedKeyDated(self::currentSecond()->modify('-4 minutes'), self::currentSecond()->modify('-1 minute'));
 
         // When
@@ -655,7 +655,7 @@ final class KeyLifecycleTest extends ConsoleTestCase
     public function theScheduledStepNamesItselfInTheEvents(): void
     {
         // Given
-        self::console('beffroi:keys:rotate');
+        self::activeKeyCreatedTenMinutesAgo();
         self::stagedKeyDated(self::currentSecond()->modify('-4 minutes'), self::currentSecond()->modify('-1 minute'));
 
         // When
@@ -804,6 +804,15 @@ final class KeyLifecycleTest extends ConsoleTestCase
     private static function tick(): void
     {
         self::service('test.beffroi.command_bus', MessageBusInterface::class)->dispatch(new AdvanceKeyLifecycle());
+    }
+
+    private static function activeKeyCreatedTenMinutesAgo(): string
+    {
+        self::mockTime(self::currentSecond()->modify('-10 minutes'));
+        $kid = self::displayed(self::console('beffroi:keys:rotate'), 'Key identifier');
+        self::mockTime(self::currentSecond());
+
+        return $kid;
     }
 
     private static function retiringKey(): string

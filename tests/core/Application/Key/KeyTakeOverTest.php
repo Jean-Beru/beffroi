@@ -349,6 +349,108 @@ final class KeyTakeOverTest extends TestCase
     }
 
     #[Test]
+    public function aRotationForACompromiseRetiresTheKeyThatWaits(): void
+    {
+        // Given
+        $lifecycle = $this->lifecycleThatDrawsKeys();
+        $waiting = $this->aSuccessorWaits($lifecycle);
+
+        // When
+        $key = $lifecycle->takeOver->rotateAfterCompromise($this->tenant, Algorithms::edDsa(), $this->context);
+
+        // Then
+        static::assertSame(KeyStatus::Retired, $waiting->status);
+        static::assertEquals($this->clock->now(), $waiting->retiredAt);
+        static::assertSame([$key], $lifecycle->keys->findInService($this->tenant));
+    }
+
+    #[Test]
+    public function aRotationForACompromiseSaysTheKeyThatWaitsIsRetiredAsCompromised(): void
+    {
+        // Given
+        $lifecycle = $this->lifecycleThatDrawsKeys();
+        $waiting = $this->aSuccessorWaits($lifecycle);
+
+        // When
+        $lifecycle->takeOver->rotateAfterCompromise($this->tenant, Algorithms::edDsa(), $this->context);
+
+        // Then
+        [, $event] = $lifecycle->events->of(TenantKeyRetired::class);
+        static::assertSame($waiting, $event->retired);
+        static::assertSame(RetirementReason::Compromised, $event->reason);
+        static::assertSame($this->context, $event->context);
+    }
+
+    #[Test]
+    public function aRotationForACompromiseLeavesAKeyThatWaitsForAnotherAlgorithm(): void
+    {
+        // Given
+        $lifecycle = $this->lifecycleThatDrawsKeys();
+        $lifecycle->takeOver->rotate($this->tenant, Algorithms::es256(), $this->context);
+        $waiting = $this->aSuccessorWaits($lifecycle);
+
+        // When
+        $lifecycle->takeOver->rotateAfterCompromise($this->tenant, Algorithms::es256(), $this->context);
+
+        // Then
+        static::assertSame(KeyStatus::Staged, $waiting->status);
+    }
+
+    #[Test]
+    public function aKeyThatWaitsDoesNotTakeOverFromANewerKey(): void
+    {
+        // Given
+        $lifecycle = $this->lifecycleThatDrawsKeys();
+        $this->aSuccessorWaits($lifecycle);
+        $newer = $lifecycle->takeOver->rotate($this->tenant, Algorithms::edDsa(), $this->context);
+        $this->clock->modify('+6 minutes');
+
+        // When
+        $activated = $lifecycle->takeOver->activateDue($this->tenant, $this->context);
+
+        // Then
+        static::assertSame([], $activated);
+        static::assertSame($newer, $lifecycle->keys->findActive($this->tenant, Algorithms::edDsa()));
+    }
+
+    #[Test]
+    public function aKeyThatWaitsBehindANewerKeyStartsRetiringOnceItsDelayEnds(): void
+    {
+        // Given
+        $lifecycle = $this->lifecycleThatDrawsKeys();
+        $waiting = $this->aSuccessorWaits($lifecycle);
+        $lifecycle->takeOver->rotate($this->tenant, Algorithms::edDsa(), $this->context);
+        $this->clock->modify('+6 minutes');
+        $saves = $lifecycle->keys->saves;
+
+        // When
+        $lifecycle->takeOver->activateDue($this->tenant, $this->context);
+
+        // Then
+        static::assertSame(KeyStatus::Retiring, $waiting->status);
+        static::assertNull($waiting->activatedAt);
+        static::assertEquals($this->clock->now(), $waiting->retiringAt);
+        static::assertEquals($this->clock->now()->add(new DateInterval(KeyLifecycle::LONGEST_LIFETIME)), $waiting->retirementDueAt);
+        static::assertSame($saves + 1, $lifecycle->keys->saves);
+    }
+
+    #[Test]
+    public function aKeyThatWaitsTakesOverWhateverNewerKeyAnotherAlgorithmHolds(): void
+    {
+        // Given
+        $lifecycle = $this->lifecycleThatDrawsKeys();
+        $waiting = $this->aSuccessorWaits($lifecycle);
+        $lifecycle->takeOver->rotate($this->tenant, Algorithms::es256(), $this->context);
+        $this->clock->modify('+6 minutes');
+
+        // When
+        $activated = $lifecycle->takeOver->activateDue($this->tenant, $this->context);
+
+        // Then
+        static::assertSame([$waiting], $activated);
+    }
+
+    #[Test]
     public function aKeyOfAnotherAlgorithmRotatesTheSameWay(): void
     {
         // Given
@@ -369,6 +471,25 @@ final class KeyTakeOverTest extends TestCase
         static::assertEquals($this->clock->now()->add(new DateInterval(KeyLifecycle::LONGEST_LIFETIME)), $first->retirementDueAt);
         static::assertSame($rs256, $lifecycle->keys->findActive($this->tenant, Algorithms::rs256()));
         static::assertSame('Ed25519', $second->publicJwk['crv']);
+    }
+
+    private function lifecycleThatDrawsKeys(): KeyLifecycle
+    {
+        return new KeyLifecycle(
+            $this->clock,
+            [new FixedLifetimeArtifact(new DateInterval(KeyLifecycle::LONGEST_LIFETIME))],
+            generator: new JwtLibraryKeyPairGenerator(Algorithms::everyUse()),
+        );
+    }
+
+    private function aSuccessorWaits(KeyLifecycle $lifecycle): TenantKey
+    {
+        $lifecycle->takeOver->rotate($this->tenant, Algorithms::edDsa(), $this->context);
+        $this->clock->modify('+30 days');
+        $waiting = $lifecycle->staging->stage($this->tenant, Algorithms::edDsa(), $this->context);
+        $this->clock->modify('+1 minute');
+
+        return $waiting;
     }
 
     private function firstRotation(): TenantKey
