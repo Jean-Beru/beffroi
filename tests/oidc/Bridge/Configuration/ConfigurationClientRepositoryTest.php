@@ -447,6 +447,15 @@ final class ConfigurationClientRepositoryTest extends TestCase
             ],
             Grants::servedWithJwtBearer(),
         ];
+        yield 'a grant that asks the user through a backchannel (CIBA Core §7.1)' => [
+            [
+                'token_endpoint_auth_method' => 'none',
+                'grant_types' => ['urn:openid:params:grant-type:ciba'],
+                'backchannel_token_delivery_mode' => 'poll',
+                'scope' => 'openid',
+            ],
+            Grants::servedWithCiba(),
+        ];
     }
 
     /**
