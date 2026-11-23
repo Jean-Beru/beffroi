@@ -128,7 +128,7 @@ final class PasskeyAuthenticatorsTest extends PasskeyTestCase
         $passkey = $this->enrol($alice, new SoftwareAuthenticator(self::ORIGIN, backupEligible: $backupEligible, backedUp: $backedUp));
 
         // When
-        $cell = $this->authenticatorOf($passkey->id);
+        $cell = $this->featuresOf($passkey->id);
 
         // Then
         static::assertSame($words, $cell->filter('span[data-backup="' . $state . '"]')->text());
@@ -156,7 +156,7 @@ final class PasskeyAuthenticatorsTest extends PasskeyTestCase
         $passkey = $this->enrol($alice, self::device(synced: $synced));
 
         // When
-        $cell = $this->authenticatorOf($passkey->id);
+        $cell = $this->featuresOf($passkey->id);
 
         // Then
         static::assertSame($words, $cell->filter('span[data-transports="' . $transports . '"]')->text());
@@ -202,18 +202,27 @@ final class PasskeyAuthenticatorsTest extends PasskeyTestCase
         ]);
 
         // Then
-        $cell = $crawler->filter('tr[data-passkey="' . $passkey->id . '"] td[data-authenticator]');
+        $row = $crawler->filter('tr[data-passkey="' . $passkey->id . '"]');
         static::assertSame('Authentificateur', $crawler->filter('thead th')->eq(1)->text());
-        static::assertSame('YubiKey 5 Series', $cell->filter('span[data-model]')->text());
-        static::assertSame('Certifié FIDO, niveau 1', $cell->filter('span[data-certification]')->text());
-        static::assertSame('Liée à un appareil', $cell->filter('span[data-backup]')->text());
-        static::assertSame('Via USB', $cell->filter('span[data-transports]')->text());
-        static::assertSame('Modèle déclaré, non vérifié', $cell->filter('span[data-model-proof]')->text());
+        static::assertSame('Fonctionnalités', $crawler->filter('thead th')->eq(2)->text());
+        static::assertSame('YubiKey 5 Series', $row->filter('td[data-authenticator] span[data-model]')->text());
+        static::assertSame('Certifié FIDO, niveau 1', $row->filter('td[data-authenticator] span[data-certification]')->text());
+        static::assertSame('Modèle déclaré, non vérifié', $row->filter('td[data-authenticator] span[data-model-proof]')->text());
+        static::assertSame('Liée à un appareil', $row->filter('td[data-features] span[data-backup]')->text());
+        static::assertSame('Via USB', $row->filter('td[data-features] span[data-transports]')->text());
     }
 
     private function authenticatorOf(Uuid $passkey): Crawler
     {
         $cell = $this->passkeysPage()->filter('tr[data-passkey="' . $passkey . '"] td[data-authenticator]');
+        static::assertCount(1, $cell);
+
+        return $cell;
+    }
+
+    private function featuresOf(Uuid $passkey): Crawler
+    {
+        $cell = $this->passkeysPage()->filter('tr[data-passkey="' . $passkey . '"] td[data-features]');
         static::assertCount(1, $cell);
 
         return $cell;

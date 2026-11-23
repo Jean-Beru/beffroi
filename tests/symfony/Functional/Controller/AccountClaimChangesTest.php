@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Symfony\Functional\Controller;
 
 use App\Http\AskedPage;
+use App\Http\ClaimChangesPage;
 use Beffroi\Core\Domain\Identity\ClaimChange;
 use Beffroi\Core\Domain\Identity\Subject;
 use Beffroi\Core\Domain\Identity\User;
@@ -184,6 +185,72 @@ final class AccountClaimChangesTest extends BrowserTestCase
         // Then
         static::assertCount(2, $page->filter('tbody tr[data-change]'));
         static::assertCount(0, $page->filter('a[data-filter="clear"]'));
+    }
+
+    #[Test]
+    public function theClaimAskedForIsTheOnlyOneRead(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        self::aChange($alice, 'Ada', 'Augusta');
+        self::aChange($alice, 'Lovelace', 'King', claim: 'family_name');
+        self::reload();
+
+        // When
+        $page = $this->changesPage([ClaimChangesPage::CLAIM => 'family_name']);
+
+        // Then
+        static::assertSame(['family_name'], $page->filter('tbody tr[data-change]')->extract(['data-change']));
+    }
+
+    #[Test]
+    public function theClaimsOfferedAreThoseTheHistoryOfThePersonHolds(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        self::aChange($alice, 'Ada', 'Augusta');
+        self::aChange($alice, 'Lovelace', 'King', claim: 'family_name');
+        self::aChange($alice, 'Augusta', 'Ada');
+        self::aChange(self::user('bob', 'bob-subject'), 'Bob', 'Robert', claim: 'given_name');
+        self::reload();
+
+        // When
+        $page = $this->changesPage();
+
+        // Then
+        static::assertSame(['', 'family_name', 'nickname'], $page->filter('select[name="claim"] option')->extract(['value']));
+    }
+
+    /**
+     * Decision 0038
+     */
+    #[Test]
+    #[DataProvider('provideAuthors')]
+    public function whoMadeTheChangeIsReadApart(string $by, string $author): void
+    {
+        // Given
+        $alice = self::user('alice');
+        $this->signIn($alice);
+        self::aChange($alice, 'Ada', 'Augusta');
+        self::aChange($alice, 'Augusta', 'Ada', author: new Subject('mallory-subject'));
+        self::reload();
+
+        // When
+        $page = $this->changesPage([ClaimChangesPage::AUTHOR => $by]);
+
+        // Then
+        static::assertSame([$author], $page->filter('tbody tr[data-change] td[data-author]')->extract(['data-author']));
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideAuthors(): iterable
+    {
+        yield 'what an administrator made' => [ClaimChangesPage::BY_AN_ADMINISTRATOR, 'administrator'];
+        yield 'what the person made' => [ClaimChangesPage::BY_THE_PERSON, 'person'];
     }
 
     #[Test]

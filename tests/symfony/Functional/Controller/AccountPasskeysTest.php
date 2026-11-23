@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Symfony\Functional\Controller;
 
+use App\Http\PasskeysPage;
 use App\Message\TellUserOfCredentialChange;
 use Beffroi\Core\Domain\Credential\PasskeyCredential;
 use Beffroi\Core\Domain\Event\CredentialEnrolled;
@@ -364,7 +365,7 @@ final class AccountPasskeysTest extends PasskeyTestCase
         $revoked = self::events(CredentialRevoked::class);
         static::assertCount(1, $revoked);
         static::assertTrue(self::passkeyOf($alice, $device)->isRevoked());
-        $row = $this->passkeysPage()->filter('tr[data-passkey="' . $passkey->id . '"]');
+        $row = $this->passkeysPage([PasskeysPage::STATE => PasskeysPage::REVOKED])->filter('tr[data-passkey="' . $passkey->id . '"]');
         static::assertSame('yes', $row->attr('data-revoked'));
         static::assertCount(0, $row->filter('button'), 'No revoking twice.');
     }
@@ -556,7 +557,7 @@ final class AccountPasskeysTest extends PasskeyTestCase
         );
 
         // When
-        $row = $this->passkeysPage()->filter('tr[data-passkey="' . $passkey->id . '"]');
+        $row = $this->passkeysPage([PasskeysPage::STATE => PasskeysPage::REVOKED])->filter('tr[data-passkey="' . $passkey->id . '"]');
 
         // Then
         static::assertCount(0, $row->filter('form[data-passkey="rename"]'));

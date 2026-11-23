@@ -241,6 +241,81 @@ final class AccountActsTest extends BrowserTestCase
     }
 
     #[Test]
+    public function theActAskedForIsTheOnlyOneRead(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        self::record($alice, UserAuthenticated::NAME);
+        self::record($alice, AuthenticationFailed::NAME);
+        self::reload();
+        $this->signIn($alice);
+
+        // When
+        $page = $this->actsPage(narrowed: [ActsPage::ACT => AuthenticationFailed::NAME]);
+
+        // Then
+        static::assertSame([AuthenticationFailed::NAME], $page->filter('tbody tr')->extract(['data-act']));
+    }
+
+    #[Test]
+    public function anActThePageDoesNotOfferNarrowsNothing(): void
+    {
+        // Given
+        $alice = self::user('alice');
+        self::record($alice, UserAuthenticated::NAME);
+        self::record($alice, TokensIssued::NAME, 'oidc-demo');
+        self::reload();
+        $this->signIn($alice);
+
+        // When
+        $page = $this->actsPage(narrowed: [ActsPage::ACT => TokensIssued::NAME]);
+
+        // Then
+        static::assertSame([UserAuthenticated::NAME], $page->filter('tbody tr')->extract(['data-act']));
+        static::assertCount(0, $page->filter('a[data-filter="clear"]'));
+    }
+
+    #[Test]
+    public function theActsOfferedAreTheActsOfAnAccount(): void
+    {
+        // Given
+        $this->signIn(self::user('alice'));
+
+        // When
+        $offered = $this->actsPage()->filter('select[name="act"] option')->extract(['value']);
+
+        // Then
+        static::assertSame(self::sorted(['', ...ActsPage::ACTS]), self::sorted($offered));
+    }
+
+    #[Test]
+    #[DataProvider('provideAuthors')]
+    public function whetherAnAdministratorDidTheActIsReadApart(string $by, string $act): void
+    {
+        // Given
+        $alice = self::user('alice');
+        self::record($alice, UserAuthenticated::NAME);
+        self::record($alice, PersonReadByAnAdministrator::NAME, 'tui-of-mallory', author: new Subject('mallory-subject'));
+        self::reload();
+        $this->signIn($alice);
+
+        // When
+        $page = $this->actsPage(narrowed: [ActsPage::AUTHOR => $by]);
+
+        // Then
+        static::assertSame([$act], $page->filter('tbody tr')->extract(['data-act']));
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideAuthors(): iterable
+    {
+        yield 'what an administrator did' => [ActsPage::BY_AN_ADMINISTRATOR, PersonReadByAnAdministrator::NAME];
+        yield 'what a request in their name did' => [ActsPage::BY_A_REQUEST, UserAuthenticated::NAME];
+    }
+
+    #[Test]
     public function thePageReadsOnePageOfTheJournalAndSaysWhereTheRestIs(): void
     {
         // Given
@@ -313,9 +388,12 @@ final class AccountActsTest extends BrowserTestCase
         static::assertSame(Response::HTTP_UNAUTHORIZED, $this->browser->getResponse()->getStatusCode());
     }
 
-    private function actsPage(?int $number = null, ?string $from = null, ?string $to = null, ?string $language = null): Crawler
+    /**
+     * @param array<string, string> $narrowed what else the table is narrowed to, by the words of its query string
+     */
+    private function actsPage(?int $number = null, ?string $from = null, ?string $to = null, ?string $language = null, array $narrowed = []): Crawler
     {
-        $asked = [];
+        $asked = $narrowed;
         if ($number !== null) {
             $asked['page'] = (string) $number;
         }

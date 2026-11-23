@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Symfony\Functional\Controller;
 
+use App\Http\NotificationsPage;
 use function base64_decode;
 use Beffroi\Core\Domain\Identity\PushSubscription;
 use Beffroi\Core\Domain\Identity\User;
@@ -295,6 +296,32 @@ final class PushSubscriptionTest extends BrowserTestCase
         // Then
         static::assertSame([$subscription->endpointHash], $crawler->filter('tr[data-subscription]')->extract(['data-endpoint']));
         static::assertStringNotContainsString(self::ENDPOINT, self::string($this->browser->getResponse()->getContent()));
+    }
+
+    /**
+     * Architecture §5.2
+     */
+    #[Test]
+    public function theDaysOfTheLastMessageAreTheOnesRead(): void
+    {
+        // Given
+        $alice = self::userWithPassword('alice', self::PASSWORD);
+        $this->signIn($alice);
+        self::applicationServerKey();
+        $this->subscribe();
+        $this->subscribe('https://push.example/f/GhIjKl', 'Alice on the train');
+        $subscriptions = self::subscriptions();
+        $told = $subscriptions->findByEndpoint($alice, self::ENDPOINT) ?? static::fail('The browser is not subscribed.');
+        $told->markPushed(self::currentSecond());
+        $subscriptions->save($told);
+
+        // When
+        $crawler = $this->browser->request('GET', '/account/notifications', [
+            NotificationsPage::PUSHED_FROM => self::currentSecond()->format('Y-m-d'),
+        ]);
+
+        // Then
+        static::assertSame([(string) $told->id], $crawler->filter('tbody tr[data-subscription]')->extract(['data-subscription']));
     }
 
     private function rename(string $id, string $label): void
