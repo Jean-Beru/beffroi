@@ -24,8 +24,8 @@ final class MomentTest extends TestCase
         $written = self::moment('en')->moment(self::instant(), self::userIn('Europe/London'));
 
         // Then
-        static::assertStringContainsString('3:04', $written);
-        static::assertStringContainsString('GMT+1', $written);
+        static::assertStringContainsString('15:04', $written);
+        static::assertStringContainsString('BST', $written);
     }
 
     #[Test]
@@ -35,7 +35,7 @@ final class MomentTest extends TestCase
         $written = self::moment('en')->moment(self::instant(), self::userIn('UTC'));
 
         // Then
-        static::assertStringContainsString('2:04', $written);
+        static::assertStringContainsString('14:04', $written);
         static::assertStringContainsString('UTC', $written);
     }
 
@@ -46,7 +46,7 @@ final class MomentTest extends TestCase
         $written = self::moment('en')->moment(self::instant(), self::userIn('Asia/Bangkok'));
 
         // Then
-        static::assertStringContainsString('9:04', $written);
+        static::assertStringContainsString('21:04', $written);
         static::assertStringContainsString('GMT+7', $written);
     }
 
