@@ -13,6 +13,8 @@ updates:
     directory: /apps/beffroi
     schedule:
       interval: weekly
+    allow:
+      - dependency-type: all
     groups:
       symfony:
         patterns: ["symfony/*"]
@@ -20,6 +22,8 @@ updates:
     directory: /apps/tui
     schedule:
       interval: weekly
+    allow:
+      - dependency-type: all
     groups:
       symfony:
         patterns: ["symfony/*"]
