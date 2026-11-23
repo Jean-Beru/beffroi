@@ -148,6 +148,24 @@ final class AdministrationApiTest extends AdministrationTestCase
         static::assertContains('phrh', array_column($sessions, 'acr'));
     }
 
+    /**
+     * Decision 0031
+     */
+    #[Test]
+    public function aSessionPastItsExpiryThatHasNotEndedIsRead(): void
+    {
+        // Given
+        $bob = self::user('bob', 'bob-subject');
+        $session = $this->signIn($bob, self::currentSecond()->modify('-13 hours'));
+        $token = $this->administratorToken(self::user('alice'));
+
+        // When
+        $sessions = self::listOf(self::json($this->api(sprintf('/users/%s/sessions', $bob->id->toRfc4122()), $token)), 'sessions');
+
+        // Then
+        static::assertSame([$session->id->toRfc4122()], array_column($sessions, 'id'));
+    }
+
     #[Test]
     public function theJournalOfAPersonIsRead(): void
     {

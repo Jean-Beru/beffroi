@@ -102,6 +102,24 @@ final class AdministrationApiWriteTest extends AdministrationTestCase
         static::assertSame([['bob-subject', 'alice-subject']], self::authored(AuthenticationSessionEnded::NAME));
     }
 
+    /**
+     * Decision 0031
+     */
+    #[Test]
+    public function anAdministratorEndsASessionPastItsExpiryThatHasNotEnded(): void
+    {
+        // Given
+        $bob = self::user('bob', 'bob-subject');
+        $session = $this->signIn($bob, self::currentSecond()->modify('-13 hours'));
+        $token = $this->administratorToken(self::user('alice'));
+
+        // When
+        $response = $this->api(self::sessionPath($bob, $session), $token, method: 'DELETE');
+
+        // Then
+        static::assertSame([Response::HTTP_OK, SessionEnd::Administrator], [$response->getStatusCode(), self::sessionAgain($session)->endedBy]);
+    }
+
     #[Test]
     public function aSessionThatEndedIsNotEndedAgain(): void
     {
