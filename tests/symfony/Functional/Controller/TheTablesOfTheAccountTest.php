@@ -6,11 +6,13 @@ namespace App\Tests\Symfony\Functional\Controller;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Architecture §6, the pages: the frame is what the stylesheet scrolls, so that a table wider than the screen
- * never takes the page sideways with it.
+ * never takes the page sideways with it, and every cell carries the heading of its column, which a phone reads
+ * above the value once the line is a card.
  */
 final class TheTablesOfTheAccountTest extends BrowserTestCase
 {
@@ -31,6 +33,33 @@ final class TheTablesOfTheAccountTest extends BrowserTestCase
         $response = $this->browser->getResponse();
         static::assertSame(Response::HTTP_OK, $response->getStatusCode(), self::string($response->getContent()));
         static::assertCount(1, $crawler->filter('div[data-table] > table[' . $table . ']'));
+    }
+
+    #[Test]
+    public function everyCellOfALineIsLabelledByTheHeadingOfItsColumn(): void
+    {
+        // When
+        $crawler = $this->browser->request('GET', '/account/sessions');
+
+        // Then
+        $headings = $crawler->filter('div[data-table] > table[data-sessions] thead th')->each(self::heading(...));
+        $labels = $crawler->filter('div[data-table] > table[data-sessions] tbody tr:not([data-empty])')->each(self::labels(...));
+        static::assertSame([$headings], $labels);
+    }
+
+    private static function heading(Crawler $heading): ?string
+    {
+        $text = trim($heading->text());
+
+        return $text === '' ? null : $text;
+    }
+
+    /**
+     * @return list<?string>
+     */
+    private static function labels(Crawler $line): array
+    {
+        return $line->filter('td')->each(static fn (Crawler $cell): ?string => $cell->attr('data-label'));
     }
 
     /**
