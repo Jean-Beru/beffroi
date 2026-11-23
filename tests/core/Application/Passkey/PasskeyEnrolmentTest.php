@@ -307,6 +307,55 @@ final class PasskeyEnrolmentTest extends TestCase
     }
 
     #[Test]
+    public function optionsUnderAnotherHandleThanThePasskeysOfThePersonAreRefused(): void
+    {
+        // Given
+        $this->credentials->save(Fixtures::passkey($this->alice, credentialId: 'first'));
+        $options = $this->enrolment->begin(Fixtures::user($this->alice->tenant, $this->alice->username, 'another-subject'));
+
+        // Then
+        $this->expectException(CredentialEnrolmentFailedException::class);
+        $this->expectExceptionMessageIs('The options were not drawn for this user.');
+
+        // When
+        $this->enrolment->complete($this->alice, 'Pixel', $options, '{}', Fixtures::context());
+    }
+
+    #[Test]
+    public function optionsDrawnForAnotherUserAreRefusedToAPersonWithoutAPasskey(): void
+    {
+        // Given
+        $bob = Fixtures::user($this->alice->tenant, 'bob', 'bob-subject');
+        $options = $this->enrolment->begin($bob);
+        $this->registrar->returns(FakePasskeyRegistrar::record($options));
+
+        // Then
+        $this->expectException(CredentialEnrolmentFailedException::class);
+        $this->expectExceptionMessageIs('The options were not drawn for this user.');
+
+        // When
+        $this->enrolment->complete($this->alice, 'Pixel', $options, '{}', Fixtures::context());
+    }
+
+    #[Test]
+    public function optionsDrawnForAnotherUserEnrolNothing(): void
+    {
+        // Given
+        $bob = Fixtures::user($this->alice->tenant, 'bob', 'bob-subject');
+        $options = $this->enrolment->begin($bob);
+        $this->registrar->returns(FakePasskeyRegistrar::record($options));
+
+        // When
+        try {
+            $this->enrolment->complete($this->alice, 'Pixel', $options, '{}', Fixtures::context());
+        } catch (CredentialEnrolmentFailedException) {
+        }
+
+        // Then
+        static::assertSame([], $this->credentials->findByUser($this->alice, PasskeyCredential::class));
+    }
+
+    #[Test]
     public function aSyncedPasskeyIsRefusedByATenantThatAsksForHardware(): void
     {
         // Given
