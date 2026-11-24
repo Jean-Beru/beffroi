@@ -19,8 +19,8 @@ use Beffroi\Core\Tests\Fixture\Fixtures;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use function mb_strlen;
 use function str_repeat;
-use function strlen;
 use Symfony\Component\Uid\Uuid;
 
 final class UserTest extends TestCase
@@ -84,13 +84,24 @@ final class UserTest extends TestCase
     }
 
     #[Test]
-    public function theUsernameMayBe255CharactersLong(): void
+    #[DataProvider('provideCharacters')]
+    public function theUsernameMayBe255CharactersLong(string $character): void
     {
         // When
-        $user = Fixtures::user(username: str_repeat('a', 255));
+        $user = Fixtures::user(username: str_repeat($character, 255));
 
         // Then
-        static::assertSame(255, strlen($user->username));
+        static::assertSame(255, mb_strlen($user->username));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideCharacters(): iterable
+    {
+        yield 'one byte each' => ['a'];
+        yield 'two bytes each' => ['é'];
+        yield 'four bytes each' => ['𝒶'];
     }
 
     #[Test]
@@ -104,13 +115,24 @@ final class UserTest extends TestCase
     }
 
     #[Test]
-    public function theUsernameIsAtMost255Characters(): void
+    #[DataProvider('provideCharactersPastTheBound')]
+    public function theUsernameIsAtMost255Characters(string $character): void
     {
         // Then
         $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageIs('A username is 1 to 255 characters long.');
 
         // When
-        Fixtures::user(username: str_repeat('a', 256));
+        Fixtures::user(username: str_repeat($character, 256));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideCharactersPastTheBound(): iterable
+    {
+        yield 'one byte each' => ['a'];
+        yield 'two bytes each' => ['é'];
     }
 
     #[Test]
