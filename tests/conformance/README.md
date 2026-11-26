@@ -52,7 +52,7 @@ Twenty modules of the OpenID Connect plans ask for a screenshot of a page of the
 | `refusal` | `p[data-error]`, HTTP 400 | no navigation: the error is shown and the redirection URI never followed (RFC 6749 §3.1.2.4, RP-Initiated Logout 1.0 §3 and §4) |
 | `sign-in-again` | `[data-requirement=reauthentication_requested]`, HTTP 200 (OIDC Core §3.1.2.1, `prompt=login`) | the browser signs in and lands on the callback of the suite |
 | `sign-in-past-max-age` | `[data-requirement=max_age_exceeded]`, HTTP 200 (OIDC Core §3.1.2.1, `max_age`) | the same |
-| `client-logo`, `client-policy`, `client-terms` | `img[data-client=logo]`, `a[data-client=policy_uri]`, `a[data-client=tos_uri]`, HTTP 200: this OP shows what a client registered about itself on its consent page (OIDC Registration §2) | no navigation |
+| `client-logo`, `client-policy`, `client-terms` | `img[data-client=logo]`, `a[data-client=policy_uri]`, `a[data-client=tos_uri]`, HTTP 200: this OP shows on its consent page what a client registered about itself (OIDC Registration §2), on the scheme and host of one of its redirection URIs (RFC 7591 §5) | no navigation |
 | `signed-out` | `[data-logged-out=yes]`, HTTP 200 | no navigation |
 | `logout-question` | `button[name=confirm][value=yes]`, unanswered, HTTP 200 (RP-Initiated Logout 1.0 §2) | no navigation |
 
@@ -61,7 +61,9 @@ The run gates on those facts and not on a reading of the image: every page the b
 The captures stay under `var/conformance/captures/<plan>/<module>.png`, each beside a JSON report (what the module asked, the URL and the status of the page, the steps of the browser), and `conformance.yml` uploads that directory as the artifact `conformance-captures`, which is what a submission is checked against. The pages of a person signed in follow the language of their record and offer no other (#485): the development user is provisioned in `en-GB`. Two captures need a word beside them in a submission:
 
 - `oidcc-rp-initiated-logout-bad-id-token-hint` asks for "an error page saying the request is invalid as the id_token_hint is not valid"; the OP asks the End-User whether to sign out and redirects nowhere, which RP-Initiated Logout 1.0 §4 allows ("It MAY ask the End-User whether to log out of the OP") and §2 requires when the ID Token does not belong to the current session.
-- `oidcc-registration-logo-uri`, `-policy-uri` and `-tos-uri` speak of "the login page"; the page captured is the consent page, where this OP shows what the client registered.
+- `oidcc-registration-logo-uri` and `-policy-uri` speak of "the login page"; the page captured is the consent page, where this OP shows what the client registered.
+
+`oidcc-registration-tos-uri` registers its `tos_uri` on `https://openid.net`, a host none of its redirection URIs names, so the consent page shows no link to it and the module fails, a gap `CONFORMANCE_PLANS` names.
 
 ## FIDO Alliance conformance tools
 
