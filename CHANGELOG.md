@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented in this file, in reverse chronological order by release.
 
+## 0.1.1 - TBD
+
+### Added
+
+- Nothing.
+
+### Changed
+
+- Nothing.
+
+### Deprecated
+
+- Nothing.
+
+### Removed
+
+- Nothing.
+
+### Fixed
+
+- Nothing.
+
 ## 0.1.0 - 2026-11-26
 
 The first release. `beffroi/core`, and every package that requires it, requires `symfony/key-management` 8.2, published
