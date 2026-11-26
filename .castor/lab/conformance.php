@@ -126,6 +126,19 @@ const CONFORMANCE_DYNAMIC_KNOWN_MODULES = [
         ],
         'reason' => CONFORMANCE_DYNAMIC_ASSERTION_AUDIENCE,
     ],
+    'oidcc-registration-tos-uri' => [
+        'result' => 'FAILED',
+        'findings' => [
+            'CAPTURE open /authorize: 200',
+            'CAPTURE address',
+            'CAPTURE sign in',
+            'CAPTURE allow',
+            'CAPTURE back to the suite on ',
+            'CAPTURE FAILED: the module asks for "The login page should show a link to a TOS document',
+            'INTERRUPTED oidcc-registration-tos-uri:',
+        ],
+        'reason' => 'the plan registers its tos_uri on https://openid.net, a host none of its redirection URIs names, and the consent page shows no page a client asserts itself off those hosts, as RFC 7591 section 5 asks; beffroi#1343',
+    ],
     'oidcc-registration-jwks-uri' => [
         'result' => 'FAILED',
         'findings' => [
